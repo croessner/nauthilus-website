@@ -2,14 +2,17 @@
 title: Dovecot Lua
 sidebar_position: 1
 ---
+# Dovecot Lua integration
+
+With some Lua glue in Dovecot, it is possible to connect the service directly to Nauthilus. Starting with Dovecot 2.319
+there exists a HTTP client which can be used to communicate seamlessly with nauthilus.
+
 <!-- TOC -->
+* [Dovecot Lua integration](#dovecot-lua-integration)
   * [Nauthilus modes](#nauthilus-modes)
       * [?mode=no-auth](#modeno-auth)
       * [?mode=list-accounts](#modelist-accounts)
 <!-- TOC -->
-
-With some Lua glue in Dovecot, it is possible to connect the service directly to nauthilus. Starting with Dovecot 2.319
-there exists a HTTP client which can be used to communicate seamlessly with nauthilus.
 
 Here is a real life example on how to achieve this. The mail system is using LDAP. The latter uses a custom schema,
 which you can find [here](https://gitlab.roessner-net.de/croessner/openldap-schema/-/tree/main/mail). Upon successful
@@ -33,7 +36,7 @@ The Lua code:
 
 local http_debug = true;
 local http_basicauthfile = "/etc/dovecot/http-auth.secret"
-local http_uri = "https://mx.roessner-net.de:9443/api/v1/mail/dovecot"
+local http_uri = "https://example.test:9443/api/v1/mail/dovecot"
 local http_passwordfail = "Invalid login or password"
 
 

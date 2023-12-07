@@ -2,14 +2,18 @@
 title: Fail2Ban
 sidebar_position: 4
 ---
+# Fail2Ban
+
+You can easily use fail2ban with nauthilus. This especially interesting, if you use the "rbl" feature.
+
 <!-- TOC -->
+* [Fail2Ban](#fail2ban)
   * [Example log line for RBL](#example-log-line-for-rbl)
   * [Example log line for failed logins](#example-log-line-for-failed-logins)
   * [/etc/fail2ban/filter.d/nauthilus.conf](#etcfail2banfilterdnauthilusconf)
   * [/etc/fail2ban/jail.local](#etcfail2banjaillocal)
 <!-- TOC -->
 
-You can easily use fail2ban with nauthilus. This especially interesting, if you use the "rbl" feature.
 
 ## Example log line for RBL
 
@@ -25,7 +29,7 @@ Feb 13 08:33:40 mx nauthilus[253232]: level=info ts=2023-02-13T08:33:40.05972087
 
 ## /etc/fail2ban/filter.d/nauthilus.conf
 
-```
+```python
 # Fail2Ban filter for nauthilus
 # Detecting unauthorized access to the mail system
 

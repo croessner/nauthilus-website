@@ -2,8 +2,14 @@
 title: Nginx mail plugin
 sidebar_position: 3
 ---
-The original implementation of nauthilus was developed to work as an authentication server for Nginx. Therefor the
+# Nginx mail plugin
+
+The original implementation of Nauthilus was developed to work as an authentication server for Nginx. Therefor the
 protocol is still working and valid.
+
+<!-- TOC -->
+* [Nginx mail plugin](#nginx-mail-plugin)
+<!-- TOC -->
 
 Here are some real life examples on how to integrate nauthilus with Nginx:
 

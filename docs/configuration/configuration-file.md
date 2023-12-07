@@ -7,28 +7,28 @@ sidebar_position: 2
     * [Features](#features)
     * [General configuration settings](#general-configuration-settings)
   * [Reloading](#reloading)
-  * [realtime\_blackhole\_lists](#realtimeblackholelists)
+  * [realtime\_blackhole\_lists](#realtime_blackhole_lists)
     * [Meaning](#meaning)
     * [Level 1: lists:](#level-1-lists)
     * [Level 2: Definition of a list](#level-2-definition-of-a-list)
     * [Level 2: threshold](#level-2-threshold)
-    * [Level 2: ip\_whitelist](#level-2-ipwhitelist)
-  * [cleartext\_networks](#cleartextnetworks)
+    * [Level 2: ip\_whitelist](#level-2-ip_whitelist)
+  * [cleartext\_networks](#cleartext_networks)
     * [Meaning](#meaning-1)
     * [Level 1: IPs with an optional CIDR mask](#level-1-ips-with-an-optional-cidr-mask)
-  * [relay\_domains](#relaydomains)
+  * [relay\_domains](#relay_domains)
     * [Meaning](#meaning-2)
     * [Level 1: static](#level-1-static)
     * [Level 2: Definition of a list](#level-2-definition-of-a-list-1)
-  * [brute\_force](#bruteforce)
+  * [brute\_force](#brute_force)
     * [Meaning](#meaning-3)
       * [Recommendation](#recommendation)
     * [Level 1: buckets](#level-1-buckets)
-    * [Level 1: ip\_whitelist](#level-1-ipwhitelist)
+    * [Level 1: ip\_whitelist](#level-1-ip_whitelist)
     * [Level 2: Definition of a list](#level-2-definition-of-a-list-2)
-  * [csrf\_secret](#csrfsecret)
-  * [cookie\_store\_auth\_key and cookie\_store\_encryption\_key](#cookiestoreauthkey-and-cookiestoreencryptionkey)
-  * [password\_nonce](#passwordnonce)
+  * [csrf\_secret](#csrf_secret)
+  * [cookie\_store\_auth\_key and cookie\_store\_encryption\_key](#cookie_store_auth_key-and-cookie_store_encryption_key)
+  * [password\_nonce](#password_nonce)
   * [oauth2](#oauth2)
     * [Meaning](#meaning-4)
       * [Configuration flow](#configuration-flow)
@@ -36,7 +36,7 @@ sidebar_position: 2
       * [User defined scopes and claims](#user-defined-scopes-and-claims)
     * [Level 1: clients](#level-1-clients)
     * [Level 2: Definition of a list](#level-2-definition-of-a-list-3)
-    * [Level 1: custom\_scopes](#level-1-customscopes)
+    * [Level 1: custom\_scopes](#level-1-custom_scopes)
     * [Level 2: Definition of a list](#level-2-definition-of-a-list-4)
 * [Database backends](#database-backends)
   * [Protocols](#protocols)
@@ -622,7 +622,7 @@ Encoded formats:
 | password\_crypt | Boolean that tells Nauthilus that passwords are stored encrypted | true / false                                              |
 
 For the DSN syntax and their supported options, please have a look at the Go
-library. [See here for MySQL]("https://github.com/go-sql-driver/mysql")
+library. [See here for MySQL](https://github.com/go-sql-driver/mysql)
 
 ### Level 1: config - Postgres
 
@@ -646,7 +646,7 @@ are known:
 | protocol    |   yes    | A protocol name or a list of protocols in YAML format | imap    |
 | cache\_name |    no    | A namespace for the Redis cache                       | dovecot |
 | query       |   yes    | Section of queries                                    | -       |
-| mapping     |   yes    | Query result attribute <--> logic mapping             | -       |
+| mapping     |   yes    | Query result attribute/logic mapping                  | -       |
 
 #### Query
 
@@ -766,7 +766,7 @@ This section defines blocks that combine protocols and LDAP filters. Here is a t
 | cache\_name |    no    | A namespace for the Redis cache                                                                                                                                                                                                                | dovecot |
 | base\_dn    |   yes    | The LDAP base DN for the queries                                                                                                                                                                                                               |         |
 | filter      |   yes    | Section of LDAP filters                                                                                                                                                                                                                        | -       |
-| mapping     |   yes    | Query result attribute <--> logic mapping                                                                                                                                                                                                      | -       |
+| mapping     |   yes    | Query result attribute/logic mapping                                                                                                                                                                                                           | -       |
 | attribute   |   yes    | One string representing an attribute from the user object or a YAML-list of attributes from an user object. The results are used either in HTTP-response-headers with a **X-Nauthilus-Attributename** or used to assemble Open ID token claims | uid     |
 
 #### Filter
@@ -861,7 +861,7 @@ It will be anhanced over time to support webauthn as well.
 
 ## Lua backend
 
-The Lua backend is described in detail [here](/docs/lua-backend).
+The Lua backend is described in detail [here](/docs/configuration/lua-support).
 
 ### Level 1: features
 

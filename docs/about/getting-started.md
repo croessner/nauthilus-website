@@ -35,10 +35,10 @@ First install docker on a system that shall be the host for Nauthilus. After tha
 create your docker compose file with Nauthilus. You may also add additional services
 like redis or SQL as well.
 
-Configure your environment variables documented in [Reference](/docs/reference). This
+Configure your environment variables documented in [Reference](/docs/configuration/reference). This
 settings are static and changes will always need a restart of the service.
 
-Create the nauthilus yaml configuration file. See the [configuration file](configuration-file)
+Create the nauthilus yaml configuration file. See the [configuration file](/docs/configuration/configuration-file)
 document for details.
 
 Depending on the backend you wish to use, you must provide the required settings.
@@ -77,12 +77,12 @@ HAProxy and fake such a distributed Redis system.
 You can integrate Nautilus in many ways. One is Dovecot with its Lua backend. An
 HTTP client must provide all required information for a request. Nauthilus will
 anser with HTTP response headers (or JSON, if using a different endpoint...).
-For this have a look at the Dovecot Lua example [here](/dovecot-lua).
+For this have a look at the Dovecot Lua example [here](/docs/examples/dovecot-lua).
 
 ### Nginx
 
 An alternative is the Nginx reverse proxy. For details on how to integrate it,
-follow [this link](/docs/nginx-mail-plugin).
+follow [this link](/docs/examples/nginx-mail-plugin).
 
 The recommended way of using it is the Dovecot Lua plugin, as it provides most
 flexible settings.

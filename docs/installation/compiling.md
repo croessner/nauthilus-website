@@ -3,6 +3,7 @@ title: Compiling
 sidebar_position: 2
 ---
 <!-- TOC -->
+* [Compiling](#compiling)
   * [Pre requirements](#pre-requirements)
   * [Building](#building)
 <!-- TOC -->
@@ -32,4 +33,4 @@ go build -mod=vendor -ldflags="-s -w" -o nauthilus .
 ```
 
 If everything went fine, follow the instructions found on the
-page "[Using binaries](/docs/using-binaries)".
+page "[Using binaries](/docs/installation/using-binaries)".

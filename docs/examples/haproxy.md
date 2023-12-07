@@ -2,13 +2,19 @@
 title: HAProxy
 sidebar_position: 2
 ---
-Here is a sample HAproxy configuration that shows how to put nauthilus behind a load balancer.
+# HAProxy
+
+Here is a sample HAproxy configuration that shows how to put Nauthilus behind a load balancer.
+
+<!-- TOC -->
+* [HAProxy](#haproxy)
+<!-- TOC -->
 
 > Note:
 >
 > This is not a complete haproxy.cfg file. Only relevaant snippets are shown here.
 
-```
+```haproxy
 #---------------------------------------------------------------------
 # Global settings
 #---------------------------------------------------------------------

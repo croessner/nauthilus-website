@@ -4,7 +4,7 @@ sidebar_position: 3
 ---
 # Getting started
 
-Find out how to deplay Nauthilus.
+Find out how to deploy Nauthilus.
 
 <!-- TOC -->
 * [Getting started](#getting-started)

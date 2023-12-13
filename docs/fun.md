@@ -1,5 +1,7 @@
 ---
 title: Fun
+description: Some stuff around Nauthilus that makes the admin life easier
+keywords: [multitail]
 sidebar_position: 6
 ---
 If you have a separate log file for nauthilus (i.e. using journald->rsyslog), you can use multitail to watch the logs.

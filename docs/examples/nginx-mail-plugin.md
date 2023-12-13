@@ -1,5 +1,7 @@
 ---
 title: Nginx mail plugin
+description: Nginx configuration for Nauthilus
+keywords: [Nginx, auth_http]
 sidebar_position: 3
 ---
 # Nginx mail plugin

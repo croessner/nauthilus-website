@@ -1,5 +1,7 @@
 ---
 title: HAProxy
+description: HAProxy configuration with Nauthilus
+keywords: [HAProxy]
 sidebar_position: 2
 ---
 # HAProxy
@@ -10,9 +12,9 @@ Here is a sample HAproxy configuration that shows how to put Nauthilus behind a 
 * [HAProxy](#haproxy)
 <!-- TOC -->
 
-> Note:
->
-> This is not a complete haproxy.cfg file. Only relevaant snippets are shown here.
+:::warning
+This is not a complete haproxy.cfg file. Only relevaant snippets are shown here.
+:::
 
 ```haproxy
 #---------------------------------------------------------------------

@@ -1,5 +1,7 @@
 ---
 title: Using binaries
+description: Systemd integration for Nauthilus
+keywords: [Systemd, Unit, Configuration]
 sidebar_position: 3
 ---
 <!-- TOC -->

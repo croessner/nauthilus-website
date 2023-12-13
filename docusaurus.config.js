@@ -73,6 +73,34 @@ const config = {
       mermaid: {
         theme: { light: 'default', dark: 'dark' },
       },
+      metadata: [
+        {name: 'keywords', content: 'authentication, mail'},
+        {name: 'twitter:card', content: 'summary_large_image'},
+      ],
+      headTags: [
+        // Declare a <link> preconnect tag
+        {
+          tagName: 'link',
+          attributes: {
+            rel: 'preconnect',
+            href: 'https://nauthilus.org',
+          },
+        },
+        // Declare some json-ld structured data
+        {
+          tagName: 'script',
+          attributes: {
+            type: 'application/ld+json',
+          },
+          innerHTML: JSON.stringify({
+            '@context': 'https://schema.org/',
+            '@type': 'Organization',
+            name: 'Nauthilus',
+            url: 'https://nauthilus.org/',
+            logo: 'https://nauthilus.org/img/logo.png',
+          }),
+        },
+      ],
 
       // Replace with your project's social card
       image: 'img/docusaurus-social-card.jpg',

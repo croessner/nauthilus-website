@@ -1,5 +1,7 @@
 ---
 title: Getting started
+description: Find out how to deploy Nauthilus
+keywords: [Quickstart]
 sidebar_position: 3
 ---
 # Getting started

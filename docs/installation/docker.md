@@ -1,5 +1,7 @@
 ---
 title: Docker
+description: Run Nauthilus in a docker container
+keywords: [Docker, Compose]
 sidebar_position: 1
 ---
 # Docker

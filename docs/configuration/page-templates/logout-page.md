@@ -1,5 +1,7 @@
 ---
 title: Logout page
+description: Logout website template
+keywords: [OIDC, Logout, Template]
 sidebar_position: 3
 ---
 # Logout page
@@ -14,9 +16,9 @@ you need.
 
 There are several template fields that are required for Nauthilus to work.
 
-> Note:
->
-> Not all applications do provide a logout endpoint
+:::note
+Not all applications do provide a logout endpoint
+:::
 
 ## Fields and description
 

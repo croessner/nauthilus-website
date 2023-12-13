@@ -1,5 +1,7 @@
 ---
 title: Conset page
+description: Consent website template
+keywords: [OIDC, Consent, Template]
 sidebar_position: 2
 ---
 # Consent page

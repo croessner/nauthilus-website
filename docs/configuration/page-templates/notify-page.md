@@ -1,5 +1,7 @@
 ---
 title: Notify page
+description: Notify website template
+keywords: [Notify, Template]
 sidebar_position: 4
 ---
 # Notify page

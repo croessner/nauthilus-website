@@ -1,5 +1,7 @@
 ---
 title: Fail2Ban
+description: Fail2Ban configuration for RBLs and other failed logins
+keywords: [Fail2Ban]
 sidebar_position: 4
 ---
 # Fail2Ban

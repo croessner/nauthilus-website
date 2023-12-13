@@ -1,5 +1,7 @@
 ---
 title: TOTP page
+description: TOTP registration website template
+keywords: [TOTP, Registration, Template]
 sidebar_position: 6
 ---
 # TOTP page

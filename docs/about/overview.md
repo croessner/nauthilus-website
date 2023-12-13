@@ -1,5 +1,7 @@
 ---
 title: Overview
+description: See how Nauthilus is integrated into a larger IT eco system
+keywords: [Overview, Components, Design]
 sidebar_position: 2
 ---
 # The big picture

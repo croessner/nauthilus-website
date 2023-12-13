@@ -1,5 +1,7 @@
 ---
 title: Configuration file
+description: Full documentation for the configuration file
+keywords: [Configuration, File]
 sidebar_position: 2
 ---
 <!-- TOC -->
@@ -136,10 +138,10 @@ A RBL list requires the following fields:
 
 The **weight** value may be negative.
 
-> Note
->
-> The suggested **weight** value should be between -255 and 255. A negative weight turns the list into a whitelist
-
+:::tip
+The suggested **weight** value should be between -255 and 255. A negative weight turns the list into a whitelist
+:::
+> 
 ### Level 2: threshold
 
 The threshold parameter defines an absolute value which tells Nauthilus, when to abort further list lookups. If the sum
@@ -157,10 +159,10 @@ on this list, the feature is not enabled while processing the authentication req
 Nauthilus can check, if a remote client connected using TLS. This test will reject clients that do not communicate
 secured. The whitelist is for trusted local IPs and networks that are allowed to authenticate unencrypted.
 
-> Note:
->
-> Connections from "localhost" are allways trusted unencrypted!
-
+:::note
+Connections from "localhost" are allways trusted unencrypted!
+:::
+> 
 ### Level 1: IPs with an optional CIDR mask
 
 ```yaml
@@ -201,21 +203,9 @@ You can define as many buckets as you want. A bucket has a name, a period, an in
 IPv6 IPs and a maximum allowed failed requests counter.
 
 These buckets are independent from a user login name. They will count strictly each failed login request. Features like
-the **realtime\_blackhole\_lists** feature will also update the buckets directly.
-
-There does exist another definition for buckets that is login dependent. This is required to find out, if a remote
-client tries out the same wrong password all the time, which is probably a misconfigured MUA, or if an attacker does
-some kind of dictionary attack agains one account.
+the **realtime\_blackhole\_lists** feature (and others) will also update the buckets directly.
 
 If the **brute\_force** feature recognizes a misconfigured MUA, it will not block the client forever!
-
-> Note 1:
->
-> The user dependent buckets require an enabled cache backend!
-
-> Note 2:
->
-> There can exist only and exactly one user defined bucket for IPv4 and one for IPv6!
 
 #### Recommendation
 
@@ -305,11 +295,11 @@ will render them in the page templates.
 Next step is to add a section to Nauthilus, where you tell the server what data from the authentication backends are used
 to build the ID- and access token. The most important field is the **subject** field.
 
-> **Very important**
->
-> Make sure to pick a subject that is realy unique to identify your user inside your company. Furthermore make sure to
-> stay with the subject accross all your applications defined in Nauthilus, as it will for sure have unwanted behavior if
-> mixing it!
+:::warning
+Make sure to pick a subject that is realy unique to identify your user inside your company. Furthermore make sure to
+stay with the subject accross all your applications defined in Nauthilus, as it will for sure have unwanted behavior if
+mixing it!
+:::
 
 Besides the subject, Nauthilus can send arbitrary data to Ory Hydra upon an accepted consent request that will be sent
 out to the remote client as claims. You need to define a mapping in Nauthilus that maps the SQL/LDAP attributes to claim

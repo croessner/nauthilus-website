@@ -1,5 +1,7 @@
 ---
 title: Register page
+description: Registration website template
+keywords: [Registration, Template]
 sidebar_position: 5
 ---
 # Register page

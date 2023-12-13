@@ -1,5 +1,7 @@
 ---
 title: Redis
+description: Redis configuration for Nauthilus
+keywords: [Redis]
 sidebar_position: 3
 ---
 # Redis
@@ -34,11 +36,11 @@ This is an IP address and port that is used for writing to Redis.
 
 This is an IP address and port that is used for reading from Redis.
 
-> Note
->
-> If you change the address of NAUTHILUS_REDIS_ADDRESS, you must also modify NAUTHILUS_REDIS_REPLICA_ADDRESS, if the same
-> Redis server shall be used for reading and writing!
-
+:::warning
+If you change the address of NAUTHILUS_REDIS_ADDRESS, you must also modify NAUTHILUS_REDIS_REPLICA_ADDRESS, if the same
+Redis server shall be used for reading and writing!
+:::
+> 
 The current implementation compares the variable address/port pairs and if they differ, it starts two different pools.
 
 ## Sentinel

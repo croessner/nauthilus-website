@@ -1,5 +1,7 @@
 ---
 title: Login page
+description: Login website template
+keywords: [OIDC, Login, Template]
 sidebar_position: 1
 ---
 # Login page

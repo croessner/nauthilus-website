@@ -1,5 +1,7 @@
 ---
 title: Reference
+description: Configuration of environment variables in Nauthilus
+keywords: [Configuration, Environment]
 sidebar_position: 1
 ---
 # Reference
@@ -22,16 +24,16 @@ This page describes all available environment variables, there meaning and there
     * [WebAuthn](#webauthn)
 <!-- TOC -->
 
-> Note:
->
-> All variables are prefixed with NAUTHILUS_. For better readability the prefix is left away in this document.
+:::note
+All variables are prefixed with NAUTHILUS_. For better readability the prefix is left away in this document.
+:::
 
 The list of parameters is not following a special order.
 
-> Note 2:
->
-> These configuration parameters are not reloaded, if the main process receives a HUP-signal! You must restart the
-> service if settings have changed!
+:::warning
+These configuration parameters are not reloaded, if the main process receives a HUP-signal! You must restart the
+service if settings have changed!
+:::
 
 ## Nauthilus
 
@@ -486,13 +488,13 @@ If you provide two-factor authentication, the following settings are available:
 This field is used in the **otpauth://** URL parameter, when restoring a secret key. It should match the issuer that was
 used when creating the key (and read from database afterward).
 
-> Note:
-> 
-> The current implementation uses hard-coded settings for TOTP-secrets. These are:
-> 
-> * algorithm: SHA1
-> * Digits: 6
+:::warning
+The current implementation uses hard-coded settings for TOTP-secrets. These are:
 
+* algorithm: SHA1
+* Digits: 6
+:::
+ 
 | Name    | **LOGIN_2FA_PAGE** |
 |---------|--------------------|
  | Default | "/register"        |
@@ -500,10 +502,10 @@ used when creating the key (and read from database afterward).
 
 This is the URL path where a user can register a second factor for authentication.
 
-> Note:
+:::warning
+The path is relative to /2fa/v1, which is a hardcoded default!
+:::
 > 
-> The path is relative to /2fa/v1, which is a hardcoded default!
-
 | Name    | **LOGIN_2FA_PAGE_WELCOME** |
 |---------|----------------------------|
 | Default | -                          |

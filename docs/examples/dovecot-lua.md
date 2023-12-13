@@ -1,5 +1,7 @@
 ---
 title: Dovecot Lua
+description: Intergation of Nauthilus in a Dovecot Lua backend
+keywords: [Dovecot, Lua]
 sidebar_position: 1
 ---
 # Dovecot Lua integration

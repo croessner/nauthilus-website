@@ -1,5 +1,7 @@
 ---
 title: Compiling
+description: Compiling Nauthilus from source
+keywords: [Source, Build, Compile]
 sidebar_position: 2
 ---
 <!-- TOC -->

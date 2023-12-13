@@ -1,5 +1,7 @@
 ---
 title: Lua support
+description: Documentation of Lua support built into Nauthilus
+keywords: [Lua]
 sidebar_position: 5
 ---
 # Lua Support
@@ -115,7 +117,8 @@ For the configuration please have a look for the [configuration file](configurat
 
 Each component does provide a set of global functions, constants, ... and requires a well defined response from each request.
 
-Every Lua script that has been configured, is pre-compiled and kept in memory for future use.
+Every Lua script that has been configured, is pre-compiled and kept in memory for future use. To make script changes, you
+must reload the service.
 
 ### Actions
 
@@ -143,10 +146,15 @@ incoming request.
 
 ### Filters
 
-There may exist remote services that may be contacted after the main authentication proccess came to its first final 
+There may exist remote services that may be contacted after the main backend authentication proccess returned its first  
 result. Think of something like GeoIP service or some IP white/blacklisting. Even a request that might had authenticated
 correctly may be rejected to a policy violation from such a service. Therefor filters have the power to override the
 result from a backend.
+
+:::info
+Filters never affect caching! This is important, because otherwise valid credentials might result in storing them in the
+negative password cache or vice versa for invalid credentials.
+:::
 
 ### Post actions
 
@@ -170,13 +178,15 @@ Nauthilus will look for these functions and parses the results.
 A Lua feature script must provide the following function:
 
 ```lua
-function nauthilus\_call\_feature(request)
-    return trigger, skip\_flag, failure\_info -- See details below
+function nauthilus_call_feature(request)
+    return trigger, skip_flag, failure_info -- See details below
 end
 ```
 
+:::important
 It must return three values: The trigger state, a flag that indicates, if other features shall be skipped and a third value
 which is an indicator for errors that occurred in the script itself.
+:::
 
 #### Constants for the returned result
 
@@ -228,12 +238,14 @@ It is always a good idea to check the value of a request field, before trusting 
 A Lua action script must provide the following function:
 
 ```lua
-function nauthilus\_call\_action(request)
-    return action\_result -- See bleow for details
+function nauthilus_call_action(request)
+    return action_result -- See details below
 end
 ```
 
+:::important
 Actions must return the script status constant.
+:::
 
 #### Constants for the returned result
 
@@ -248,27 +260,83 @@ The following request fields are supported
 
 | Name                  | Type   | Precense | Additional info                                       |
 |-----------------------|--------|----------|-------------------------------------------------------|
-| debug                 | bool   | always   |                                                       |
+| debug                 | bool   | always   | -                                                     |
 | repeating             | bool   | maybe    | Brute force flag to indicate a repeating attack       |
 | user\_found           | bool   | maybe    | Post actions                                          |
 | authenticated         | bool   | maybe    | Post actions                                          |
-| no\_auth              | bool   | always   |                                                       |
+| no\_auth              | bool   | always   | -                                                     |
 | brute\_force\_counter | uint   | maybe    | Bucket counter for a triggered brute froce rule       |
-| session               | string | always   |                                                       |
-| client\_ip            | string | always   |                                                       |
-| client\_port          | string | always   |                                                       |
+| session               | string | always   | -                                                     |
+| client\_ip            | string | always   | -                                                     |
+| client\_port          | string | always   | -                                                     |
 | client\_net           | string | maybe    | IP network for a triggered brute force rule           |
 | client\_hostname      | string | maybe    | May exist, if DNS resolver option is turned on        |
-| client\_id            | string | maybe    |                                                       |
-| local\_ip             | string | always   |                                                       |
-| local\_port           | string | always   |                                                       |
-| username              | string | always   |                                                       |
+| client\_id            | string | maybe    | -                                                     |
+| local\_ip             | string | always   | -                                                     |
+| local\_port           | string | always   | -                                                     |
+| username              | string | always   | -                                                     |
 | account               | string | maybe    | Post actions and if no master user was used           |
 | unique\_user\_id      | string | maybe    | Post actions with OIDC                                |
 | display\_name         | string | maybe    | Post actions with OIDC                                |
-| password              | string | always   |                                                       |
-| protocol              | string | always   |                                                       |
+| password              | string | always   | -                                                     |
+| protocol              | string | always   | -                                                     |
 | brute\_force\_name    | string | maybe    | The name of a brute force bucket that matched         |
 | feature\_name         | string | maybe    | If a feature triggered, this value is set to its name |
 
-TODO: This documentation is a work in progress...
+### Lua Backend
+
+The Lua backend script must provide the following function:
+
+```lua
+function nauthilus_backend_verify_password(request)
+  return backend_result, backend_result_object -- See details below
+end
+```
+
+:::important
+The backend must return the result status constant and a backend result object
+:::
+
+#### Constants for the returned result
+
+| Constant                        | Meaning                            | Value | Category        |
+|---------------------------------|------------------------------------|-------|-----------------|
+| nauthilus.BACKEND\_RESULT\_OK   | The script finished without errors | 0     | backend\_result |
+| nauthilus.BACKEND\_RESULT\_FAIL | The script finished with errors    | 1     | backend\_result |
+
+### Request fields
+
+The following request fields are supported
+
+| Name                     | Type   | Precense | Additional info                                                |
+|--------------------------|--------|----------|----------------------------------------------------------------|
+| debug                    | bool   | always   | -                                                              |
+| no\_auth                 | bool   | always   | -                                                              |
+| session                  | string | always   | -                                                              |
+| client\_ip               | string | always   | -                                                              |
+| client\_port             | string | always   | -                                                              |
+| username                 | string | always   | -                                                              |
+| password                 | string | always   | -                                                              |
+| protocol                 | string | always   | -                                                              |
+| client\_id               | string | maybe    | -                                                              |
+| local\_ip                | string | always   | -                                                              |
+| local\_port              | string | always   | -                                                              |
+| user\_agent              | string | maybe    | -                                                              |
+| service                  | string | always   | Part of the HTTP request uri: /api/v1/\<category\>/\<service\> |
+| protocol                 | string | always   | Value from the HTTP request **Auth-Protocol** header           | 
+| ssl                      | string | maybe    | %[ssl\_fc]                                                     |
+| ssl\_session\_id         | string | maybe    | %[ssl\_fc\_session\_id,hex]                                    |
+| ssl\_client\_verify      | string | maybe    | %[ssl\_c\_verify]                                              |
+| ssl\_client\_dn          | string | maybe    | %\{+Q\}[ssl\_c\_s\_dn]                                         |
+| ssl\_client\_cn          | string | maybe    | %\{+Q\}[ssl\_c\_s\_dn(cn)]                                     |
+| ssl\_issuer              | string | maybe    | %\{+Q\}[ssl\_c\_i\_dn]                                         |
+| ssl\_client\_not\_before | string | maybe    | %\{+Q\}[ssl\_c\_notbefore]                                     |
+| ssl\_client\_not\_after  | string | maybe    | %\{+Q\}[ssl\_c\_notafter]                                      |
+| ssl\_subject\_dn         | string | maybe    | %\{+Q\}[ssl\_c\_s\_dn]                                         |
+| ssl\_issuer\_dn          | string | maybe    | %\{+Q\}[ssl\_c\_i\_dn]                                         |
+| ssl\_client\_subject\_dn | string | maybe    | %\{+Q\}[ssl\_c\_s\_dn]                                         |
+| ssl\_client\_issuer\_dn  | string | maybe    | %\{+Q\}[ssl\_c\_i\_dn]                                         |
+| ssl\_protocol            | string | maybe    | %[ssl\_fc\_protocol]                                           |
+| ssl\_cipher              | string | maybe    | %[ssl\_fc\_cipher]                                             |
+
+WIP...

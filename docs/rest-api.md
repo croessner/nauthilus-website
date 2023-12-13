@@ -1,5 +1,7 @@
 ---
 title: REST API
+description: Nauthilus REST API
+keywords: [REST, API]
 sidebar_position: 7
 ---
 <!-- TOC -->

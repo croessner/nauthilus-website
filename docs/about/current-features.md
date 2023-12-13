@@ -1,5 +1,7 @@
 ---
 title: Features
+description: This is an overview of features that are currently supported
+keywords: [Features]
 sidebar_position: 1
 ---
 This is an overview of features that are currently supported.

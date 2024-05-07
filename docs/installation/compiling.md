@@ -8,6 +8,10 @@ sidebar_position: 2
 * [Compiling](#compiling)
   * [Pre requirements](#pre-requirements)
   * [Building](#building)
+  * [Build tags](#build-tags)
+    * [dev](#dev)
+    * [register2fa](#register2fa)
+    * [avx and sonic](#avx-and-sonic)
 <!-- TOC -->
 # Compiling
 
@@ -31,8 +35,24 @@ packages, use the binaries provided with each release or checkout the correspond
 ## Building
 
 ```
-go build -mod=vendor -ldflags="-s -w" -o nauthilus .
+go build -mod=vendor -o nauthilus .
 ```
 
 If everything went fine, follow the instructions found on the
 page "[Using binaries](/docs/installation/using-binaries)".
+
+## Build tags
+
+Tags can be added to the build command like -tags="tag1 tag2 ...tagN".
+
+### dev
+
+If you add **dev** to the build tags, the built will contain experimental, not yet fully implemented code. This setting is mainly for developers.
+
+### register2fa
+
+If you require a registration endpoint for two-factor-authentication, which will enable you to add a TOTP token to your users accounts, you cann add this tag.
+
+### avx and sonic
+
+You can add both tags **avx** and **sonic** to the tags keyword to enable faster HTTP request handling. To do so, you must also set the environment variable **CGO_ENABLED** to "1".

@@ -9,37 +9,59 @@ sidebar_position: 2
     * [Features](#features)
     * [General configuration settings](#general-configuration-settings)
   * [Reloading](#reloading)
-  * [realtime\_blackhole\_lists](#realtime_blackhole_lists)
+  * [server](#server)
     * [Meaning](#meaning)
-    * [Level 1: lists:](#level-1-lists)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list)
-    * [Level 2: threshold](#level-2-threshold)
-    * [Level 2: ip\_whitelist](#level-2-ip_whitelist)
-  * [cleartext\_networks](#cleartext_networks)
+    * [server::address](#serveraddress)
+    * [server::haproxy_v2](#serverhaproxy_v2)
+    * [serer::tls](#serertls)
+      * [server::tls::enabled](#servertlsenabled)
+      * [server::tls::cert and server::tls::key](#servertlscert-and-servertlskey)
+      * [server::tls::http\_client\_skip\_verify](#servertlshttp_client_skip_verify)
+    * [server::basic\_auth](#serverbasic_auth)
+      * [server::basic\_auth::enabled](#serverbasic_authenabled)
+      * [server::basic\_auth::username and server::basic\_auth::password](#serverbasic_authusername-and-serverbasic_authpassword)
+    * [server::instance\_name](#serverinstance_name)
+    * [server::logs](#serverlogs)
+      * [server::log::json](#serverlogjson)
+      * [server::log::level](#serverloglevel)
+      * [server::log::debug\_modules](#serverlogdebug_modules)
+    * [server::backends](#serverbackends)
+    * [server::features](#serverfeatures)
+    * [server::brute\_force\_protocols](#serverbrute_force_protocols)
+    * [server::ory\_hydra\_admin\_url](#serverory_hydra_admin_url)
+    * [server::dns](#serverdns)
+    * [server::dns::resolver](#serverdnsresolver)
+    * [server::dns::timeout](#serverdnstimeout)
+    * [server::dns::resolve\_client\_ip](#serverdnsresolve_client_ip)
+    * [server::insights](#serverinsights)
+    * [server::redis](#serverredis)
+    * [server::master\_user](#servermaster_user)
+  * [realtime\_blackhole\_lists](#realtime_blackhole_lists)
     * [Meaning](#meaning-1)
-    * [Level 1: IPs with an optional CIDR mask](#level-1-ips-with-an-optional-cidr-mask)
-  * [relay\_domains](#relay_domains)
+    * [realtime\_blackhole\_lists::lists:](#realtime_blackhole_listslists)
+    * [realtime\_blackhole\_lists::threshold](#realtime_blackhole_liststhreshold)
+    * [realtime\_blackhole\_lists::ip\_whitelist](#realtime_blackhole_listsip_whitelist)
+  * [cleartext\_networks](#cleartext_networks)
     * [Meaning](#meaning-2)
-    * [Level 1: static](#level-1-static)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-1)
-  * [brute\_force](#brute_force)
+    * [IPs with an optional CIDR mask](#ips-with-an-optional-cidr-mask)
+  * [relay\_domains](#relay_domains)
     * [Meaning](#meaning-3)
+    * [relay\_domains::static](#relay_domainsstatic)
+  * [brute\_force](#brute_force)
+    * [Meaning](#meaning-4)
       * [Recommendation](#recommendation)
-    * [Level 1: buckets](#level-1-buckets)
-    * [Level 1: ip\_whitelist](#level-1-ip_whitelist)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-2)
+    * [brute\_force::buckets](#brute_forcebuckets)
+    * [brute\_force::ip\_whitelist](#brute_forceip_whitelist)
   * [csrf\_secret](#csrf_secret)
   * [cookie\_store\_auth\_key and cookie\_store\_encryption\_key](#cookie_store_auth_key-and-cookie_store_encryption_key)
   * [password\_nonce](#password_nonce)
   * [oauth2](#oauth2)
-    * [Meaning](#meaning-4)
+    * [Meaning](#meaning-5)
       * [Configuration flow](#configuration-flow)
       * [About scopes and claims](#about-scopes-and-claims)
       * [User defined scopes and claims](#user-defined-scopes-and-claims)
-    * [Level 1: clients](#level-1-clients)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-3)
-    * [Level 1: custom\_scopes](#level-1-custom_scopes)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-4)
+    * [oauth2::clients](#oauth2clients)
+    * [oauth2::custom\_scopes](#oauth2custom_scopes)
 * [Database backends](#database-backends)
   * [Protocols](#protocols)
     * [Special protocols](#special-protocols)
@@ -49,41 +71,33 @@ sidebar_position: 2
     * [Long variables](#long-variables)
       * [Macro example](#macro-example)
   * [Cache namespaces](#cache-namespaces)
-  * [MySQL/MariaDB nad Postgres](#mysqlmariadb-nad-postgres)
-    * [Structure](#structure-1)
-    * [Encrypted passwords](#encrypted-passwords)
-    * [Level 1: config - MySQL/MariaDB](#level-1-config---mysqlmariadb)
-    * [Level 1: config - Postgres](#level-1-config---postgres)
-    * [Level 1: search](#level-1-search)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-5)
-      * [Query](#query)
-      * [Mapping](#mapping)
+  * [Encrypted passwords](#encrypted-passwords)
   * [LDAP](#ldap)
-    * [Structure](#structure-2)
-    * [Level 1: config](#level-1-config)
+    * [Structure](#structure-1)
+    * [ldap::config](#ldapconfig)
       * [If using SASL/EXTERNAL:](#if-using-saslexternal)
       * [Pooling](#pooling)
       * [Bind method](#bind-method)
-    * [Level 1: search](#level-1-search-1)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-6)
+    * [ldap::search](#ldapsearch)
+    * [Definition of a search list](#definition-of-a-search-list)
       * [Filter](#filter)
-      * [Mapping](#mapping-1)
+      * [Mapping](#mapping)
   * [Lua backend](#lua-backend)
-    * [Level 1: features](#level-1-features)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-7)
-    * [Level 1: filters](#level-1-filters)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-8)
-    * [Level 1: actions](#level-1-actions)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-9)
-    * [Level 1: config](#level-1-config-1)
-    * [Level 1: search](#level-1-search-2)
-    * [Level 2: Definition of a list](#level-2-definition-of-a-list-10)
+    * [lua::features](#luafeatures)
+    * [Definition of a "feature" list](#definition-of-a-feature-list)
+    * [lua::filters](#luafilters)
+    * [Definition of a "filter" list](#definition-of-a-filter-list)
+    * [lua::actions](#luaactions)
+    * [Definition of an "actions" list](#definition-of-an-actions-list)
+    * [lua::config](#luaconfig)
+    * [lua::search](#luasearch)
+    * [Definition of a "search" list](#definition-of-a-search-list-1)
   * [Full example (standalone)](#full-example-standalone)
 <!-- TOC -->
 
 ## Structure
 
-The configuration file contains several main sections, each responsible for a single category of runtime behavior. A
+The configuration file contains several main sections, where each is responsible for a particular category of runtime behavior. A
 full example is shown at the end of this document.
 
 ### Features
@@ -92,23 +106,323 @@ full example is shown at the end of this document.
 * cleartext\_networks
 * relay\_domains
 * brute\_force
+* lua
+* backend\_server\_monitoring
 
 ### General configuration settings
 
+* server
 * csrf\_secret
 * cookie\_store\_auth\_key
 * cookie\_store\_encryption\_key
 * oauth2
-* sql
 * ldap
+* lua
 
 Each section has individual subsections. See details below. If you do not require some sections, please do not include
 it into the configuration file.
 
 ## Reloading
 
-You can send a HUP-signal to Nauthilus, which will stop SQL and LDAP connections, reload the configuration file and
-restart the database connections. The main web server process it kept alive.
+You can send a HUP-signal to Nauthilus, which will stop LDAP connections, reload the configuration file and
+restart the database connections. The main web server process will be still alive.
+
+If you change settings deticated to the web server itself, you must first reload the configuration file and send a 
+second signal **-SIGUSR1** to restart the server process itself.
+
+:::warning
+Changing environment variables need a full restart of the service. Re-reading variables can not be done by sending signals.
+:::
+
+## server
+
+### Meaning
+
+This section defines all required settings that are required to run the server.
+
+### server::address
+This is the IPv4 or IPv6 addresses combined with a TCP port.
+
+Example:
+
+```yaml
+server:
+  address: "[::]:9443"
+```
+### server::haproxy_v2
+
+If this setting is turned on (true), Nauthilus can make use of the HAproxy version 2 protocol header to identify the original client request.
+
+Example:
+
+```yaml
+server:
+  haproxy_v2: true
+```
+
+### serer::tls
+
+This object defines TLS related settings.
+
+#### server::tls::enabled
+
+This flag turns on (true) TLS support in the server.
+
+Example:
+
+```yaml
+server:
+  tls:
+    enabled: true
+```
+
+#### server::tls::cert and server::tls::key
+
+These two settings define a path to an X509 PEM-formatted certificate and key.
+
+Example:
+
+```yaml
+server:
+  tls:
+    cert: /usr/local/etc/nauthilus/localhost.localdomain.pem
+    key: /usr/local/etc/nauthilus/localhost.localdomain.key.pem
+```
+
+#### server::tls::http\_client\_skip\_verify
+
+This flag turns on (true) insecure TLS connections for HTTP(s) requests that are originating from Nauthilus to some remote.
+
+Example:
+
+```yaml
+server:
+  tls:
+    http_client_skip_verify: true
+```
+
+### server::basic\_auth
+
+This object defines basic authorization settings.
+
+#### server::basic\_auth::enabled
+
+This flag turns on (true) **Basic Auth support** in the server.
+
+#### server::basic\_auth::username and server::basic\_auth::password
+
+These settings define a username and its password that is required by HTTP(s) clients to communicate with Nauthilus.
+
+### server::instance\_name
+
+This defines the application name. If not defined, it defaults to **nauthilus**
+
+### server::logs
+
+This object defined logging relates settings.
+
+#### server::log::json
+
+This flag turns on (true) logging in JSON format.
+
+Example:
+
+```yaml
+server:
+  log:
+    json: true
+```
+
+#### server::log::level
+
+This string defines the log level. It is one of:
+
+| **Level** | Comment                  |
+|-----------|--------------------------|
+| none      | Entirely turn of logging |
+| debug     | See debug modules below! |
+| info      |                          |
+| warn      |                          |
+| error     |                          |
+
+Example:
+
+```yaml
+server:
+  log:
+    level: debug
+```
+#### server::log::debug\_modules
+
+if debugging is turned on, only very limited debug messages are logged by default. You can increase logging by activating
+additional log modules. This is the list of all available debug modules:
+
+| **Module**   | Application                                                                            |
+|--------------|----------------------------------------------------------------------------------------|
+| all          | Full debugging                                                                         |
+| auth         | This turns on logging for the main authentication process                              |
+| hydra        | Communication with the Ory hydra server                                                |
+| webauthn     | Turn on debugging for WebAuthn (under development)                                     |
+| statistics   | Prometheus related debugging                                                           |
+| whitelist    | Show whitelist related debugging                                                       |
+| ldap         | Show LDAP command and filter related debugging                                         |
+| ldap\_pool   | Show LDAP-pool related debugging such as free/busy/closed connections and housekeeping |
+| cache        | Turn on cache backend related debugging                                                |
+| brute\_force | Turn on brute-force releated debugging                                                 |
+| rbl          | Turn on RBL (realtime-blackhole-list) related debugging                                |
+| action       | Turn on Lua post-action related debugging                                              |
+| feature      | Turn on feature related debugging                                                      |
+| lua          | Turn on Lua releated debugging                                                         |
+| filter       | Turn on filter related debugging                                                       |
+
+Example:
+
+```yaml
+server:
+  log:
+    debug_modules:
+      - auth
+      - ldap 
+      - filter
+```
+
+### server::backends
+
+This object defines, which backends are enabled. You **must** define at least one backend!
+
+| Name  | Comment                                                                                          |
+|-------|--------------------------------------------------------------------------------------------------|
+| cache | The Redis cache backend is used for positive and failed login requests and **should** be enabled |
+| ldap  | This is the native LDAP backend. See settings below for configuration                            |
+| lua   | This is a Lua backend                                                                            |
+
+:::note
+The **cache* backend not only caches positive and negative requests. It is also a major component for the brute force buckets to detect
+users with repetitive wrong passwords.
+:::
+
+:::warning
+The cache backend should always be the first backend. The order of backends matters!
+:::
+
+### server::features
+
+This object defines runtime features.
+
+Here is a list of features that can be turned on:
+
+| Name                        | Usage                                                                                                     |
+|-----------------------------|-----------------------------------------------------------------------------------------------------------|
+| lua                         | General purpose Lua feature. You can have as many features as you like. They run in sequential order      |
+| tls\_encryption             | Clients must be connected securely to a service to be allowed to authenticate                             |
+| relay\_domains              | If the login name equals to an email address, the domain component is compared to a list of known domains |
+| rbl                         | Check a client IP address against realtime blackhole lists                                                |
+| backend\_server\_monitoring | This is a special feature that is not used for filtering                                                  |
+
+These features are primarely used to filter out requests before the main authentication process starts.
+
+:::note
+The features are run one-by-one. The rbl feature does query lists in parallel. The lua feature is always run as first feature and is the only one that can
+skip further processing of other features!
+:::
+
+The **backend\_server\_monitoring** feature turns on a background job that does a health check for any kind of backend servers. It holds an in-memory list of alive servers that can be
+used in Lua scripts to select healthy servers.
+
+Example:
+
+```yaml
+server:
+  features:
+    - tls_encryption
+    - lua
+    - rbl 
+```
+
+### server::brute\_force\_protocols
+
+This object defines a list of protocols for which the brute force protection is turned on.
+
+When a service talks to Nauthilus, it must provide a **protocol** that is used by a remote client while authenticating.
+
+This list describes protocols for which Nauthilus does brute force checks.
+
+Here is a good working example that can be taken in a production environment:
+
+```yaml
+server:
+  brute_force_protocols:
+    - imap
+    - imaps
+    - submission
+    - smtp
+    - smtps
+    - ory-hydra
+    - http
+```
+
+:::note
+While most of the protocols are free to chose, **ory-hydra** has a special meaning for Nauthilus and is assigned to the
+communication between Nauthilus and the Ory hydra serverr.
+:::
+
+### server::ory\_hydra\_admin\_url
+
+This setting is the Ory hydra admin URL.
+
+Example:
+
+```yaml
+ory_hydra_admin_url: https://hydra.example.com:4445
+```
+
+### server::dns
+
+This object defines settings related to the DNS name resolver.
+
+### server::dns::resolver
+
+If this setting is given, Nauthilus does not use the Go internal DNS resolver. Instead, it uses the provided resolver for DNS resolution.
+
+Example:
+
+```yaml
+server:
+  dns:
+    resolver: 192.168.0.1
+```
+
+### server::dns::timeout
+
+If a custom DNS resolver is set, you can specify a default timeout in seconds, after which DNS queries are aborted without waiting for a result.
+
+Example:
+
+```yaml
+server:
+  dns:
+    timeout: 3
+```
+
+### server::dns::resolve\_client\_ip
+
+If a DNS reverse lookup should be done for incoming client requests, you can turn on (true) this feature.
+
+:::warning
+Turning on this feature will heavily increase network latency and DNS resolver load. It is suggested to use this feature with care.
+:::
+
+### server::insights
+
+This object defines settings related to **go pprof** and is mainly useful for developers.
+
+### server::redis
+
+This object defines settings related to the Redis server.
+
+### server::master\_user
+
+This object defines settings related to a so-called **master user**
 
 ## realtime\_blackhole\_lists
 
@@ -118,13 +432,9 @@ This is the *rbl* feature. It checks a remote client IP address against a list o
 simultaneously. They may contain a weight parameter which is added to a total value. If that value raises a threshold,
 the features directly returns with a client reject.
 
-### Level 1: lists:
+### realtime\_blackhole\_lists::lists:
 
-This section defines one or more RBL lists.
-
-### Level 2: Definition of a list
-
-A RBL list requires the following fields:
+This section defines one or more RBL lists. A RBL list requires the following fields:
 
 | Field name     | Description                                                                                             |
 |----------------|---------------------------------------------------------------------------------------------------------|
@@ -142,14 +452,14 @@ The **weight** value may be negative.
 The suggested **weight** value should be between -255 and 255. A negative weight turns the list into a whitelist
 :::
 > 
-### Level 2: threshold
+### realtime\_blackhole\_lists::threshold
 
 The threshold parameter defines an absolute value which tells Nauthilus, when to abort further list lookups. If the sum
 of all weights is above the threshold value, the feature triggers an immediate client reject.
 
-### Level 2: ip\_whitelist
+### realtime\_blackhole\_lists::ip\_whitelist
 
-You can define IPv4 and IPv6 addresses with a CIDR mask to white list clients from this feature. If a client was found
+You can define IPv4 and IPv6 addresses with a CIDR mask to whitelist clients from this feature. If a client was found
 on this list, the feature is not enabled while processing the authentication request.
 
 ## cleartext\_networks
@@ -163,29 +473,30 @@ secured. The whitelist is for trusted local IPs and networks that are allowed to
 Connections from "localhost" are allways trusted unencrypted!
 :::
 > 
-### Level 1: IPs with an optional CIDR mask
+### IPs with an optional CIDR mask
 
 ```yaml
-- 127.0.0.0/8
-- ::1
+cleartext_networks:
+  - 127.0.0.0/8
+  - ::1
 ```
 
 ## relay\_domains
 
 ### Meaning
 
-If the username equals to an email address, Nauthilus can split the login into the lcal and domain part. The latter is
-compared against a (currently) static list. If the domain is unknown, the client will rejected.
+If the username equals to an email address, Nauthilus can split the login into the local and domain part. The latter is
+compared against a (currently) static list. If the domain is unknown, the client will be rejected.
 
-### Level 1: static
+### relay\_domains::static
 
 This key holds a list of domain names.
 
-### Level 2: Definition of a list
-
 ```yaml
-- example.com
-- foobar.org
+relay_domains:
+  static:
+    - example.com
+    - foobar.org
 ```
 
 ## brute\_force
@@ -202,7 +513,7 @@ removed from Redis, if no requests trigger the bucket and the TTL is expired.
 You can define as many buckets as you want. A bucket has a name, a period, an indicator, if the bucket handles IPv4 or
 IPv6 IPs and a maximum allowed failed requests counter.
 
-These buckets are independent from a user login name. They will count strictly each failed login request. Features like
+These buckets are independent of a user login name. They will count strictly each failed login request. Features like
 the **realtime\_blackhole\_lists** feature (and others) will also update the buckets directly.
 
 If the **brute\_force** feature recognizes a misconfigured MUA, it will not block the client forever!
@@ -212,7 +523,7 @@ If the **brute\_force** feature recognizes a misconfigured MUA, it will not bloc
 If you define chains of buckets, user lower TTLs for buckets that hold IPs with a smaller IP range. Use higher TTLs for
 networks. See the example below.
 
-### Level 1: buckets
+### brute\_force::buckets
 
 This section lists chains of buckets. Here is the definition of a bucket:
 
@@ -225,16 +536,16 @@ This section lists chains of buckets. Here is the definition of a bucket:
 | ipv6             | Boolean that enables the bucket for IPv6 support                                               |
 | failed\_requests | Threshold value unitl a client will be blocked directly without asking authentication backends |
 
-### Level 1: ip\_whitelist
+### brute\_force::ip\_whitelist
 
 You can define a list of IPs and networks that are whitelisted from the **brute\_force** feature.
 
-### Level 2: Definition of a list
-
 ```yaml
-- 127.0.0.0/8
-- ::1
-- 192.168.0.0/16
+brute_force:
+  ip_whitelist:
+    - 127.0.0.0/8
+    - ::1
+    - 192.168.0.0/16
 ```
 
 ## csrf\_secret
@@ -296,7 +607,7 @@ Next step is to add a section to Nauthilus, where you tell the server what data 
 to build the ID- and access token. The most important field is the **subject** field.
 
 :::warning
-Make sure to pick a subject that is realy unique to identify your user inside your company. Furthermore make sure to
+Make sure to pick a subject that is realy unique to identify your user inside your company. Furthermore, make sure to
 stay with the subject accross all your applications defined in Nauthilus, as it will for sure have unwanted behavior if
 mixing it!
 :::
@@ -305,7 +616,7 @@ Besides the subject, Nauthilus can send arbitrary data to Ory Hydra upon an acce
 out to the remote client as claims. You need to define a mapping in Nauthilus that maps the SQL/LDAP attributes to claim
 names.
 
-If an user was authenticated on the login page, the server will have SQL or LDAP results that will be taken with this
+If a user was authenticated on the login page, the server will have SQL or LDAP results that will be taken with this
 mapping. Therefor it is important to tell each backend, which data needs to be retrieved. Data will be cached on Redis.
 If you modify applications and require more fields/results from the underlying backends, you must clear the Redis
 objects or wait for an expiration.
@@ -379,25 +690,25 @@ Numers are signed. It may happen that the communication between Nauthilus and Or
 their exponential form. This is a known issue and can not be fixed at the moment. If this happens, try using a string
 instead and let the final application convert it into its representing value.
 
-### Level 1: clients
+### oauth2::clients
 
 This section defines your OAuth2 clients, containing a name, the client\_id, the subject and the claim mapping.
 
-### Level 2: Definition of a list
-
 ```yaml
-- name: Testing
-  client_id: THIS-IS-THE-CLIENT-ID-FROM-ORY-HYDRA
-  skip_consent: false
-  skip_totp: false
-  subject: entryUUID
-  claims:
-    name: cn
-    given_name: givenName
-    family_name: sn
-    nickname: uniqueIdentifier
-    preferred_username: uniqueIdentifier
-    email: mail
+oauth2:
+  clients:
+    - name: Testing
+      client_id: THIS-IS-THE-CLIENT-ID-FROM-ORY-HYDRA
+      skip_consent: false
+      skip_totp: false
+      subject: entryUUID
+      claims:
+        name: cn
+        given_name: givenName
+        family_name: sn
+        nickname: uniqueIdentifier
+        preferred_username: uniqueIdentifier
+        email: mail
 ```
 
 Your SQL and/or LDAP backend does return results for attributes. The example is a mapping for OpenLDAP. If you have a
@@ -406,55 +717,51 @@ SQL select statement, the mapped attributes are the field names.
 As you can see in the example, there is no need to deliver all possible claims. Which claims are required is dependent
 to your consuming application.
 
-> Note:
->
-> Make sure to list claims for which you have defined the matching scopes! If you define an email mapping whithout the
-> matching scope, your user seeing the consent page will not be able to accept the scope and therefor the claim will not
-> be available!
+:::note
+Make sure to list claims for which you have defined the matching scopes! If you define an email mapping whithout the
+matching scope, your user seeing the consent page will not be able to accept the scope and therefor the claim will not
+be available!
+:::
 
-The **skip\_consent** key was added
+:::note
+If you configure Nauthilus to deal with a service hosted at your companies site, you may want to skip the consent 
+page. Do so by setting **skip\_consent** to **true**.
+:::
 
-> Note:
+:::note
+Some applications provide their own second factor implementation. If you want to prevent duplicated second factor
+authentication, you can skip TOTP for a client, by adding **skip\_totp** with a value of **true**.
+:::
 > 
-> If you configure Nauthilus to deal with a service hosted at your companies site, you may want to skip the consent 
-> page. Do so by setting **skip\_consent** to **true**.
+### oauth2::custom\_scopes
 
-The **skip\_totp** key was added.
-
-> Note:
-> 
-> Some applications provide their own second factor implementation. If you want to prevent duplicated second factor
-> authentication, you can skip TOTP for a client, by adding **skip\_totp** with a value of **true**.
-
-### Level 1: custom\_scopes
-
-This section allows you define custom scopes and there claim definition as described earlier on this page. It lists
+This section allows you to define custom scopes and there claim definition as described earlier on this page. It lists
 objects like the following:
 
-### Level 2: Definition of a list
-
 ```yaml
-- name: dovecot
-  description: Some description
-  description_de: Optional German description
-  description_fr: Optional French description
-  claims:
-    - name: dovecot_user
-      type: string
-
-    - name: dovecot_mailbox_home
-      type: string
-
-    - name: dovecot_mailbox_path
-      type: string
-
-    - name: dovecot_acl_groups
-      type: string
+oauth2:
+  custom_scopes:
+    - name: dovecot
+      description: Some description
+      description_de: Optional German description
+      description_fr: Optional French description
+      claims:
+        - name: dovecot_user
+          type: string
+    
+        - name: dovecot_mailbox_home
+          type: string
+    
+        - name: dovecot_mailbox_path
+          type: string
+    
+        - name: dovecot_acl_groups
+          type: string
 ```
 
-> Note
->
-> Claims are not updated after first delivery! So do not send data that may change dynamically!
+:::note
+Claims are not updated after first delivery! So do not send data that may change dynamically!
+:::
 
 The **description** field will be used in the consent.html template to give the user more information about this 
 scope. You can add descriptions with an underscore followed by a lower case country code, do translate the 
@@ -468,12 +775,11 @@ Supported languages:
 
 # Database backends
 
-Nauthilus needs database backends to validate user credentials. Besides the **cache** and **test** backends, which are
-special, Nauthilus can use SQL and LDAP based backends. The current implementation is limited to use one SQL and one LDAP
-backend at the same time. Furthermore you can not have MySQL and Postgres at the same time.
+Nauthilus needs database backends to validate user credentials. Besides the **cache** backend, which is special, 
+Nauthilus can use LDAP and Lua based backends. The current implementation is limited to use one LDAP and one Lua
+backend at the same time.
 
-If you define a SQL and LDAP backend, both will be queried in the order you have defined in the environment variable *
-*AUTHSERV\_PASSDB\_BACKENDS**, i.e. "cache mysql ldap".
+If you define an LDAP and a Lua backend, both will be queried in the order you have defined in **server::backends**
 
 ## Protocols
 
@@ -513,8 +819,8 @@ appear in the future with different bindings/dependencies to Nauthilus.
 
 ## Macros
 
-As SQL and LDAP queries have to deal with user names or other information, it may be required to define several macros
-inside the queries, which must be replaces by Nauthilus.
+As SQL and LDAP queries have to deal with usernames or other information, it may be required to define several macros
+inside the queries, which must be replaced by Nauthilus.
 
 The main implementation is adopted from Dovecot, but only a subset of all possible macros is currently provided.
 
@@ -528,7 +834,7 @@ The general form is as follows:
 
 ### Modifier
 
-Modifiers are optional. Currently the following modifiers are known:
+Modifiers are optional. Currently, the following modifiers are known:
 
 | Modifier | Meaning                         |
 |:--------:|---------------------------------|
@@ -559,7 +865,7 @@ The following macro names are known and described in the following table:
 
 #### Macro example
 
-Lower case form of a user name (full email, if user string contains a '@' character).
+Lower case form of a username (full email, if user string contains a '@' character).
 
 ```
 %L{user}
@@ -575,17 +881,7 @@ you use the Dovecot IMAP/POP3 server i.e. with the submission proxy feature, Dov
 *imap** and **submission**, but your protocol sections may serve different queries/filters. But the list of returned
 keys (not values) will be the same. See the full example below to get an idea.
 
-## MySQL/MariaDB nad Postgres
-
-The configuration for MySQL/MariaDB and Postgres slightly differ due to the underlying Go-libraries. Both variants will
-be described:
-
-### Structure
-
-The SQL section has two keywords **config** and **search**. The first is used for the backend configuration, the latter
-for certain protocols.
-
-### Encrypted passwords
+## Encrypted passwords
 
 Passwords can be stored encrypted inside a SQL backend. Nauthilus needs to know this and can deal with the following
 password schemas:
@@ -604,90 +900,7 @@ Encoded formats:
 * Argon2i
 * Argon2id
 
-### Level 1: config - MySQL/MariaDB
-
-| Key             | Description                                                      | Example                                                   |
-|-----------------|------------------------------------------------------------------|-----------------------------------------------------------|
-| dsn             | Data source name                                                 | mysql://nauthilus:nauthilus@tcp(127.0.0.1:3306)/nauthilus |
-| password\_crypt | Boolean that tells Nauthilus that passwords are stored encrypted | true / false                                              |
-
-For the DSN syntax and their supported options, please have a look at the Go
-library. [See here for MySQL](https://github.com/go-sql-driver/mysql)
-
-### Level 1: config - Postgres
-
-| Key             | Description                                                      | Example                                                                 |
-|-----------------|------------------------------------------------------------------|-------------------------------------------------------------------------|
-| dsn             | Data source name                                                 | postgres://nauthilus:nauthilus@127.0.0.1:5432/nauthilus?sslmode=disable |
-| password\_crypt | Boolean that tells Nauthilus that passwords are stored encrypted | true / false                                                            |
-
-For the DSN syntax and their supported options please have a look at the Go
-library. [see here for Postgres](https://github.com/lib/pq)
-
-### Level 1: search
-
-This section defines blocks that combine protocols, SQL queries and some field mappings. Here is a table of keys that
-are known:
-
-### Level 2: Definition of a list
-
-| Key         | Required | Description                                           | Example |
-|-------------|:--------:|-------------------------------------------------------|---------|
-| protocol    |   yes    | A protocol name or a list of protocols in YAML format | imap    |
-| cache\_name |    no    | A namespace for the Redis cache                       | dovecot |
-| query       |   yes    | Section of queries                                    | -       |
-| mapping     |   yes    | Query result attribute/logic mapping                  | -       |
-
-#### Query
-
-| Key            | Required | Description                                                                                                                                                                                                                                                                                                                                    | Example                                                                                                         |
-|----------------|:--------:|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
-| user           |   yes    | A SQL query that returns an user account, password and arbitray other fields which are taken as additional information. If Nauthilus is used directly over HTTP, the results are returned as HTTP-response headers prefixed with **X-Nauthilus-Fieldname**. If used with Ory Hydra, results are taken for the claims. See claim-mapping above. | SELECT Account, Password, FieldA, FieldB FROM nauthilus    WHERE username="%L\{user\}" OR account="%L\{user\}"; |
-| list\_accounts |    no    | Nauthilus may return a list of known account names in an HTTP response, if the GET query string contains mode=list-accounts                                                                                                                                                                                                                    | SELECT account FROM nauthilus;                                                                                  |
-
-#### Mapping
-
-| Key                 | Required | Description                                                                                                                                                             | Example                                                                            |
-|---------------------|:--------:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| account\_field      |   yes    | Tell Nauthilus which field name is used for the account name                                                                                                            | Account                                                                            |
-| password\_field     |   yes    | Tell Nauthilus which field is used for the password                                                                                                                     | Password                                                                           |
-| totp\_secret\_field |    no    | Tell Nauthilus which field is used for the TOTP secret key                                                                                                              | TOTP\_Secret                                                                       |                                                                                                            
-| totp\_secret        |    no    | This is an SQL update command which is used to set or replace a TOTP secret for a user. It must contain at least the following macros: %\{user\} and %\{totp\_secret\}. | UPDATE nauthilus SET TOTP\_Secret="%\{totp\_secret\}" WHERE username="%L\{user\}"; |
-
-> Note:
->
-> SQL queries for MySQL/MariaDB and Postgres are different! Make sure to write the correct syntax!
-
-```yaml
-sql:
-  config:
-    dsn: mysql://nauthilus:nauthilus@tcp(127.0.0.1:3306)/nauthilus
-    password_crypt: true
-
-  search:
-    - protocol:
-        - imap
-        - pop3
-        - lmtp
-        - sieve
-        - doveadm
-        - indexer-worker
-        - quota-status
-        - default
-        - 
-      cache_name: dovecot
-      
-      query:
-          user: |
-            SELECT account, password 
-              FROM nauthilus 
-              WHERE username="%L\{user\}" OR account="%L\{user\}";
-          list_accounts: SELECT account FROM nauthilus;
-          
-      mapping:
-          account_field: account
-          password_field: password
-```
+The Lua backend can use a built-in function to compare such passwords.
 
 ## LDAP
 
@@ -696,10 +909,10 @@ sql:
 The LDAP section has two keywords **config** and **search**. The first is used for the backend configuration, the latter
 for certain protocols.
 
-### Level 1: config
+### ldap::config
 
 The config section defines the main pool settings and one or more LDAP servers. The principal of work is that Nauthilus
-tries to connect to the first available server. If a server connection fails, Nauthilus tries to reconnect to a LDAP
+tries to connect to the first available server. If a server connection fails, Nauthilus tries to reconnect to an LDAP
 server in the order that was defined.
 
 The following table list keys and examples to configure LDAP:
@@ -731,8 +944,7 @@ The **lookup** pool settings define a pooling to find user objects in LDAP. The 
 
 #### Pooling
 
-By starting Nauthilus, no connection is opened until the first request is processed. Nauthilus will open as many
-connections, as the **\*\_idle\_pool\_size** value defines. All other connections are done on demand. A background thread (30
+Nauthilus will open as many connections, as the **\*\_idle\_pool\_size** value defines. All other connections are done on demand. A background thread (30
 seconds delay) will observe a pool and will close unused connections.
 
 If a new connection is required, Nauthilus first checks, if there is some free connection available and picks it up. If none
@@ -744,11 +956,11 @@ again.
 Nauthilus can either do a so-called simple bind, using a bind DN and a bind password, or it can do SASL/EXTERNAL usinga
 X509 client certificate and key. Please check your LDAP configuration to find out, which mode is available for you.
 
-### Level 1: search
+### ldap::search
 
 This section defines blocks that combine protocols and LDAP filters. Here is a table of keys that are known:
 
-### Level 2: Definition of a list
+### Definition of a search list
 
 | Key         | Required | Description                                                                                                                                                                                                                                    | Example |
 |-------------|:--------:|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
@@ -774,48 +986,50 @@ This section defines blocks that combine protocols and LDAP filters. Here is a t
 | totp\_secret\_field |    no    | Tell Nauthilus which field is used for the TOTP secret key                                                                                                                                                                                     | rns2FATOTPSecret |                                                                                                            
 
 ```yaml
-- protocol:
-    - imap
-    - pop3
-    - lmtp
-    - sieve
-    - doveadm
-    - indexer-worker
-    - default
- 
-  cache_name: dovecot
-  base_dn: ou=people,ou=it,dc=example,dc=com
-    
-  filter:
-      user: |
-        (&
-          (memberOf=cn=Dovecot,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
-          (objectClass=rnsMSDovecotAccount)
-          (rnsMSEnableDovecot=TRUE)
-          (|
-            (uniqueIdentifier=%L{user})
-            (rnsMSRecipientAddress=%L{user})
-          )
-        )
-      list_accounts: |
-        (&
-          (memberOf=cn=Dovecot,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
-          (objectClass=rnsMSDovecotAccount)
-          (rnsMSEnableDovecot=TRUE)
-          (!
-            (rnsMSDovecotMaster=TRUE)
-          )
-        )
+ldap:
+  search:
+    - protocol:
+        - imap
+        - pop3
+        - lmtp
+        - sieve
+        - doveadm
+        - indexer-worker
+        - default
+     
+      cache_name: dovecot
+      base_dn: ou=people,ou=it,dc=example,dc=com
         
-  mapping:
-    account_field: rnsMSDovecotUser
-    
-  attribute:
-    - uid
-    - rnsMSMailboxHome
-    - rnsMSMailPath
-    - rnsMSACLGroups
-    - rnsMSDovecotUser
+      filter:
+          user: |
+            (&
+              (memberOf=cn=Dovecot,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
+              (objectClass=rnsMSDovecotAccount)
+              (rnsMSEnableDovecot=TRUE)
+              (|
+                (uniqueIdentifier=%L{user})
+                (rnsMSRecipientAddress=%L{user})
+              )
+            )
+          list_accounts: |
+            (&
+              (memberOf=cn=Dovecot,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
+              (objectClass=rnsMSDovecotAccount)
+              (rnsMSEnableDovecot=TRUE)
+              (!
+                (rnsMSDovecotMaster=TRUE)
+              )
+            )
+            
+      mapping:
+        account_field: rnsMSDovecotUser
+        
+      attribute:
+        - uid
+        - rnsMSMailboxHome
+        - rnsMSMailPath
+        - rnsMSACLGroups
+        - rnsMSDovecotUser
 ```
 
 If you need a schema for the TOTP stuff, you could use the following draft:
@@ -851,23 +1065,23 @@ It will be anhanced over time to support webauthn as well.
 
 ## Lua backend
 
-The Lua backend is described in detail [here](/docs/configuration/lua-support).
+The Lua backend is described in detail [here](/docs/configuration/lua-support.md).
 
-### Level 1: features
+### lua::features
 
 Features are scripts that are run before the actual authentication process is taken. A Lua feature has a name and a script 
 path.
 
 Scripts are run in order and the first script that triggers, aborts the execution for all remaining scripts.
 
-### Level 2: Definition of a list
+### Definition of a "feature" list
 
 | Key          | Required | Description                         | Example |
 |--------------|:--------:|-------------------------------------|---------|
 | name         |   yes    | A unique name for the Lua feature   | demo    |
 | script\_path |   yes    | Full path to the Lua feature script | -       |
 
-### Level 1: filters
+### lua::filters
 
 Filters run after all backends have completed their work. A filter can override the existing result of an authentication request.
 The idea is to have some post checks (maybe remote REST calls, database queries...) that will lead to a different final result.
@@ -875,19 +1089,19 @@ The idea is to have some post checks (maybe remote REST calls, database queries.
 It is important that script honor the backend result, if they do not wish to change it! In that case they **must** pass
 the same result back to Nauthilus.
 
-### Level 2: Definition of a list
+### Definition of a "filter" list
 
 | Key          | Required | Description                         | Example       |
 |--------------|:--------:|-------------------------------------|---------------|
 | name         |   yes    | A unique name for the Lua feature   | geoip-policyd |
 | script\_path |   yes    | Full path to the Lua feature script | -             |
 
-### Level 1: actions
+### lua::actions
 
 Actions have a type and script path element for each Lua script. An incoming request is waiting for all actions to be 
-completed with the exception of **post** actions. The latter run afterward, when the client already may have been disconnected.
+completed except of **post** actions. The latter run afterward, when the client already may have been disconnected.
 
-### Level 2: Definition of a list
+### Definition of an "actions" list
 
 | Key          | Required | Description                                     | Example     |
 |--------------|:--------:|-------------------------------------------------|-------------|
@@ -903,18 +1117,19 @@ The following **type**s are known:
 * lua - Runs, if any of the Lua features triggered.
 * post - Run always in background after the request already finished.
 
-### Level 1: config
+### lua::config
 
-| Key         | Required | Description                         | Example                                    |
-|-------------|:--------:|-------------------------------------|--------------------------------------------|
-| script\path |   yes    | Full path to the Lua backend script | ./server/lua-plugins.d/backend/backend.lua |
+| Key          | Required | Description                                  | Example                                    |
+|--------------|:--------:|----------------------------------------------|--------------------------------------------|
+| script\path  |   yes    | Full path to the Lua backend script          | ./server/lua-plugins.d/backend/backend.lua |
+| package_path |    no    | Set a Lua module path for custom Lua modules | /usr/local/etc/nauthilus/lualib/?.lua      |
 
 
-### Level 1: search
+### lua::search
 
 This section defines blocks that combine protocols and Redis cache namespaces. Here is a table of keys that are known:
 
-### Level 2: Definition of a list
+### Definition of a "search" list
 
 | Key         | Required | Description                                           | Example |
 |-------------|:--------:|-------------------------------------------------------|---------|
@@ -923,7 +1138,6 @@ This section defines blocks that combine protocols and Redis cache namespaces. H
 
 ```yaml
 lua:
-
   features:
     - name: demo
       script_path: ./server/lua-plugins.d/features/demo.lua
@@ -970,6 +1184,76 @@ lua:
 ## Full example (standalone)
 
 ```yaml
+server:
+  address: "[::]:9443"
+  haproxy_v2: false
+
+  tls:
+    enabled: true
+    cert: /usr/local/etc/nauthilus/localhost.localdomain.pem
+    key: /usr/local/etc/nauthilus/localhost.localdomain.key.pem
+    http_client_skip_verify: true
+
+  basic_auth:
+    enabled: true
+    username: authserv
+    password: authserv
+
+  instance_name: nauthilus_demo
+
+  log:
+    json: false
+    level: debug
+    debug_modules:
+      - auth
+      - lua
+      - feature
+
+  backends:
+    - cache
+    - lua
+    - ldap
+
+  features:
+    - lua
+    - relay_domains
+    - backend_server_monitoring
+
+  brute_force_protocols:
+    - imap
+    - imaps
+    - submission
+    - smtp
+    - smtps
+    - ory-hydra
+    - http
+
+  ory_hydra_admin_url: https://hydra.example.com:4445
+
+  dns:
+    resolver: 192.168.1.1
+    timeout: 3
+    resolve_client_ip: false
+
+  insights:
+    enable_pprof: true
+    enable_block_profile: true
+
+  redis:
+    database_number: 2
+    prefix: nt_
+    pool_size: 10
+
+    positive_cache_ttl: 3600
+    negative_cache_ttl: 7200
+
+    master:
+      address: 127.0.0.1:6379
+
+  master_user:
+    enabled: true
+    delimiter: "*"
+    
 realtime_blackhole_lists:
 
   threshold: 10
@@ -1120,32 +1404,6 @@ oauth2:
         dovecot_mailbox_path: rnsMSMailPath
         dovecot_acl_groups: rnsMSACLGroups
 
-# MySQL/MariaDB example
-sql:
-  config:
-    dsn: mysql://nauthilus:nauthilus@tcp(127.0.0.1:3306)/nauthilus
-    password_crypt: true
-
-  search:
-    - protocol:
-        - imap
-        - pop3
-        - lmtp
-        - sieve
-        - doveadm
-        - indexer-worker
-        - quota-status
-        - default
-      cache_name: dovecot
-      query:
-        user: |
-            SELECT account, password 
-              FROM nauthilus 
-              WHERE username="%L{user}" OR account="%L{user}";
-        list_accounts: SELECT account FROM nauthilus;
-      mapping:
-        account_field: account
-        password_field: password
 
 # OpenLDAP
 ldap:

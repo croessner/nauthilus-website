@@ -7,7 +7,7 @@ sidebar_position: 1
 This is an overview of features that are currently supported.
 
 <!-- TOC -->
-  * [Database support](#database-support)
+  * [Database support aka backends](#database-support-aka-backends)
   * [Roadmap](#roadmap)
 <!-- TOC -->
 
@@ -15,8 +15,8 @@ This is an overview of features that are currently supported.
 - Authentication service for Dovecot using a custom Lua backend
 - Authentication service for Cyrus-SASL using the httppost-backend
 - Realtime Blackhole lists support
-- Using Redis (sentinel) for storing runtime information
-- Redis cache backend in front of databases
+- Using Redis (standalone, sentinel and cluster) for storing runtime information
+- Redis cache backend in front of database backends
 - TLS support and HTTP basic authorization
 - HTTP/2 support
 - Metrics support for prometheus. A sample template for grafana is included
@@ -28,20 +28,21 @@ This is an overview of features that are currently supported.
 - Fully optimized LDAP pooling with idle connections
 - Basic reloading by reloading the configuration file and restarting database connections
 - Nauthilus provides custom namespaces for the Redis cache to dynamically deal with different protocol dependent data
-- Nauthilus support TOTP two-factor authentication. Therefor it requires a 3rd-party to manage the TOTP secrets. It uses
-  a default of 6 digits with SHA1. If you need other options, please open a ticket.
-- Register a user account for TOTP second factor authentication.
+- Nauthilus support TOTP two-factor authentication.
+- Register a user account for TOTP second factor authentication (build tag **register2fa**).
 - Lua features to block unwanted authentication requests before talking to
   database backends.
 - Lua filters to talk to 3rd party endpoints and override the authentication
-  decision.
+  decision. This can also be used in conjunction with Dovecot to provide dynamic proxy settings (Dovecot 2.4 and later
+  do not contain the director code anymore).
 - Lua post actions to trigger some work flows after features were triggered
   (rejecting a request) or doing some other stuff after the request has already been processed.
+- All Lua hooks can use a shared in-memory cache as well as basic Redis support (GET, SET, DEL and EXPIRE).
+- All Lua hooks contain LDAP search functions to incorporate with the LDAP pool, if the LDAP backend is tunred on.
 
-## Database support
+## Database support aka backends
 
 - OpenLDAP and Active-Directory support
-- MySQL/MariaDB and PostgreSQL support
 - Lua
 
 ## Roadmap

@@ -32,7 +32,6 @@ flowchart LR
         as((Nauthilus)) <-->|Backchannel| ory[Ory Hydra]
         as -. uses .-> redis[(Redis DB)]
         as -. uses .-> ldap[(LDAP<br/>Active Directory)]
-        as -. uses .-> sql[(SQL DB)]
         as -. uses .-> lua[(Lua backend)]
         as -. may use .-> dns[(DNS Resolver)]
         ngx <-->|Backchannel| as
@@ -43,3 +42,7 @@ flowchart LR
         prom[Prometheus] -. uses .-> as
     end
 ```
+
+:::note
+Built-in MySQL/MariaDB, PostgreSQL and sqlite support is available by using the Lua backend.
+::: 

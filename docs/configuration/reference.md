@@ -12,9 +12,6 @@ This page describes all available environment variables, there meaning and there
 * [Reference](#reference)
   * [Nauthilus](#nauthilus)
   * [Nginx](#nginx)
-  * [Redis](#redis)
-  * [SQL-Backend](#sql-backend)
-  * [Cache-Backend](#cache-backend)
   * [OAuth2 / Ory Hydra settings](#oauth2--ory-hydra-settings)
     * [Login page (including 2FA page)](#login-page-including-2fa-page)
     * [Device page](#device-page)
@@ -30,44 +27,34 @@ All variables are prefixed with NAUTHILUS_. For better readability the prefix is
 
 The list of parameters is not following a special order.
 
+There are much more environment variables available, if you look at the configuration file settings. Each of these may also be defined as environment variables by
+joining the section keywords with an underscore.
+
+Example:
+
+```yaml
+server:
+  address: "[::]:9443"
+  haproxy_v2: false
+
+  tls:
+    enabled: true
+```
+
+In env-form:
+
+```shell
+NAUTHILUS_SERVER_ADDRESS="[::]:9443"
+NAUTHILUS_SERVER_HAPROXY_V2=false
+NAUTHILUS_SERVER_TLS_ENABLED=true
+```
+
 :::warning
 These configuration parameters are not reloaded, if the main process receives a HUP-signal! You must restart the
 service if settings have changed!
 :::
 
 ## Nauthilus
-
-| Name    | **DNS_TIMEOUT**          |
-|---------|--------------------------|
-| Default | 2                        |
-| Value   | Positive integer (2-255) |
-
-DNS timeout for the resolver
-
-| Name    | **PASSDB_BACKENDS**                    |
-|---------|----------------------------------------|
-| Default | "cache ldap"                           |
-| Values  | * ldap<br/>* sql<br/>* cache<br/>* lua |
-
-This variable specifies which backends should be used. Backends are processed from left to right and the golden rule is:
-first match wins!
-
-| Name    | **FEATURES**                                                                                                                                                                                                                                                                                                                                                                                                                          |
-|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Default | "tls\_encryption rbl geoip relay\_domains"                                                                                                                                                                                                                                                                                                                                                                                            |
-| Values  | * tls_encryption: Check, if a remote client used a secured connection to its service<br/>* rbl: Check, if a remote client is known to some RBL list<br/>* geoip: Get some GEO statistics from a remote clients IP address<br/>* relay_domains: Add a static domain list for known supported domains. Unknown requests will be rejected and brute force buckets will be updated<br/>* lua: Write your own features to detect attackers |
-
-This parameter controls different aspects of a remote client that must be fulfilled. Geoip itself is currently just for
-logging purposes.
-
-| Name    | **BRUTE_FORCE_PROTECTION** |
-|---------|----------------------------|
-| Default | "http"                     |
-| Values  | String                     |
-
-The configuration file may list SQL and/or LDAP search definitions, which list all used protocols used by your
-applications. The names are freely choosable. An example of this string may look like: "http imap pop3 sieve submission
-smtp ory-hydra".
 
 | Name    | **DEVELOPER_MODE** |
 |---------|--------------------|
@@ -77,93 +64,6 @@ smtp ory-hydra".
 This parameter activates the developer mode. In this mode, redis keys are stored in plain text as well as you can see
 passwords in plain text in the logs! Please really use this mode, if you are testing something and have full control
 over the system its running on.
-
-| Name    | **INSTANCE_NAME** |
-|---------|-------------------|
-| Default | nauthilus         |
-| Value   | String            |
-
-This is a unique name for one running instance.
-
-| Name    | **HTTP_ADDRESS** |
-|---------|------------------|
-| Default | 127.0.0.1:9080   |
-| Value   | String           |
-
-This is a IPv4 or IPv6 address followed by ':' and a port number. IPv6 addresses must be enclosed in brackts,
-i.e. [::1]. To listen on all interfaces IPv4 and IPv6, specify [::]:9080
-
-| Name    | **HTTP_USE_SSL** |
-|---------|------------------|
-| Default | False            |
-| Value   | Boolean          |
-
-Turn on TLS for the server.
-
-| Name    | **HTTP_TLS_CERT** |
-|---------|-------------------|
-| Default | -                 |
-| Value   | String            |
-
-Define a path to the HTTPS server TLS certificate file containg the certificate and its intermediate certificates (if
-any).
-
-| Name    | **HTTP_TLS_KEY** |
-|---------|------------------|
-| Default | -                |
-| Value   | String           |
-
-Define a HTTPS sevrer TLS key file.
-
-| Name    | **HTTP_USE_BASIC_AUTH** |
-|---------|-------------------------|
-| Default | False                   |
-| Value   | Boolean                 |
-
-Turn on HTTP(S) basic authentication for the server.
-
-| Name    | **HTTP_BASIC_AUTH_USERNAME** |
-|---------|------------------------------|
-| Default | -                            |
-| Value   | String                       |
-
-This defines the name for basic authentication.
-
-| Name    | **HTTP_BASIC_AUTH_PASSWORD** |
-|---------|------------------------------|
-| Default | -                            |
-| Value   | String                       |
-
-This defines the password for basic authentication.
-
-| Name    | **RESOLVE_IP** |
-|---------|----------------|
-| Default | False          |
-| Value   | Boolean        |
-
-Nauthilus can resolve the DNS name for a remote client IP address and log this information.
-
-| Name    | **LOG_FORMAT_JSON** |
-|---------|---------------------|
-| Default | false               |
-| Value   | Boolean             |
-
-You can define the log format either being tuples of key=value pairs in a log line or packing it as JSON.
-
-| Name    | **GEOIP_PATH**                        |
-|---------|---------------------------------------|
-| Default | "/usr/share/GeoIP/GeoLite2-City.mmdb" |
-| Value   | String                                |
-
-This is the path to the GEOIP maxmind database file. It can be a city or country databases, Lite or commercial. It is
-used with the geoip feature. If you do not use this feature, you do not need to provide a GEOIP database file.
-
-| Name    | **VERBOSE_LEVEL**                                    |
-|---------|------------------------------------------------------|
-| Default | "none"                                               |
-| Value   | * none<br/>* error<br/>* warn<br/>* info<br/>* debug |
-
-Specify the log level. The recommended log level is "info".
 
 | Name    | **TRUSTED_PROXIES** |
 |---------|---------------------|
@@ -180,6 +80,20 @@ force protection!
 | Value   | String                 |
 
 Specify the absolute path to the language resources. This directory contains the localized files need for Nauthilus.
+
+| Name    | **LOCAL_CACHE_AUTH_TTL** |
+|---------|--------------------------|
+| Default | 30                       |
+| Value   | Positive integer         |
+
+Specify how long a page hit in seconds has to be cached locally for each Nauthilus instance.
+
+| Name    | **LUA_SCRIPT_TIMEOUT** |
+|---------|------------------------|
+| Default | 120                    |
+| Value   | Positive integer       |
+
+This parameter specifies how long in seconds a Lua script is allowed to run, until it is aborted by the interpreter.
 
 ## Nginx
 
@@ -202,151 +116,28 @@ Replay with Auth-Wait header as long as the maximum login attemtps does not rais
 | Default | "127.0.0.1"              |
 | Value   | String                   |
 
-Specify the backend IP address for an SMTP server.
+Specify the backend IP address for an SMTP server. This setting is used, if backend monitoring is turned off.
 
 | Name    | **SMTP_BACKEND_PORT**                  |
 |---------|----------------------------------------|
 | Default | 5871                                   |
 | Value   | Positive integer (a valid port number) |
 
-This is the port of an SMTP server.
+This is the port of an SMTP server. This setting is used, if backend monitoring is turned off.
 
 | Name    | **IMAP_BACKEND_ADDRESS** |
 |---------|--------------------------|
 | Default | "127.0.0.1"              |
 | Value   | String                   |
 
-Specify the backend IP address for a IMAP server.
+Specify the backend IP address for a IMAP server. This setting is used, if backend monitoring is turned off.
 
 | Name    | **IMAP_BACKEND_PORT**                  |
 |---------|----------------------------------------|
 | Default | 9931                                   |
 | Value   | Positive integer (a valid port number) |
 
-This is the port of a IMAP server.
-
-## Redis
-
-| Name    | **REDIS_ADDRESS** |
-|---------|-------------------|
-| Default | "127.0.0.1"       |
-| Value   | String            |
-
-Specify the IP address for a Redis server. This server receives write requests.
-
-| Name    | **REDIS_PORT**                         |
-|---------|----------------------------------------|
-| Default | 6379                                   |
-| Value   | Positive integer (a valid port number) |
-
-This is the port of a Redis server.
-
-| Name    | **REDIS_DATABASE_NUMBER** |
-|---------|---------------------------|
-| Default | 0                         |
-| Value   | Positive integer          |
-
-You can speciy the Redis database number that shall be used by nauthilus.
-
-| Name    | **REDIS_USERNAME** |
-|---------|--------------------|
-| Default | -                  |
-| Value   | String             |
-
-If Redis needs authentication, you can specify a username here.
-
-| Name    | **REDIS_PASSWORD** |
-|---------|--------------------|
-| Default | -                  |
-| Value   | String             |
-
-This is the password for a Redis server, if authentication is required.
-
-| Name    | **REDIS_REPLICA_ADDRESS** |
-|---------|---------------------------|
-| Default | "127.0.0.1"               |
-| Value   | String                    |
-
-Specify the IP address for a Redis server. This server receives read requests.
-
-| Name    | **REDIS_REPLICA_PORT**                 |
-|---------|----------------------------------------|
-| Default | 6379                                   |
-| Value   | Positive integer (a valid port number) |
-
-This is the port of a Redis server.
-
-| Name    | **REDIS_PREFIX** |
-|---------|------------------|
-| Default | "as_"            |
-| Value   | String           |
-
-All Redis keys are prefixed.
-
-| Name    | **REDIS_SENTINELS** |
-|---------|---------------------|
-| Default | -                   |
-| Value   | String              |
-
-If you want to use Redis sentinels, you can specify a space separated list of sntinel servers. Each of the form
-IP-address:port.
-
-| Name    | **REDIS_SENTINEL_MASTER_NAME** |
-|---------|--------------------------------|
-| Default | -                              |
-| Value   | String                         |
-
-This sets the sentinel master name and is required if using sentinels!
-
-| Name    | **REDIS_SENTINEL_USERNAME** |
-|---------|-----------------------------|
-| Default | -                           |
-| Value   | String                      |
-
-If Redis sentinels need authentication, you can specify a username here.
-
-| Name    | **REDIS_SENTINEL_PASSWORD** |
-|---------|-----------------------------|
-| Default | -                           |
-| Value   | String                      |
-
-This is the password for Redis sentinel servers, if authentication is required.
-
-## SQL-Backend
-
-| Name    | **SQL_MAX_CONNECTIONS** |
-|---------|-------------------------|
-| Default | 10                      |
-| Value   | Positive integer        |
-
-This is the maximum number of SQL connections that can be opened.
-
-| Name    | **SQL_MAX_IDLE_CONNECTIONS** |
-|---------|------------------------------|
-| Default | 10                           |
-| Value   | Integer                      |
-
-This is the maximum number of idle SQL connections.
-
-## Cache-Backend
-
-| Name    | **REDIS_POSITIVE_CACHE_TTL** |
-|---------|------------------------------|
-| Default | 3600                         |
-| Value   | Positive integer (seconds)   |
-
-This sets the time-to-live parameter for objects in a positive Redis cache which hold user information about the known
-passwords. Information on this cache is SHA-256 hashed and 128 bit truncated, if the developer mode is turned off (
-default).
-
-| Name    | **REDIS_NEGATIVE_CACHE_TTL** |
-|---------|------------------------------|
-| Default | 3600                         |
-| Value   | Positive integer (seconds)   |
-
-This sets the time-to-live parameter for objects in a negative Redis cache which hold user information about all known
-passwords. Information on this cache is SHA-256 hashed and 128 bit truncated, if the developer mode is turned off (
-default).
+This is the port of a IMAP server. This setting is used, if backend monitoring is turned off.
 
 ## OAuth2 / Ory Hydra settings
 

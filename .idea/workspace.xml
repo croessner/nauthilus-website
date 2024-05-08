@@ -4,8 +4,7 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update configuration documentation&#10;&#10;Detailed configuration attributes have been added to the documentation. The changes encompass sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains among others. The update improves comprehension and usability.">
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update documentation for workspace and Lua support&#10;&#10;Detailed configuration attributes have been added to the workspace.xml and lua-support.md documentation. The update includes sections addressing Redis, realtime_blackhole_lists, brute_force, and relay_domains, thus improving comprehension and usability of these features. This discussion provides a more thorough understanding of settings and configurations, facilitating more effective use of the system.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/configuration/lua-support.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/lua-support.md" afterDir="false" />
     </list>
@@ -136,7 +135,15 @@
       <option name="project" value="LOCAL" />
       <updated>1715160980183</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Update documentation for workspace and Lua support&#10;&#10;Detailed configuration attributes have been added to the workspace.xml and lua-support.md documentation. The update includes sections addressing Redis, realtime_blackhole_lists, brute_force, and relay_domains, thus improving comprehension and usability of these features. This discussion provides a more thorough understanding of settings and configurations, facilitating more effective use of the system.">
+      <option name="closed" value="true" />
+      <created>1715177075853</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1715177075853</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -147,7 +154,8 @@
     <MESSAGE value="Update documentation WIP" />
     <MESSAGE value="Update configuration documentation and add golinter settings&#10;&#10;Extended the configuration-file documentation with more detailed descriptions and added golinter settings in the .idea workspace. The changes in workspace also include adjusting commit messages in the Git settings and task updates." />
     <MESSAGE value="Update configuration documentation&#10;&#10;Detailed configuration attributes have been added to the documentation. The changes encompass sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains among others. The update improves comprehension and usability." />
-    <option name="LAST_COMMIT_MESSAGE" value="Update configuration documentation&#10;&#10;Detailed configuration attributes have been added to the documentation. The changes encompass sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains among others. The update improves comprehension and usability." />
+    <MESSAGE value="Update documentation for workspace and Lua support&#10;&#10;Detailed configuration attributes have been added to the workspace.xml and lua-support.md documentation. The update includes sections addressing Redis, realtime_blackhole_lists, brute_force, and relay_domains, thus improving comprehension and usability of these features. This discussion provides a more thorough understanding of settings and configurations, facilitating more effective use of the system." />
+    <option name="LAST_COMMIT_MESSAGE" value="Update documentation for workspace and Lua support&#10;&#10;Detailed configuration attributes have been added to the workspace.xml and lua-support.md documentation. The update includes sections addressing Redis, realtime_blackhole_lists, brute_force, and relay_domains, thus improving comprehension and usability of these features. This discussion provides a more thorough understanding of settings and configurations, facilitating more effective use of the system." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

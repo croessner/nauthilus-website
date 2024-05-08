@@ -34,21 +34,36 @@ sidebar_position: 2
     * [server::dns::timeout](#serverdnstimeout)
     * [server::dns::resolve\_client\_ip](#serverdnsresolve_client_ip)
     * [server::insights](#serverinsights)
+    * [server::insights::enable\_pprof](#serverinsightsenable_pprof)
+    * [server::insights::enable\_block\_profile](#serverinsightsenable_block_profile)
     * [server::redis](#serverredis)
+    * [server::redis::database\_number](#serverredisdatabase_number)
+    * [server::redis::prefix](#serverredisprefix)
+    * [server::redis::pool\_size](#serverredispool_size)
+    * [server::redis::idle\_pool\_size](#serverredisidle_pool_size)
+    * [server::redis::positive\_cache\_ttl and server::redis::negative\_cache\_ttl](#serverredispositive_cache_ttl-and-serverredisnegative_cache_ttl)
+    * [server::redis::master](#serverredismaster)
+    * [server::redis::master::address](#serverredismasteraddress)
+    * [server::redis::master::username and server::redis::master::password](#serverredismasterusername-and-serverredismasterpassword)
+    * [server::redis::replica](#serverredisreplica)
+    * [server::redis::replica::address](#serverredisreplicaaddress)
+    * [server::redis::sentinels](#serverredissentinels)
+    * [server::redis::sentinels::master](#serverredissentinelsmaster)
+    * [server::redis::sentinels::addresses](#serverredissentinelsaddresses)
+    * [server::redis::sentinels::username and server::reids::sentinels::password](#serverredissentinelsusername-and-serverreidssentinelspassword)
+    * [server::redis::cluster](#serverrediscluster)
+    * [server::redis::cluster::addresses](#serverredisclusteraddresses)
     * [server::master\_user](#servermaster_user)
+    * [server::master\_user::enabled](#servermaster_userenabled)
+    * [server::master\_user::delimiter](#servermaster_userdelimiter)
   * [realtime\_blackhole\_lists](#realtime_blackhole_lists)
-    * [Meaning](#meaning-1)
     * [realtime\_blackhole\_lists::lists:](#realtime_blackhole_listslists)
     * [realtime\_blackhole\_lists::threshold](#realtime_blackhole_liststhreshold)
     * [realtime\_blackhole\_lists::ip\_whitelist](#realtime_blackhole_listsip_whitelist)
   * [cleartext\_networks](#cleartext_networks)
-    * [Meaning](#meaning-2)
-    * [IPs with an optional CIDR mask](#ips-with-an-optional-cidr-mask)
   * [relay\_domains](#relay_domains)
-    * [Meaning](#meaning-3)
     * [relay\_domains::static](#relay_domainsstatic)
   * [brute\_force](#brute_force)
-    * [Meaning](#meaning-4)
       * [Recommendation](#recommendation)
     * [brute\_force::buckets](#brute_forcebuckets)
     * [brute\_force::ip\_whitelist](#brute_forceip_whitelist)
@@ -56,7 +71,6 @@ sidebar_position: 2
   * [cookie\_store\_auth\_key and cookie\_store\_encryption\_key](#cookie_store_auth_key-and-cookie_store_encryption_key)
   * [password\_nonce](#password_nonce)
   * [oauth2](#oauth2)
-    * [Meaning](#meaning-5)
       * [Configuration flow](#configuration-flow)
       * [About scopes and claims](#about-scopes-and-claims)
       * [User defined scopes and claims](#user-defined-scopes-and-claims)
@@ -141,19 +155,19 @@ Changing environment variables need a full restart of the service. Re-reading va
 This section defines all required settings that are required to run the server.
 
 ### server::address
-This is the IPv4 or IPv6 addresses combined with a TCP port.
+_Default: "127.0.0.1:9080"_
 
-Example:
+This is the IPv4 or IPv6 addresses combined with a TCP port.
 
 ```yaml
 server:
   address: "[::]:9443"
 ```
+
 ### server::haproxy_v2
+_Default: false_
 
 If this setting is turned on (true), Nauthilus can make use of the HAproxy version 2 protocol header to identify the original client request.
-
-Example:
 
 ```yaml
 server:
@@ -165,10 +179,9 @@ server:
 This object defines TLS related settings.
 
 #### server::tls::enabled
+_Default: false_
 
 This flag turns on (true) TLS support in the server.
-
-Example:
 
 ```yaml
 server:
@@ -177,10 +190,9 @@ server:
 ```
 
 #### server::tls::cert and server::tls::key
+_Default: ""_
 
 These two settings define a path to an X509 PEM-formatted certificate and key.
-
-Example:
 
 ```yaml
 server:
@@ -190,10 +202,9 @@ server:
 ```
 
 #### server::tls::http\_client\_skip\_verify
+_Default: false_
 
 This flag turns on (true) insecure TLS connections for HTTP(s) requests that are originating from Nauthilus to some remote.
-
-Example:
 
 ```yaml
 server:
@@ -206,14 +217,17 @@ server:
 This object defines basic authorization settings.
 
 #### server::basic\_auth::enabled
+_Default: false_
 
 This flag turns on (true) **Basic Auth support** in the server.
 
 #### server::basic\_auth::username and server::basic\_auth::password
+_Default: ""_
 
 These settings define a username and its password that is required by HTTP(s) clients to communicate with Nauthilus.
 
 ### server::instance\_name
+_Default: "nauthilus"_
 
 This defines the application name. If not defined, it defaults to **nauthilus**
 
@@ -222,10 +236,9 @@ This defines the application name. If not defined, it defaults to **nauthilus**
 This object defined logging relates settings.
 
 #### server::log::json
+_Default: false_
 
 This flag turns on (true) logging in JSON format.
-
-Example:
 
 ```yaml
 server:
@@ -234,6 +247,7 @@ server:
 ```
 
 #### server::log::level
+_Default: "none"_
 
 This string defines the log level. It is one of:
 
@@ -245,14 +259,13 @@ This string defines the log level. It is one of:
 | warn      |                          |
 | error     |                          |
 
-Example:
-
 ```yaml
 server:
   log:
     level: debug
 ```
 #### server::log::debug\_modules
+_Default: empty list_
 
 if debugging is turned on, only very limited debug messages are logged by default. You can increase logging by activating
 additional log modules. This is the list of all available debug modules:
@@ -275,8 +288,6 @@ additional log modules. This is the list of all available debug modules:
 | lua          | Turn on Lua releated debugging                                                         |
 | filter       | Turn on filter related debugging                                                       |
 
-Example:
-
 ```yaml
 server:
   log:
@@ -287,6 +298,8 @@ server:
 ```
 
 ### server::backends
+_Default: none_<br/>
+_required_
 
 This object defines, which backends are enabled. You **must** define at least one backend!
 
@@ -306,6 +319,7 @@ The cache backend should always be the first backend. The order of backends matt
 :::
 
 ### server::features
+_Default: empty list_
 
 This object defines runtime features.
 
@@ -329,8 +343,6 @@ skip further processing of other features!
 The **backend\_server\_monitoring** feature turns on a background job that does a health check for any kind of backend servers. It holds an in-memory list of alive servers that can be
 used in Lua scripts to select healthy servers.
 
-Example:
-
 ```yaml
 server:
   features:
@@ -340,6 +352,7 @@ server:
 ```
 
 ### server::brute\_force\_protocols
+_Default: empty list_
 
 This object defines a list of protocols for which the brute force protection is turned on.
 
@@ -367,13 +380,13 @@ communication between Nauthilus and the Ory hydra serverr.
 :::
 
 ### server::ory\_hydra\_admin\_url
+_Default: "http://127.0.0.1:4445"_
 
 This setting is the Ory hydra admin URL.
 
-Example:
-
 ```yaml
-ory_hydra_admin_url: https://hydra.example.com:4445
+server:
+  ory_hydra_admin_url: https://hydra.example.com:4445
 ```
 
 ### server::dns
@@ -381,10 +394,9 @@ ory_hydra_admin_url: https://hydra.example.com:4445
 This object defines settings related to the DNS name resolver.
 
 ### server::dns::resolver
+_Default: ""_
 
 If this setting is given, Nauthilus does not use the Go internal DNS resolver. Instead, it uses the provided resolver for DNS resolution.
-
-Example:
 
 ```yaml
 server:
@@ -393,10 +405,9 @@ server:
 ```
 
 ### server::dns::timeout
+_Default: 5_
 
 If a custom DNS resolver is set, you can specify a default timeout in seconds, after which DNS queries are aborted without waiting for a result.
-
-Example:
 
 ```yaml
 server:
@@ -405,8 +416,15 @@ server:
 ```
 
 ### server::dns::resolve\_client\_ip
+_Default: false_
 
 If a DNS reverse lookup should be done for incoming client requests, you can turn on (true) this feature.
+
+```yaml
+server:
+  dns:
+    resolve_client_ip: true
+```
 
 :::warning
 Turning on this feature will heavily increase network latency and DNS resolver load. It is suggested to use this feature with care.
@@ -416,23 +434,266 @@ Turning on this feature will heavily increase network latency and DNS resolver l
 
 This object defines settings related to **go pprof** and is mainly useful for developers.
 
+### server::insights::enable\_pprof
+_Default: false_
+
+Enable (true) pprof in Go for debugging purposes.
+
+```yaml
+server:
+  insights:
+    enable_pprof: true
+```
+### server::insights::enable\_block\_profile
+_Default: false_
+
+If pprof is enabled (required for this flag), you can also activate a block profile, which helps to find blocking code.
+
+```yaml
+server:
+  insights:
+      enable_block_profile: true
+```
+
 ### server::redis
 
 This object defines settings related to the Redis server.
+
+### server::redis::database\_number
+_Default: 0_
+
+If Redis is configured to run standalone, master-slave or as sentinel, you can select the database number that Nauthilus must use.
+
+```yaml
+server:
+  redis:
+      database_number: 2
+```
+
+### server::redis::prefix
+_Default: ""_
+
+You can define a prefix that has to be used for any keys in Redis.
+
+```yaml
+server:
+  redis:
+    prefix: "nt_"
+```
+
+:::note
+This prefix is for Nauthilus internal keys only. If you chode to use Redis within Lua, you have to manage Redis keys yourself
+:::
+
+:::tip
+You may define custom prefixes in Lua with "ntc:" Like "Nauthilus-custom". That way you have a difference between built-in keys and user defined keys.
+:::
+
+### server::redis::pool\_size
+_Default: 0_<br/>
+_required_
+
+This is a Redis pool size. The pool is managed by the underlying redis library go-redis.
+
+```yaml
+server:
+  redis:
+    pool_size: 10
+```
+
+### server::redis::idle\_pool\_size
+_Default: 0_
+
+This is a Redis idle pool size. The pool is managed by the underlying redis library go-redis.
+
+```yaml
+server:
+  redis:
+    idle_pool_size: 2
+```
+
+### server::redis::positive\_cache\_ttl and server::redis::negative\_cache\_ttl
+_Default: 3600_
+
+Both values set the expiration value for Redis keys in seconds. The positive cache TTL is for authenticated users, while the
+negative cache TTL is for authentication failures. The latter may be larger as it is also used in the brute-force logic to
+detect users that try to log in with a repeating wrong password. Such requests are never treated as an attack.
+
+```yaml
+server:
+  redis:
+    positive_cache_ttl: 3600
+    negative_cache_ttl: 7200
+```
+
+### server::redis::master
+
+If running Redis standalone or in master-slave mode, you have to define the master object.
+
+### server::redis::master::address
+_Default: "127.0.0.1:6379"_
+
+This is the socket for a Redis connection to either a standalone server or for a master.
+
+```yaml
+server:
+  redis:
+    master:
+      address: 127.0.0.1:6379
+```
+
+### server::redis::master::username and server::redis::master::password
+_Default: empty_
+
+This is an optional username and password for Redis, if the service requires authentication.
+
+```yaml
+Server:
+  redis:
+    master:
+      username: some_user
+      password: some_secret
+```
+
+### server::redis::replica
+
+This object defines a replica to a master. Currently, there is only support for one master and one replica. If you need more
+replica server, consider using sentinel instead or use some load balancer in front of Nauthilus that may distribute replica
+connections to more than one replica instance.
+
+### server::redis::replica::address
+_Default: ""_
+
+This is the socket for a Redis connection to a replica instance.
+
+```yaml
+server:
+  redis:
+    replica:
+      address: 10.10.10.10:6379
+```
+
+### server::redis::sentinels
+
+NAuthilus can connect to Redis sentinels. The following options define such a setup.
+
+### server::redis::sentinels::master
+_Default: ""_
+
+This is the name of the sentinel master.
+
+```yaml
+server:
+  redis:
+    sentinels:
+      master: mymaster
+```
+
+### server::redis::sentinels::addresses
+_Default: empty list_
+
+This is a list of Redis sentienl sockets.
+
+```yaml
+server:
+  redis:
+    sentinels:
+      addresses:
+        - 127.0.0.1:26379
+        - 127.0.0.1:26378
+        - 127.0.0.1:26377
+```
+
+:::note
+At least one sentinel address is required.
+:::
+
+Here is an example for K8s redis-operator sentinel, if you run Nauthilus in Kubernetes on-premise and a NodePort service:
+
+```yaml
+server:
+  redis:
+    sentinels:
+      master: myMaster
+      addresses:
+        - redis-sentinel-sentinel-0.redis-sentinel-sentinel-headless.ot-operators.svc.cluster.local:26379
+        - redis-sentinel-sentinel-1.redis-sentinel-sentinel-headless.ot-operators.svc.cluster.local:26379
+        - redis-sentinel-sentinel-2.redis-sentinel-sentinel-headless.ot-operators.svc.cluster.local:26379
+```
+
+### server::redis::sentinels::username and server::reids::sentinels::password
+_Default: ""_
+
+Both of these parameters are optional settings, if your Redis sentinels require authentication.
+
+```yaml
+server:
+  redis:
+    sentinels:
+      username: some_user
+      password: some_secret
+```
+
+### server::redis::cluster
+
+If NAuthilus should be connected to a Redis cluster, the following settings can be set to do so.
+
+### server::redis::cluster::addresses
+_Default: empty list_
+
+This is a list of one or more Redis sockets pointing to a Redis cluster.
+
+```yaml
+server:
+  redis:
+    cluster:
+      addresses:
+      - 127.0.0.1:6379
+      - 127.0.0.1:6378
+      - 127.0.0.1:6377
+```
 
 ### server::master\_user
 
 This object defines settings related to a so-called **master user**
 
-## realtime\_blackhole\_lists
+### server::master\_user::enabled
+_Default: false_
 
-### Meaning
+If this flag is turned on (true), Nauthilus honors login usernames that are master users. A master user looks something like this:
+
+```
+user@domain.tld*masteruser
+```
+
+As you can see, the master user is separated from the real login name by a "*" character followed by the name of a master user. If NAuthilus
+detecs such a user, it will do authentication against the master user.
+
+```yaml
+server:
+  master_user:
+    enabled: true
+```
+
+### server::master\_user::delimiter
+_Default: "*"_
+
+This is the character that splits the real username from the master user.
+
+```yaml
+server:
+  master_user:
+    delimiter: "*"
+```
+
+## realtime\_blackhole\_lists
 
 This is the *rbl* feature. It checks a remote client IP address against a list of defined RBL lists. The lists are run
 simultaneously. They may contain a weight parameter which is added to a total value. If that value raises a threshold,
 the features directly returns with a client reject.
 
 ### realtime\_blackhole\_lists::lists:
+_Default: empty list_
 
 This section defines one or more RBL lists. A RBL list requires the following fields:
 
@@ -453,18 +714,32 @@ The suggested **weight** value should be between -255 and 255. A negative weight
 :::
 > 
 ### realtime\_blackhole\_lists::threshold
+_Default: 0_
 
 The threshold parameter defines an absolute value which tells Nauthilus, when to abort further list lookups. If the sum
 of all weights is above the threshold value, the feature triggers an immediate client reject.
 
 ### realtime\_blackhole\_lists::ip\_whitelist
+_Default: empty list_
 
 You can define IPv4 and IPv6 addresses with a CIDR mask to whitelist clients from this feature. If a client was found
 on this list, the feature is not enabled while processing the authentication request.
 
-## cleartext\_networks
+```yaml
+realtime_blackhole_lists:
+  ip_whitelist:
+    - 127.0.0.0/8
+    - ::1
+    - 192.168.0.0/16
+    - 172.16.0.0/12
+    - 10.0.0.0/8
+    - fd00::/8
+    - 169.254.0.0/16
+    - fe80::/10
+```
 
-### Meaning
+## cleartext\_networks
+_Default: empty list_
 
 Nauthilus can check, if a remote client connected using TLS. This test will reject clients that do not communicate
 secured. The whitelist is for trusted local IPs and networks that are allowed to authenticate unencrypted.
@@ -472,8 +747,8 @@ secured. The whitelist is for trusted local IPs and networks that are allowed to
 :::note
 Connections from "localhost" are allways trusted unencrypted!
 :::
-> 
-### IPs with an optional CIDR mask
+
+IPs with an optional CIDR mask:
 
 ```yaml
 cleartext_networks:
@@ -483,12 +758,11 @@ cleartext_networks:
 
 ## relay\_domains
 
-### Meaning
-
 If the username equals to an email address, Nauthilus can split the login into the local and domain part. The latter is
 compared against a (currently) static list. If the domain is unknown, the client will be rejected.
 
 ### relay\_domains::static
+_Default: empty list_
 
 This key holds a list of domain names.
 
@@ -500,8 +774,6 @@ relay_domains:
 ```
 
 ## brute\_force
-
-### Meaning
 
 This feature allows you to define brute force buckets. A bucket is a container on Redis that will collect failed login
 attempts from remote clients. Each time a client fails the authentication process, the buckets are updated. If a bucket
@@ -524,6 +796,7 @@ If you define chains of buckets, user lower TTLs for buckets that hold IPs with 
 networks. See the example below.
 
 ### brute\_force::buckets
+_Default: empty list_
 
 This section lists chains of buckets. Here is the definition of a bucket:
 
@@ -537,6 +810,7 @@ This section lists chains of buckets. Here is the definition of a bucket:
 | failed\_requests | Threshold value unitl a client will be blocked directly without asking authentication backends |
 
 ### brute\_force::ip\_whitelist
+_Default: empty list_
 
 You can define a list of IPs and networks that are whitelisted from the **brute\_force** feature.
 
@@ -549,6 +823,8 @@ brute_force:
 ```
 
 ## csrf\_secret
+_Default: ""_<br/>
+_required_
 
 This key is required whenever CSRF (cross-site-request-forgery) attacks must be prevented. This is currently used, if
 Nauthilus is configured to communicate with Ory Hydra. The login, consent and logout pages are protected with a CSRF
@@ -557,12 +833,16 @@ token. This value defines the secret used for that token.
 This value **MUST** be 32 bytes long.
 
 ## cookie\_store\_auth\_key and cookie\_store\_encryption\_key
+_Default: ""_<br/>
+_required_
 
 These keys are used to encrypt and decrypt session cookies.
 
 Both values **MUST** be 32 bytes long.
 
 ## password\_nonce
+_Default: ""_<br/>
+_required_
 
 This is a random string that is used to concatenate it with the password. The result will be hashed and truncated and
 is used in Redis.
@@ -573,8 +853,7 @@ flowchart LR
 ```
 
 ## oauth2
-
-### Meaning
+_Default: nil_
 
 Nauthilus currently supports Ory Hydra to deal as authentication backend for OAuth2/OpenID Connect.
 
@@ -903,6 +1182,7 @@ Encoded formats:
 The Lua backend can use a built-in function to compare such passwords.
 
 ## LDAP
+_Default: nil_
 
 ### Structure
 
@@ -1064,6 +1344,7 @@ objectclass ( RNSLDAPoc:1
 It will be anhanced over time to support webauthn as well.
 
 ## Lua backend
+_Default: nil_
 
 The Lua backend is described in detail [here](/docs/configuration/lua-support.md).
 

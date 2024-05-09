@@ -35,7 +35,7 @@ to achieve with this software. Below is just an example of what it can do for yo
 
 First install docker on a system that shall be the host for Nauthilus. After that
 create your docker compose file with Nauthilus. You may also add additional services
-like redis or SQL as well.
+like Redis or SQL as well.
 
 Configure your environment variables documented in [Reference](/docs/configuration/reference). This
 settings are static and changes will always need a restart of the service.
@@ -46,9 +46,8 @@ document for details.
 Depending on the backend you wish to use, you must provide the required settings.
 
 A normal Nauthilus installation always uses **cache** as its first backend followed by
-one of **ldap**, **sql** or **lua. You may also specify all of them, but you can only
-address one single instance of a database type at runtime, meaning there do not exist
-to **ldap** or three **sql** chained backends.
+one of **ldap** or **lua**. You may also specify both of them, but you can only
+address one single instance of a database type at runtime for a single user.
 
 The next step is to decide what protocols you want to serve. Nauthilus is desinged
 to lookup several settings depending on a protocol. The protocol is set in an HTTP

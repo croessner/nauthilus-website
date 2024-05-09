@@ -892,15 +892,15 @@ mixing it!
 :::
 
 Besides the subject, Nauthilus can send arbitrary data to Ory Hydra upon an accepted consent request that will be sent
-out to the remote client as claims. You need to define a mapping in Nauthilus that maps the SQL/LDAP attributes to claim
+out to the remote client as claims. You need to define a mapping in Nauthilus that maps the LDAP attributes to claim
 names.
 
-If a user was authenticated on the login page, the server will have SQL or LDAP results that will be taken with this
+If a user was authenticated on the login page, the server will have LDAP results that will be taken with this
 mapping. Therefor it is important to tell each backend, which data needs to be retrieved. Data will be cached on Redis.
 If you modify applications and require more fields/results from the underlying backends, you must clear the Redis
 objects or wait for an expiration.
 
-The SQL and LDAP backend sections will tell you more about this later on this page.
+The LDAP backend section will tell you more about this later on this page.
 
 After you have refreshed Nauthilus, you can configure your web application, Dovecot or whatever with the new settings.
 
@@ -990,8 +990,7 @@ oauth2:
         email: mail
 ```
 
-Your SQL and/or LDAP backend does return results for attributes. The example is a mapping for OpenLDAP. If you have a
-SQL select statement, the mapped attributes are the field names.
+Your LDAP backend does return results for attributes. The example is a mapping for OpenLDAP.
 
 As you can see in the example, there is no need to deliver all possible claims. Which claims are required is dependent
 to your consuming application.
@@ -1068,8 +1067,8 @@ described in the [Nginx-protocol](https://nginx.org/en/docs/mail/ngx\_mail\_auth
 
 If Nauthilus has a protocol definition for a protocol, rules applied to that section are taken for password validation.
 
-You may add a **default** protocol to SQL and LDAP, which will be used for protocols without having their own section.
-If there is no default keyword, the backend will fail for unknown protocols. In case of using SQL and LDAP at the same
+You may add a **default** protocol to LDAP and Lua, which will be used for protocols without having their own section.
+If there is no default keyword, the backend will fail for unknown protocols. In case of using Lua and LDAP at the same
 time, there will be a chance that the other backend has information for the requested protocol.
 
 If all backends fail due to a missing definition, a temporary error is raised and the client can not authenticate.
@@ -1098,7 +1097,7 @@ appear in the future with different bindings/dependencies to Nauthilus.
 
 ## Macros
 
-As SQL and LDAP queries have to deal with usernames or other information, it may be required to define several macros
+As LDAP queries have to deal with usernames or other information, it may be required to define several macros
 inside the queries, which must be replaced by Nauthilus.
 
 The main implementation is adopted from Dovecot, but only a subset of all possible macros is currently provided.
@@ -1162,7 +1161,7 @@ keys (not values) will be the same. See the full example below to get an idea.
 
 ## Encrypted passwords
 
-Passwords can be stored encrypted inside a SQL backend. Nauthilus needs to know this and can deal with the following
+Passwords can be stored encrypted inside a SQL database (Lua backend). Nauthilus needs to know this and can deal with the following
 password schemas:
 
 PHP versions:

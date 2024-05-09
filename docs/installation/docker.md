@@ -24,11 +24,8 @@ services:
       - "8080:8080"
     environment:
       TZ: "Europe/Berlin"
-      NAUTHILUS_VERBOSE_LEVEL: "info"
-      NAUTHILUS_FEATURES: "tls_encryption rbl"
-      NAUTHILUS_HTTP_ADDRESS: "[::]:8080"
-      NAUTHILUS_PASSDB_BACKENDS: "cache lua"
-
+    volumes:
+      - ./conf.d/nauthilus.yml:/etc/nauthilus/nautilus.yml
     healthcheck:
       test: [ "CMD", "/usr/app/healthcheck", "--url", "http://nauthilus:8080/ping" ]
       timeout: 60s
@@ -36,3 +33,6 @@ services:
       retries: 2
       start_period: 3s
 ```
+
+You need a **nauthilus.yml** file with minimum requirements. You may also consider using environment variables, but
+a configuration file can be modified and the service can be reloaded! Enviroment settings need a full restart.

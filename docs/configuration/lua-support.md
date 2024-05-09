@@ -2,7 +2,7 @@
 title: Lua support
 description: Documentation of Lua support built into Nauthilus
 keywords: [Lua]
-sidebar_position: 5
+sidebar_position: 4
 ---
 # Lua Support
 

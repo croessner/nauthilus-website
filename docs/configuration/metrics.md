@@ -2,7 +2,7 @@
 title: Metrics
 description: Prometheus support in Nauthilus
 keywords: [Metrics, Prometheus]
-sidebar_position: 4
+sidebar_position: 3
 ---
 # Prometheus support
 

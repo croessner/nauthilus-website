@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docusaurus.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/docusaurus.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

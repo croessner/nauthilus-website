@@ -11,6 +11,7 @@ const config = {
   title: 'Nauthilus',
   tagline: 'General purpose authentication server',
   favicon: 'img/favicon.ico',
+  onBrokenAnchors: "ignore",
 
   // Set the production url of your site here
   url: 'https://nauthilus.org',

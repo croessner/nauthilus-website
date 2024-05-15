@@ -1206,8 +1206,18 @@ The following table list keys and examples to configure LDAP:
 | starttls                 |    no    | Is STARTTLS used with the LDAP connection                             | true / false          |
 | tls\_skip\_verify        |    no    | If you use self signed certificates, you may to skip TLS verification | ture / false          |
 | sasl\_external           |    no    | Use simple bind or SASL/EXTERNAL                                      | true / false          |
+| pool\_only               |    no    | Use Lua to communicate with LDAP                                      | true / false          |
 
 The **lookup** pool settings define a pooling to find user objects in LDAP. The **auth** pooling is used to authenticate users.
+
+:::note
+By using the **pool\_only** option, the authentication pool is not started and no authentication attempts are done against
+the **ldap**-backend. You have to implement the password-verify logic as well as the list-accounts routine completely in Lua.
+
+To verify a user password, you must retrieve the userPassword attribute and make use of the compare-function in Lua.
+
+The **ldap** backend must still be enabled!
+:::
 
 #### If using SASL/EXTERNAL:
 

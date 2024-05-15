@@ -4,11 +4,10 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Updated workspace documentation and Lua support&#10;&#10;Expanded the lua-support.md and workspace.xml documentation with detailed configuration attributes enhancing comprehension and usability. The updates cover sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains, providing an in-depth understanding of system settings and configurations. Increased local task counter to mirror the updates.">
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/about/getting-started.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/about/getting-started.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/installation/docker.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/installation/docker.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docusaurus.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/docusaurus.config.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -153,7 +152,23 @@
       <option name="project" value="LOCAL" />
       <updated>1715179327969</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Refactor documentation to focus on LDAP and Lua support&#10;&#10;The documentation has been revised to focus solely on LDAP and Lua for configuration, querying, and database type handling. Some sections that mentioned SQL support have been updated to talk only about LDAP or Lua. This revision provides clearer instructions for setting up and using LDAP and Lua with Nauthilus.">
+      <option name="closed" value="true" />
+      <created>1715280661371</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1715280661371</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions.">
+      <option name="closed" value="true" />
+      <created>1715281592253</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1715281592253</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -166,7 +181,9 @@
     <MESSAGE value="Update configuration documentation&#10;&#10;Detailed configuration attributes have been added to the documentation. The changes encompass sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains among others. The update improves comprehension and usability." />
     <MESSAGE value="Update documentation for workspace and Lua support&#10;&#10;Detailed configuration attributes have been added to the workspace.xml and lua-support.md documentation. The update includes sections addressing Redis, realtime_blackhole_lists, brute_force, and relay_domains, thus improving comprehension and usability of these features. This discussion provides a more thorough understanding of settings and configurations, facilitating more effective use of the system." />
     <MESSAGE value="Updated workspace documentation and Lua support&#10;&#10;Expanded the lua-support.md and workspace.xml documentation with detailed configuration attributes enhancing comprehension and usability. The updates cover sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains, providing an in-depth understanding of system settings and configurations. Increased local task counter to mirror the updates." />
-    <option name="LAST_COMMIT_MESSAGE" value="Updated workspace documentation and Lua support&#10;&#10;Expanded the lua-support.md and workspace.xml documentation with detailed configuration attributes enhancing comprehension and usability. The updates cover sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains, providing an in-depth understanding of system settings and configurations. Increased local task counter to mirror the updates." />
+    <MESSAGE value="Refactor documentation to focus on LDAP and Lua support&#10;&#10;The documentation has been revised to focus solely on LDAP and Lua for configuration, querying, and database type handling. Some sections that mentioned SQL support have been updated to talk only about LDAP or Lua. This revision provides clearer instructions for setting up and using LDAP and Lua with Nauthilus." />
+    <MESSAGE value="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions." />
+    <option name="LAST_COMMIT_MESSAGE" value="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

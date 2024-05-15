@@ -53,6 +53,3 @@ If you add **dev** to the build tags, the built will contain experimental, not y
 
 If you require a registration endpoint for two-factor-authentication, which will enable you to add a TOTP token to your users accounts, you cann add this tag.
 
-### avx and sonic
-
-You can add both tags **avx** and **sonic** to the tags keyword to enable faster HTTP request handling. To do so, you must also set the environment variable **CGO_ENABLED** to "1".

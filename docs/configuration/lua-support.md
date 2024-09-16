@@ -15,6 +15,7 @@ what happens with an incoming authentication request.
   * [Additional things to know](#additional-things-to-know)
   * [Configuration](#configuration)
   * [Lua components](#lua-components)
+  * [Lua libraries](#lua-libraries)
     * [Actions](#actions)
     * [Features](#features)
     * [Lua backend](#lua-backend)
@@ -40,29 +41,55 @@ what happens with an incoming authentication request.
   * [UserData object backend\_result](#userdata-object-backend_result)
     * [backend](#backend)
     * [filters](#filters-2)
-    * [Example usage for backend\_result](#example-usage-for-backend_result)
+    * [Example usage for nauthilus\_backend\_result](#example-usage-for-nauthilus_backend_result)
       * [Endpoints /api/v1/mail/dovecot, /api/v1/generic/user and /api/v1/generic/json](#endpoints-apiv1maildovecot-apiv1genericuser-and-apiv1genericjson)
 * [API](#api)
   * [Context](#context)
-    * [nauthilus.context\_set](#nauthiluscontext_set)
-    * [nauthilus.context\_get](#nauthiluscontext_get)
-    * [nauthilus.context\_delete](#nauthiluscontext_delete)
+    * [nauthilus\_context.context\_set](#nauthilus_contextcontext_set)
+    * [nauthilus\_context.context\_get](#nauthilus_contextcontext_get)
+    * [nauthilus\_context.context\_delete](#nauthilus_contextcontext_delete)
   * [Redis](#redis)
-    * [nauthilus.redis\_set\_str](#nauthilusredis_set_str)
-    * [nauthilus.redis\_incr](#nauthilusredis_incr)
-    * [nauthilus.redis\_get\_str](#nauthilusredis_get_str)
-    * [nauthilus.redis\_expire](#nauthilusredis_expire)
-    * [nauthilus.redis\_del](#nauthilusredis_del)
+    * [nauthilus\_redis.redis\_set](#nauthilus_redisredis_set)
+    * [nauthilus\_redis.redis\_incr](#nauthilus_redisredis_incr)
+    * [nauthilus\_redis.redis\_get](#nauthilus_redisredis_get)
+    * [nauthilus\_redis.redis\_expire](#nauthilus_redisredis_expire)
+    * [nauthilus\_redis.redis\_del](#nauthilus_redisredis_del)
+    * [nauthilus\_redis.redis\_rename](#nauthilus_redisredis_rename)
+    * [nauthilus\_redis.redis\_hget](#nauthilus_redisredis_hget)
+    * [nauthilus\_redis.redis\_hset](#nauthilus_redisredis_hset)
+    * [nauthilus\_redis.redis\_hdel](#nauthilus_redisredis_hdel)
+    * [nauthilus\_redis.redis\_hlen](#nauthilus_redisredis_hlen)
+    * [nauthilus\_redis.redis\_hgetall](#nauthilus_redisredis_hgetall)
+    * [nauthilus\_redis.redis\_hincrby](#nauthilus_redisredis_hincrby)
+    * [nauthilus\_redis.redis\_hincrbyfloat](#nauthilus_redisredis_hincrbyfloat)
+    * [nauthilus\_redis.redis\_hexists](#nauthilus_redisredis_hexists)
+    * [nauthilus\_redis.redis\_sadd](#nauthilus_redisredis_sadd)
+    * [nauthilus\_redis.redis\_sismember](#nauthilus_redisredis_sismember)
+    * [nauthilus\_redis.redis\_smembers](#nauthilus_redisredis_smembers)
+    * [nauthilus\_redis.redis\_srem](#nauthilus_redisredis_srem)
+    * [nauthilus\_redis.redis\_scard](#nauthilus_redisredis_scard)
+  * [HTTP request](#http-request)
+    * [nauthilus\_http.get\_all\_http\_request\_headers](#nauthilus_httpget_all_http_request_headers)
+    * [nauthilus\_http\_request.get\_http\_request\_header](#nauthilus_http_requestget_http_request_header)
+    * [nauthilus\_http\_request.get\_http\_request\_body](#nauthilus_http_requestget_http_request_body)
   * [Generic Lua functions](#generic-lua-functions)
-    * [nauthilus.status\_message\_set](#nauthilusstatus_message_set)
-    * [nauthilus.get\_all\_http\_request\_headers](#nauthilusget_all_http_request_headers)
-    * [nauthilus.custom\_log\_add](#nauthiluscustom_log_add)
+    * [nauthilus\_builtin.status\_message\_set](#nauthilus_builtinstatus_message_set)
+    * [nauthilu\_builtin.custom\_log\_add](#nauthilu_builtincustom_log_add)
   * [Feature backend\_server\_monitoring enabled](#feature-backend_server_monitoring-enabled)
-    * [nauthilus.get\_backend\_servers](#nauthilusget_backend_servers)
-    * [nauthilus.select\_backend\_server](#nauthilusselect_backend_server)
-    * [nauthilus.check\_backend\_connection](#nauthiluscheck_backend_connection)
+    * [nauthilus\_backend.get\_backend\_servers](#nauthilus_backendget_backend_servers)
+    * [nauthilus\_backend.select\_backend\_server and nauthilus\_backend.apply\_backend\_result](#nauthilus_backendselect_backend_server-and-nauthilus_backendapply_backend_result)
+    * [nauthilus\_backend.remove\_from\_backend\_result](#nauthilus_backendremove_from_backend_result)
+    * [nauthilus\_backend.check\_backend\_connection](#nauthilus_backendcheck_backend_connection)
   * [Backend LDAP used](#backend-ldap-used)
-    * [nauthilus.ldap\_search](#nauthilusldap_search)
+    * [nauthilus\_ldap.ldap\_search](#nauthilus_ldapldap_search)
+  * [Password](#password)
+    * [nauthilus\_password.compare\_passwords](#nauthilus_passwordcompare_passwords)
+    * [nauthilus\_password.check\_password\_policy](#nauthilus_passwordcheck_password_policy)
+  * [Mail](#mail)
+    * [nauthilus\_mail.send\_mail](#nauthilus_mailsend_mail)
+  * [Misc](#misc)
+    * [nauthilus\_misc.get\_country\_name](#nauthilus_miscget_country_name)
+    * [nauthilus\_misc.wait\_random](#nauthilus_miscwait_random)
   * [Additional notes](#additional-notes)
 <!-- TOC -->
 
@@ -156,6 +183,91 @@ Each component does provide a set of global functions, constants, ... and requir
 
 Every Lua script that has been configured, is pre-compiled and kept in memory for future use. To make script changes, you
 must reload the service.
+
+## Lua libraries
+
+Nauthilus does not automatically preload Lua modules. Therefor, a dynamic loader has been written, which must be run before
+requireing a module.
+
+Example:
+
+```lua
+dynamic_loader("foo")
+local foo = require("foo")
+```
+
+A module is preloaded for a single Lua state, which is shared accross all scripts that make use of it. Let's say, there
+have been defined three filter scripts and 5 post-action scripts, then each class (filter and post-action) share the same
+Lua state and receive the same preloaded modules.
+
+Modules are never preloaded twice.
+
+This is the list of modules that are currently available:
+
+| Loader name               | Description                                        |
+|---------------------------|----------------------------------------------------|
+| nauthilus_mail            | E-Mail functions                                   |
+| nauthilus_password        | Password compare and validation functions          |
+| nauthilus_redis           | Redis related functions                            |
+| nauthilus_misc            | Country code and sleep functions                   |
+| nauthilus_context         | Global Lua context accross all States in Nauthilus |
+| nauthilus_ldap            | LDAP related functions                             |
+| nauthilus_backend         | Backend related functions                          |
+| nauthilus_http_request    | HTTP request header functions                      |
+| nauthilus_gluacrypto      | gluacrpyto project on Github                       |
+| nauthilus_gll_plugin      | gopher-lua-libs project on Github                  |
+| nauthilus_gll_argparse    | gopher-lua-libs project on Github                  |
+| nauthilus_gll_base64      | gopher-lua-libs project on Github                  |
+| nauthilus_gll_cert_util   | gopher-lua-libs project on Github                  |
+| nauthilus_gll_chef        | gopher-lua-libs project on Github                  |
+| nauthilus_gll_cloudwatch  | gopher-lua-libs project on Github                  |
+| nauthilus_gll_cmd         | gopher-lua-libs project on Github                  |
+| nauthilus_gll_crypto      | gopher-lua-libs project on Github                  |
+| nauthilus_gll_db          | gopher-lua-libs project on Github                  |
+| nauthilus_gll_filepath    | gopher-lua-libs project on Github                  |
+| nauthilus_gll_goos        | gopher-lua-libs project on Github                  |
+| nauthilus_gll_http        | gopher-lua-libs project on Github                  |
+| nauthilus_gll_humanize    | gopher-lua-libs project on Github                  |
+| nauthilus_gll_inspect     | gopher-lua-libs project on Github                  |
+| nauthilus_gll_ioutil      | gopher-lua-libs project on Github                  |
+| nauthilus_gll_json        | gopher-lua-libs project on Github                  |
+| nauthilus_gll_log         | gopher-lua-libs project on Github                  |
+| nauthilus_gll_pb          | gopher-lua-libs project on Github                  |
+| nauthilus_gll_pprof       | gopher-lua-libs project on Github                  |
+| nauthilus_gll_prometheus  | gopher-lua-libs project on Github                  |
+| nauthilus_gll_regexp      | gopher-lua-libs project on Github                  |
+| nauthilus_gll_runtime     | gopher-lua-libs project on Github                  |
+| nauthilus_gll_shellescape | gopher-lua-libs project on Github                  |
+| nauthilus_gll_stats       | gopher-lua-libs project on Github                  |
+| nauthilus_gll_storage     | gopher-lua-libs project on Github                  |
+| nauthilus_gll_strings     | gopher-lua-libs project on Github                  |
+| nauthilus_gll_tac         | gopher-lua-libs project on Github                  |
+| nauthilus_gll_tcp         | gopher-lua-libs project on Github                  |
+| nauthilus_gll_telegram    | gopher-lua-libs project on Github                  |
+| nauthilus_gll_template    | gopher-lua-libs project on Github                  |
+| nauthilus_gll_time        | gopher-lua-libs project on Github                  |
+| nauthilus_gll_xmlpath     | gopher-lua-libs project on Github                  |
+| nauthilus_gll_yaml        | gopher-lua-libs project on Github                  |
+| nauthilus_gll_zabbix      | gopher-lua-libs project on Github                  |
+
+Example:
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+dynamic_loader("nauthilus_context")
+local nauthilus_builtin.context = require("nauthilus_context")
+
+dynamic_loader("nauthilus_gluacrypto")
+local crypto = require("crypto")
+
+dynamic_loader("nauthilus_gll_db")
+local db = require("db")
+
+dynamic_loader("nauthilus_gll_time")
+local time = require("time")
+```
 
 ### Actions
 
@@ -291,14 +403,14 @@ which is an indicator for errors that occurred in the script itself.
 
 #### Constants for the returned result
 
-| Constant                        | Meaning                                                         | Value | Category      |
-|---------------------------------|-----------------------------------------------------------------|-------|---------------|
-| nauthilus.FEATURE\_TRIGGER\_NO  | The feature has not been triggered                              | 0     | trigger       |
-| nauthilus.FEATURE\_TRIGGER\_YES | The feature has been triggered and the request must be rejected | 1     | trigger       |
-| nauthilus.FEATURES\_ABORT\_NO   | Process other built-in features                                 | 0     | skip\_flag    |
-| nauthilus.FEATURES\_ABORT\_YES  | After finishing the script, skip all other built-in features    | 1     | skip\_flag    |
-| nauthilus.FEATURE\_RESULT\_OK   | The script finished without errors                              | 0     | failure\_info |
-| nauthilus.FEATURE\_RESULT\_FAIL | Something went wrong while executing the script                 | 1     | failure\_info |
+| Constant                                | Meaning                                                         | Value | Category      |
+|-----------------------------------------|-----------------------------------------------------------------|-------|---------------|
+| nauthilus_builtin.FEATURE\_TRIGGER\_NO  | The feature has not been triggered                              | 0     | trigger       |
+| nauthilus_builtin.FEATURE\_TRIGGER\_YES | The feature has been triggered and the request must be rejected | 1     | trigger       |
+| nauthilus_builtin.FEATURES\_ABORT\_NO   | Process other built-in features                                 | 0     | skip\_flag    |
+| nauthilus_builtin.FEATURES\_ABORT\_YES  | After finishing the script, skip all other built-in features    | 1     | skip\_flag    |
+| nauthilus_builtin.FEATURE\_RESULT\_OK   | The script finished without errors                              | 0     | failure\_info |
+| nauthilus_builtin.FEATURE\_RESULT\_FAIL | Something went wrong while executing the script                 | 1     | failure\_info |
 
 ### Request fields
 
@@ -327,12 +439,12 @@ which is an indicator for errors that occurred in the script itself.
 
 #### Constants for the returned result
 
-| Constant                         | Meaning                                         | Value | Category       |
-|----------------------------------|-------------------------------------------------|-------|----------------|
-| nauthilus.FILTER\_ACTION\_ACCEPT | The request must be accepted                    | 0     | filter\_action |
-| nauthilus.FILTER\_ACTION\_REJECT | The request has to be rejected                  | 1     | filter\_action |
-| nauthilus.FILTER\_RESULT\_OK     | The script finished without errors              | 0     | filter\_info   |
-| nauthilus.FILTER\_RESULT\_FAIL   | Something went wrong while executing the script | 1     | filter\_info   |
+| Constant                                 | Meaning                                         | Value | Category       |
+|------------------------------------------|-------------------------------------------------|-------|----------------|
+| nauthilus_builtin.FILTER\_ACTION\_ACCEPT | The request must be accepted                    | 0     | filter\_action |
+| nauthilus_builtin.FILTER\_ACTION\_REJECT | The request has to be rejected                  | 1     | filter\_action |
+| nauthilus_builtin.FILTER\_RESULT\_OK     | The script finished without errors              | 0     | filter\_info   |
+| nauthilus_builtin.FILTER\_RESULT\_FAIL   | Something went wrong while executing the script | 1     | filter\_info   |
 
 ### Request fields
 
@@ -360,10 +472,10 @@ Actions must return the script status constant.
 
 #### Constants for the returned result
 
-| Constant                       | Meaning                            | Value | Category      |
-|--------------------------------|------------------------------------|-------|---------------|
-| nauthilus.ACTION\_RESULT\_OK   | The script finished without errors | 0     | failure\_info |
-| nauthilus.ACTION\_RESULT\_FAIL | The script finished with errors    | 1     | failure\_info |
+| Constant                               | Meaning                            | Value | Category      |
+|----------------------------------------|------------------------------------|-------|---------------|
+| nauthilus_builtin.ACTION\_RESULT\_OK   | The script finished without errors | 0     | failure\_info |
+| nauthilus_builtin.ACTION\_RESULT\_FAIL | The script finished with errors    | 1     | failure\_info |
 
 ### Request fields
 
@@ -412,10 +524,10 @@ The backend must return the result status constant and a backend result object
 
 #### Constants for the returned result
 
-| Constant                        | Meaning                            | Value | Category      |
-|---------------------------------|------------------------------------|-------|---------------|
-| nauthilus.BACKEND\_RESULT\_OK   | The script finished without errors | 0     | failure\_info |
-| nauthilus.BACKEND\_RESULT\_FAIL | The script finished with errors    | 1     | failure\_info |
+| Constant                                | Meaning                            | Value | Category      |
+|-----------------------------------------|------------------------------------|-------|---------------|
+| nauthilus_builtin.BACKEND\_RESULT\_OK   | The script finished without errors | 0     | failure\_info |
+| nauthilus_builtin.BACKEND\_RESULT\_FAIL | The script finished with errors    | 1     | failure\_info |
 
 ### Request fields
 
@@ -433,7 +545,7 @@ Only "debug" and "session" from the common requests as well as "totp\_secret" (s
 
 ## UserData object backend\_result
 
-The **backend\_result** object can be initialized in the Lua backend and in Lua filters. The following methods exist:
+The **nauthilus\_backend\_result** object can be initialized in the Lua backend and in Lua filters. The following methods exist:
 
 ### backend
 
@@ -450,18 +562,18 @@ The **backend\_result** object can be initialized in the Lua backend and in Lua 
 
 ### filters
 
-Filters only have an "attributes" method. While Lua backends do return a **backend\_result** directly, filters can only
-apply it with a Lua function called "nauthilus.apply\_backend\_result(backend\_result\_object)".
+Filters only have an "attributes" method. While Lua backends do return a **nauthlus\_backend\_result** directly, filters can only
+apply it with a Lua function called "nauthilus_backend.apply\_backend\_result(backend\_result\_object)".
 
 Attributes can not overwrite existing attributes!
 
-### Example usage for backend\_result
+### Example usage for nauthilus\_backend\_result
 
 ```lua
 local attributes = {}
 attributes["account"] = "bob"
 
-local b = backend_result.new()
+local b = nauthilus_backend_result.new()
 b:attributes(attributes) -- Add the table
 b:account_field("account") -- Attributes contain a key "account" for the account field
 b:authenticated(true) -- User is authenticated
@@ -472,7 +584,7 @@ b:user_found(true) -- The user was found
 
 "attributes" represent a common result store for a backend query. All fields that have been set by \*\_field methods will be
 used for further internal processing, while all other attributes will be converted to HTTP-response-headers, which will be
-sent back to the client application that talked to Nauthilus. These headeres will be prefixed with **X-NAuthilus-**.
+sent back to the client application that talked to Nauthilus. These headeres will be prefixed with **X-Nauthilus-**.
 
 For the generic endpoints, "attributes" will bew returned in the JSON respone.
 
@@ -480,29 +592,43 @@ For the generic endpoints, "attributes" will bew returned in the JSON respone.
 
 ## Context
 
-### nauthilus.context\_set
+```lua
+dynamic_loader("nauthilus_context")
+local nauthilus_context = require("nauthilus_context")
+```
+
+### nauthilus\_context.context\_set
 Add a value to the shared Lua context. Values can be strings, numbers, booleans and tables. You can not add functions here.
 
 ```lua
-nauthilus.context_set("key", value)
+dynamic_loader("nauthilus_context")
+local nauthilus_context = require("nauthilus_context")
+
+nauthilus_context.context_set("key", value)
 ```
 
 Get a Lua context value:
 
-### nauthilus.context\_get
+### nauthilus\_context.context\_get
 
 ```lua
-local value = nauthilus.context_get("key")
+dynamic_loader("nauthilus_context")
+local nauthilus_context = require("nauthilus_context")
+
+local value = nauthilus_context.context_get("key")
 ```
 
 If there is no result, nil is returned.
 
-### nauthilus.context\_delete
+### nauthilus\_context.context\_delete
 
 To delete a key/value pair from the Lua context, use the following function:
 
 ```lua
-nauthilus.context_delete("key")
+dynamic_loader("nauthilus_context")
+local nauthilus_context = require("nauthilus_context")
+
+nauthilus_context.context_delete("key")
 ```
 
 ## Redis
@@ -510,71 +636,278 @@ nauthilus.context_delete("key")
 There is basic Redis support in Nauthilus. Most of the time it should be sufficient to use simple Redis keys and string values
 as arguments. Type conversion can be done within Lua itself.
 
-### nauthilus.redis\_set\_str
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+```
 
-You can store a string value in Redis with the following function:
+### nauthilus\_redis.redis\_set
+
+You can store a value in Redis with the following function:
 
 ```lua
-local result, error = nauthilus.redis_set("key", "value")
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local result, error = nauthilus_redis.redis_set("key", "value", 3600)
 ```
+
+The expiration value is optional.
 
 If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
 
-### nauthilus.redis\_incr
+### nauthilus\_redis.redis\_incr
 
 You can increment a value in Redis with the following function:
 
 ```lua
-local number, error = nauthilus.redis_incr("key")
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local number, error = nauthilus_redis.redis_incr("key")
 ```
 
 If anything went fine, the current **number** is returned. In cases of an **error**, number equals nil and a string is returned.
 
-### nauthilus.redis\_get\_str
+### nauthilus\_redis.redis\_get
 
 To retrieve a value from Redis use the following function:
 
 ```lua
-local result, error = nauthilus.redis_get_str("key")
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local result, error = nauthilus_redis.redis_get("key")
 ```
 
 If anything went fine, the returned value is stored in **result**. In cases of errors, the **result** equals nil and a string is returned to **error*.
 
-### nauthilus.redis\_expire
+### nauthilus\_redis.redis\_expire
 
 A Redis key can have an expiration time in seconds. Use the following function to achieve this goal:
 
 ```lua
-local result, error = nauthilus.redis_expire("key")
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local result, error = nauthilus_redis.redis_expire("key")
 ```
 
 If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
 
-### nauthilus.redis\_del
+### nauthilus\_redis.redis\_del
 
 To delete a Redis key, use the following function:
 
 ```lua
-local result, error = nauthilus.redis_del("key")
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local result, error = nauthilus_redis.redis_del("key")
 ```
 If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
 
-## Generic Lua functions
+### nauthilus\_redis.redis\_rename
 
-### nauthilus.status\_message\_set
-
-If a client request should be rejected, you can overwrite the returned status message with the following function:
+Rename a Redis key
 
 ```lua
-nauthilus.status_message_set("Reject message here")
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local oldkey = "abc"
+local newkey = "def"
+
+local result, err = nauthilus_redis.redis_rename(oldkey, newkey)
 ```
 
-### nauthilus.get\_all\_http\_request\_headers
+### nauthilus\_redis.redis\_hget
+
+Get a value from a Redis hash map
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local redis_key = "some_key"
+local already_sent_mail, err_redis_hget2 = nauthilus_redis.redis_hget(redis_key, "send_mail")
+```
+
+### nauthilus\_redis.redis\_hset
+
+Set a value in a Redis hash map
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local redis_key = "some_key"
+local _, err_redis_hset = nauthilus_redis.redis_hset(redis_key, "send_mail", 1)
+```
+
+### nauthilus\_redis.redis\_hdel
+
+Delete a key from a Redis hash map
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local result = {}
+result.dovecot_session = "123"
+
+local redis_key = "some_key"
+local deleted, err_redis_hdel = nauthilus_redis.redis_hdel(redis_key, result.dovecot_session)
+```
+
+### nauthilus\_redis.redis\_hlen
+
+Get the number of entries in a hash map
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local redis_key = "some_key"
+local length, err_redis_hlen = nauthilus_redis.redis_hlen(redis_key)
+```
+
+### nauthilus\_redis.redis\_hgetall
+
+Get all values from a Redis hash map
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local redis_key = "some_key"
+local all_sessions, err_redis_hgetall = nauthilus_redis.redis_hgetall(redis_key)
+```
+
+### nauthilus\_redis.redis\_hincrby
+
+Increament the value (integer) of a Redis hash map key
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+local field = "some_field"
+local increment = 1
+
+local result, err = nauthilus_redis.redis_hincrby(key, field, increment)
+```
+
+### nauthilus\_redis.redis\_hincrbyfloat
+
+Increament the value (float) of a Redis hash map key
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+local field = "some_field"
+local increment = 1.3
+
+local result, err = nauthilus_redis.redis_hincrbyfloat(key, field, increment)
+```
+
+### nauthilus\_redis.redis\_hexists
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+local field = "some_field"
+
+local result, err = nauthilus_redis.redis_hexists(key, field)
+```
+
+### nauthilus\_redis.redis\_sadd
+
+Add a value to a Redis set
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+local value = "some_value"
+
+local result, err = nauthilus_redis.redis_sadd(key, value)
+```
+
+### nauthilus\_redis.redis\_sismember
+
+Check, if a value is a mamber of a Redis set
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+local value = "some_value"
+
+local result, err = nauthilus_redis.redis_sismember(key, value)
+```
+### nauthilus\_redis.redis\_smembers
+
+Get all members from a Redis set
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+
+local result, err = nauthilus_redis.redis_smembers(key)
+```
+
+### nauthilus\_redis.redis\_srem
+
+Remove a value from a Redis set
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+local value = "some_value"
+
+local result, err = nauthilus_redis.redis_srem(key, value)
+```
+
+### nauthilus\_redis.redis\_scard
+
+Return the number of values inside a Redis set
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local key = "some_key"
+
+local result, err = nauthilus_redis.redis_scard(key)
+```
+
+## HTTP request
+
+```lua
+dynamic_loader("nauthilus_http_request")
+local nauthilus_http_request = require("nauthilus_http_request")
+```
+### nauthilus\_http.get\_all\_http\_request\_headers
 
 It is possible to get the full set of HTTP request headers from a connecting service in Lua with the following function:
 
 ```lua
-local header_table = nauthilus.get_all_http_request_headers()
+dynamic_loader("nauthilus_http_request")
+local nauthilus_http_request = require("nauthilus_http_request")
+
+local header_table = nauthilus_http_request.get_all_http_request_headers()
 
 for header_key, header_value_table in pair(header_table) do
   print("header key: " .. header_key)
@@ -587,7 +920,39 @@ end
 As the example demonstrates, the result is a Lua table. The names for each header are stored in the key of this table, while the values
 are also stored in a Lua table as list of strings.
 
-### nauthilus.custom\_log\_add
+### nauthilus\_http\_request.get\_http\_request\_header
+
+Get a table of values for an HTTP request header.
+
+```lua
+dynamic_loader("nauthilus_http_request")
+local nauthilus_http_request = require("nauthilus_http_request")
+
+local header_table = nauthilus_http_request.get_http_request_headers("Content-Type")
+```
+
+### nauthilus\_http\_request.get\_http\_request\_body
+
+Get the payload of an HTTP request  as a string.
+
+```lua
+dynamic_loader("nauthilus_http_request")
+local nauthilus_http_request = require("nauthilus_http_request")
+
+local body = nauthilus_http_request.get_http_request_body()
+```
+
+## Generic Lua functions
+
+### nauthilus\_builtin.status\_message\_set
+
+If a client request should be rejected, you can overwrite the returned status message with the following function:
+
+```lua
+nauthilus_builtin.status_message_set("Reject message here")
+```
+
+### nauthilu\_builtin.custom\_log\_add
 
 This function adds key-value pairs to the result log. In case of **features*, **backend** and **filters**, the logs are all added to the final result log line.
 In cases of **actions**, logging is appended to the **action** log line. The reason is simple: Actions may run asynchronous to the main request, which
@@ -600,7 +965,7 @@ Logs can not be removed if once set!
 :::
 
 ```lua
-nauthilus.custom_log_add("key", value)
+nauthilus_builtin.custom_log_add("key", value)
 ```
 
 A **value** can be a string, number or boolean. Anything else is replaced as "UNSUPPORTED".
@@ -609,14 +974,22 @@ A **value** can be a string, number or boolean. Anything else is replaced as "UN
 
 If the feature **backend\_server\_monitoring is turned on, the following functions are available in **filters**:
 
-### nauthilus.get\_backend\_servers
+```lua
+dynamic_loader("nauthilus_backend")
+local nauthilus_backend = require("nauthilus_backend")
+```
+
+### nauthilus\_backend.get\_backend\_servers
 
 This function returns a **backend\_server** UserData object. 
 
 Usage example:
 
 ```lua
-local backend_servers = nauthilus.get_backend_servers()
+dynamic_loader("nauthilus_backend")
+local nauthilus_backend = require("nauthilus_backend")
+
+local backend_servers = nauthilus_backend.get_backend_servers()
 
   ---@type table
   local valid_servers = {}
@@ -632,30 +1005,36 @@ local backend_servers = nauthilus.get_backend_servers()
   end
 ```
 
-### nauthilus.select\_backend\_server
+### nauthilus\_backend.select\_backend\_server and nauthilus\_backend.apply\_backend\_result
 
 If you use the Nginx endpoint in NAuthilus, you can select a backend server with this function:
 
 ```lua
--- See nauthilus.get_backend_servers above!
+dynamic_loader("nauthilus_backend")
+local nauthilus_backend = require("nauthilus_backend")
+
+-- See nauthilus_backend.get_backend_servers above!
 local server = valid_servers[some_number] -- You must define some logic on how to chose a backend server from the list
 
-nauthilus.select_backend_server(server.ip, server.port)
+nauthilus_backend.select_backend_server(server.ip, server.port)
 ```
 
 This will return the appropriate HTTP response header **Auth-Server** and **Auth-Port**
 
-If you use a different endpoint, you may add the result to the attributes. In case of Dovecot this might look loke this (untested):
+If you use a different endpoint, you may add the result to the attributes. In case of Dovecot this might look like this (untested):
 
 ```lua
-local b = backend_result:new()
+dynamic_loader("nauthilus_backend")
+local nauthilus_backend = require("nauthilus_backend")
+
+local b = nauthilus_backend_result:new()
 local attributes = {}
--- See nauthilus.get_backend_servers above!
+-- See nauthilus_backend.get_backend_servers above!
 local server = valid_servers[some_number] -- You must define some logic on how to chose a backend server from the list
 
 attributes["hostip"] = server.ip
 b:attributes(attributes)
-nauthilus.apply_backend_result(backend_result)
+nauthilus_backend.apply_backend_result(b)
 ```
 
 The result will be available as HTTP-response header **X-Nauthilus-Hostip** and can easily be parsed in a Dovecot Lua backend.
@@ -663,17 +1042,36 @@ The result will be available as HTTP-response header **X-Nauthilus-Hostip** and 
 This example lacks persistent routing from users to backend servers. But it is a good starting point. Combine it with Redis or
 SQL databases...
 
-### nauthilus.check\_backend\_connection
+### nauthilus\_backend.remove\_from\_backend\_result
+
+Remove attributes from the final result attributes
+
+```lua
+dynamic_loader("nauthilus_backend")
+local nauthilus_backend = require("nauthilus_backend")
+
+nauthilus_backend.remove_from_backend_result({ "Proxy-Host" })
+```
+:::note
+Removeing attributes is always done before adding attributes (from apply\_backend\_result()-calls)
+:::
+
+This removes the Proxy-Host "header" attribute from the result.
+
+### nauthilus\_backend.check\_backend\_connection
 
 Before using a backend server, you could double-check with the following function:
 
 ```lua
+dynamic_loader("nauthilus_backend")
+local nauthilus_backend = require("nauthilus_backend")
+
 local server_ip = "10.10.10.10"
 local server_port = 993
 local is_haproxy_v2 = true
 local uses_tls = true
 
-local error = nauthilus.check_backend_connection(server_ip, server_port, is_haproxy_v2, uses_tls)
+local error = nauthilus_backend.check_backend_connection(server_ip, server_port, is_haproxy_v2, uses_tls)
 ```
 If anything went fine, **error** equals nil, else it stores a string with an error message.
 
@@ -685,14 +1083,22 @@ Normally you should not do this, as this will open a connection for each client 
 
 It is possible to send LDAP search requests to the main LDAP worker pool, if the **ldap** backend is enabled.
 
-### nauthilus.ldap\_search
+```lua
+dynamic_loader("nauthilus_ldap")
+local nauthilus_ldap = require("nauthilus_ldap")
+```
+
+### nauthilus\_ldap.ldap\_search
 
 The LDAP search function receives a Lua table with the search request and returns a result table and an error stirng.
 
 ```lua
+dynamic_loader("nauthilus_ldap")
+local nauthilus_ldap = require("nauthilus_ldap")
+
 local user = "bob"
 
-local result, error = nauthilus.ldap_search({
+local result, error = nauthilus_ldap.ldap_search({
   session = request.session, -- request: from the calling function
   basedn = "dc=acme,dc=com",
   filter = "(|(uniqueIdentifier=" .. user .. ")(uid=" .. user .. "))",
@@ -719,6 +1125,143 @@ are Lua tables with all values (multi value).
 :::warning
 LDAP search requests are blocking operations!
 :::
+
+## Password
+
+```lua
+dynamic_loader("nauthilus_password")
+local nauthilus_password = require("nauthilus_password")
+```
+
+### nauthilus\_password.compare\_passwords
+
+Compare two passwords. The first parameter is from a database. It is probably some kind of hash. The second argument is
+a clear text password. The function detects the algorithm used by the first given parameter and creates the same for the second
+parameter. If the result is equal, passwords are identical.
+
+```lua
+dynamic_loader("nauthilus_password")
+local nauthilus_password = require("nauthilus_password")
+
+local some_stored_pw = "password_from_db"
+local some_password = "pw_given_by_user"
+
+local match, err = nauthilus_password.compare_passwords(some_stored_pw, some_password)
+```
+
+### nauthilus\_password.check\_password\_policy
+
+Check a given password against some password policy
+
+```lua
+dynamic_loader("nauthilus_password")
+local nauthilus_password = require("nauthilus_password")
+
+local password = "some_secret"
+
+local ppolicy_ok = nauthilus_password.check_password_policy({
+            min_length = 12,
+            min_upper = 2,
+            min_lower = 2,
+            min_dumber = 1,
+            min_special = 0,
+        }, password)
+```
+
+## Mail
+
+SMTP/LMTP related functions
+
+```lua
+dynamic_loader("nauthilus_mail")
+local nauthilus_mail = require("nauthilus_mail")
+```
+
+### nauthilus\_mail.send\_mail
+
+Send an email using SMTP or LMTP
+
+```lua
+dynamic_loader("nauthilus_mail")
+local nauthilus_mail = require("nauthilus_mail")
+
+dynamic_loader("nauthilus_gll_template")
+local template = require("template")
+
+local smtp_message = [[
+Hallo,
+
+Username: {{username}}
+Account: {{account}}
+
+...
+]]
+
+local tmpl_data = {
+  username = request.username, -- Might come from the request object of the calling function
+  account = request.account, -- Might come from the request object of the calling function
+}
+
+local mustache, err_tmpl = template.choose("mustache")
+
+local err_email = nauthilus_mail.send_mail({
+                    lmtp = true,
+                    server = "10.0.0.24",
+                    port = 24,
+                    helo_name = "localhost.localdomain",
+                    from = '"Sicherheitshinweis" <abuse@example.test>',
+                    to = { request.account }, -- Might come from the request object of the calling function
+                    subject = "Some subject",
+                    body = mustache:render(smtp_message, tmpl_data),
+                })
+```
+
+The table expects the following keys:
+
+| Name      | Description                                            |
+|-----------|--------------------------------------------------------|
+| username  | Username for authentication (optional)                 |
+| password  | Password for authentication (optional)                 |
+| from      | The sender including an optional canonical name        |
+| to        | A table of recipients                                  |
+| server    | The address of the mail server                         |
+| port      | The port number of the mail server                     |
+| helo_name | The HELO/LHLO name                                     |
+| subject   | The subject of the message                             |
+| body      | The body of the message                                |
+| tls       | Should the connection be secured aka SMTPS? true/false |
+| starttls  | Use starttls command true/false                        |
+| lmtp      | Do we send with LMTP (true) or SMTP (false)?           |
+
+## Misc
+
+```lua
+dynamic_loader("nauthilus_misc")
+local nauthilus_misc = require("nauthilus_misc")
+```
+
+### nauthilus\_misc.get\_country\_name
+
+Get the human-friendly name of an ISO country code
+
+```lua
+dynamic_loader("nauthilus_misc")
+local nauthilus_misc = require("nauthilus_misc")
+
+local iso_code = "DE"
+
+local country_name = nauthilus_misc.get_country_name(iso_code)
+```
+### nauthilus\_misc.wait\_random
+
+Wait a raondom delay between a start and stop value in milliseconds
+
+```lua
+dynamic_loader("nauthilus_misc")
+local nauthilus_misc = require("nauthilus_misc")
+
+nauthilus_misc.wait_random(500, 3000)
+```
 
 ## Additional notes
 

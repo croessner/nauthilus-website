@@ -13,6 +13,7 @@ sidebar_position: 2
     * [Meaning](#meaning)
     * [server::address](#serveraddress)
     * [server::haproxy_v2](#serverhaproxy_v2)
+    * [server::http3](#serverhttp3)
     * [serer::tls](#serertls)
       * [server::tls::enabled](#servertlsenabled)
       * [server::tls::cert and server::tls::key](#servertlscert-and-servertlskey)
@@ -30,32 +31,39 @@ sidebar_position: 2
     * [server::brute\_force\_protocols](#serverbrute_force_protocols)
     * [server::ory\_hydra\_admin\_url](#serverory_hydra_admin_url)
     * [server::dns](#serverdns)
-    * [server::dns::resolver](#serverdnsresolver)
-    * [server::dns::timeout](#serverdnstimeout)
-    * [server::dns::resolve\_client\_ip](#serverdnsresolve_client_ip)
+      * [server::dns::resolver](#serverdnsresolver)
+      * [server::dns::timeout](#serverdnstimeout)
+      * [server::dns::resolve\_client\_ip](#serverdnsresolve_client_ip)
     * [server::insights](#serverinsights)
-    * [server::insights::enable\_pprof](#serverinsightsenable_pprof)
-    * [server::insights::enable\_block\_profile](#serverinsightsenable_block_profile)
+      * [server::insights::enable\_pprof](#serverinsightsenable_pprof)
+      * [server::insights::enable\_block\_profile](#serverinsightsenable_block_profile)
     * [server::redis](#serverredis)
-    * [server::redis::database\_number](#serverredisdatabase_number)
-    * [server::redis::prefix](#serverredisprefix)
-    * [server::redis::pool\_size](#serverredispool_size)
-    * [server::redis::idle\_pool\_size](#serverredisidle_pool_size)
-    * [server::redis::positive\_cache\_ttl and server::redis::negative\_cache\_ttl](#serverredispositive_cache_ttl-and-serverredisnegative_cache_ttl)
-    * [server::redis::master](#serverredismaster)
-    * [server::redis::master::address](#serverredismasteraddress)
-    * [server::redis::master::username and server::redis::master::password](#serverredismasterusername-and-serverredismasterpassword)
-    * [server::redis::replica](#serverredisreplica)
-    * [server::redis::replica::address](#serverredisreplicaaddress)
-    * [server::redis::sentinels](#serverredissentinels)
-    * [server::redis::sentinels::master](#serverredissentinelsmaster)
-    * [server::redis::sentinels::addresses](#serverredissentinelsaddresses)
-    * [server::redis::sentinels::username and server::reids::sentinels::password](#serverredissentinelsusername-and-serverreidssentinelspassword)
-    * [server::redis::cluster](#serverrediscluster)
-    * [server::redis::cluster::addresses](#serverredisclusteraddresses)
+      * [server::redis::database\_number](#serverredisdatabase_number)
+      * [server::redis::prefix](#serverredisprefix)
+      * [server::redis::pool\_size](#serverredispool_size)
+      * [server::redis::idle\_pool\_size](#serverredisidle_pool_size)
+      * [server::redis::positive\_cache\_ttl and server::redis::negative\_cache\_ttl](#serverredispositive_cache_ttl-and-serverredisnegative_cache_ttl)
+      * [server::redis::master](#serverredismaster)
+      * [server::redis::master::address](#serverredismasteraddress)
+      * [server::redis::master::username and server::redis::master::password](#serverredismasterusername-and-serverredismasterpassword)
+      * [server::redis::replica](#serverredisreplica)
+      * [server::redis::replica::address](#serverredisreplicaaddress)
+      * [server::redis::sentinels](#serverredissentinels)
+      * [server::redis::sentinels::master](#serverredissentinelsmaster)
+      * [server::redis::sentinels::addresses](#serverredissentinelsaddresses)
+      * [server::redis::sentinels::username and server::reids::sentinels::password](#serverredissentinelsusername-and-serverreidssentinelspassword)
+      * [server::redis::cluster](#serverrediscluster)
+      * [server::redis::cluster::addresses](#serverredisclusteraddresses)
     * [server::master\_user](#servermaster_user)
-    * [server::master\_user::enabled](#servermaster_userenabled)
-    * [server::master\_user::delimiter](#servermaster_userdelimiter)
+      * [server::master\_user::enabled](#servermaster_userenabled)
+      * [server::master\_user::delimiter](#servermaster_userdelimiter)
+    * [server::frontend](#serverfrontend)
+      * [server::frontend::enabled](#serverfrontendenabled)
+      * [server::frontend::csrf\_secret](#serverfrontendcsrf_secret)
+      * [server::frontend::cookie\_store\_auth\_key and server::frontend::cookie\_store\_encryption\_key](#serverfrontendcookie_store_auth_key-and-serverfrontendcookie_store_encryption_key)
+    * [server::prometheus\_timer](#serverprometheus_timer)
+      * [server::prometheus\timer::enabled](#serverprometheustimerenabled)
+      * [server::prometheus\timer::labels](#serverprometheustimerlabels)
   * [realtime\_blackhole\_lists](#realtime_blackhole_lists)
     * [realtime\_blackhole\_lists::lists:](#realtime_blackhole_listslists)
     * [realtime\_blackhole\_lists::threshold](#realtime_blackhole_liststhreshold)
@@ -67,8 +75,6 @@ sidebar_position: 2
       * [Recommendation](#recommendation)
     * [brute\_force::buckets](#brute_forcebuckets)
     * [brute\_force::ip\_whitelist](#brute_forceip_whitelist)
-  * [csrf\_secret](#csrf_secret)
-  * [cookie\_store\_auth\_key and cookie\_store\_encryption\_key](#cookie_store_auth_key-and-cookie_store_encryption_key)
   * [password\_nonce](#password_nonce)
   * [oauth2](#oauth2)
       * [Configuration flow](#configuration-flow)
@@ -173,6 +179,11 @@ If this setting is turned on (true), Nauthilus can make use of the HAproxy versi
 server:
   haproxy_v2: true
 ```
+
+### server::http3
+_Default: false_
+
+Enable HTTP/3 support for the server. There does not exist the PROXY protocol for this version!
 
 ### serer::tls
 
@@ -393,7 +404,7 @@ server:
 
 This object defines settings related to the DNS name resolver.
 
-### server::dns::resolver
+#### server::dns::resolver
 _Default: ""_
 
 If this setting is given, Nauthilus does not use the Go internal DNS resolver. Instead, it uses the provided resolver for DNS resolution.
@@ -404,7 +415,7 @@ server:
     resolver: 192.168.0.1
 ```
 
-### server::dns::timeout
+#### server::dns::timeout
 _Default: 5_
 
 If a custom DNS resolver is set, you can specify a default timeout in seconds, after which DNS queries are aborted without waiting for a result.
@@ -415,7 +426,7 @@ server:
     timeout: 3
 ```
 
-### server::dns::resolve\_client\_ip
+#### server::dns::resolve\_client\_ip
 _Default: false_
 
 If a DNS reverse lookup should be done for incoming client requests, you can turn on (true) this feature.
@@ -434,7 +445,7 @@ Turning on this feature will heavily increase network latency and DNS resolver l
 
 This object defines settings related to **go pprof** and is mainly useful for developers.
 
-### server::insights::enable\_pprof
+#### server::insights::enable\_pprof
 _Default: false_
 
 Enable (true) pprof in Go for debugging purposes.
@@ -444,7 +455,7 @@ server:
   insights:
     enable_pprof: true
 ```
-### server::insights::enable\_block\_profile
+#### server::insights::enable\_block\_profile
 _Default: false_
 
 If pprof is enabled (required for this flag), you can also activate a block profile, which helps to find blocking code.
@@ -459,7 +470,7 @@ server:
 
 This object defines settings related to the Redis server.
 
-### server::redis::database\_number
+#### server::redis::database\_number
 _Default: 0_
 
 If Redis is configured to run standalone, master-slave or as sentinel, you can select the database number that Nauthilus must use.
@@ -470,7 +481,7 @@ server:
       database_number: 2
 ```
 
-### server::redis::prefix
+#### server::redis::prefix
 _Default: ""_
 
 You can define a prefix that has to be used for any keys in Redis.
@@ -489,7 +500,7 @@ This prefix is for Nauthilus internal keys only. If you chode to use Redis withi
 You may define custom prefixes in Lua with "ntc:" Like "Nauthilus-custom". That way you have a difference between built-in keys and user defined keys.
 :::
 
-### server::redis::pool\_size
+#### server::redis::pool\_size
 _Default: 0_<br/>
 _required_
 
@@ -501,7 +512,7 @@ server:
     pool_size: 10
 ```
 
-### server::redis::idle\_pool\_size
+#### server::redis::idle\_pool\_size
 _Default: 0_
 
 This is a Redis idle pool size. The pool is managed by the underlying redis library go-redis.
@@ -512,7 +523,7 @@ server:
     idle_pool_size: 2
 ```
 
-### server::redis::positive\_cache\_ttl and server::redis::negative\_cache\_ttl
+#### server::redis::positive\_cache\_ttl and server::redis::negative\_cache\_ttl
 _Default: 3600_
 
 Both values set the expiration value for Redis keys in seconds. The positive cache TTL is for authenticated users, while the
@@ -526,11 +537,11 @@ server:
     negative_cache_ttl: 7200
 ```
 
-### server::redis::master
+#### server::redis::master
 
 If running Redis standalone or in master-slave mode, you have to define the master object.
 
-### server::redis::master::address
+#### server::redis::master::address
 _Default: "127.0.0.1:6379"_
 
 This is the socket for a Redis connection to either a standalone server or for a master.
@@ -542,7 +553,7 @@ server:
       address: 127.0.0.1:6379
 ```
 
-### server::redis::master::username and server::redis::master::password
+#### server::redis::master::username and server::redis::master::password
 _Default: empty_
 
 This is an optional username and password for Redis, if the service requires authentication.
@@ -555,13 +566,13 @@ Server:
       password: some_secret
 ```
 
-### server::redis::replica
+#### server::redis::replica
 
 This object defines a replica to a master. Currently, there is only support for one master and one replica. If you need more
 replica server, consider using sentinel instead or use some load balancer in front of Nauthilus that may distribute replica
 connections to more than one replica instance.
 
-### server::redis::replica::address
+#### server::redis::replica::address
 _Default: ""_
 
 This is the socket for a Redis connection to a replica instance.
@@ -573,11 +584,11 @@ server:
       address: 10.10.10.10:6379
 ```
 
-### server::redis::sentinels
+#### server::redis::sentinels
 
 NAuthilus can connect to Redis sentinels. The following options define such a setup.
 
-### server::redis::sentinels::master
+#### server::redis::sentinels::master
 _Default: ""_
 
 This is the name of the sentinel master.
@@ -589,7 +600,7 @@ server:
       master: mymaster
 ```
 
-### server::redis::sentinels::addresses
+#### server::redis::sentinels::addresses
 _Default: empty list_
 
 This is a list of Redis sentienl sockets.
@@ -621,7 +632,7 @@ server:
         - redis-sentinel-sentinel-2.redis-sentinel-sentinel-headless.ot-operators.svc.cluster.local:26379
 ```
 
-### server::redis::sentinels::username and server::reids::sentinels::password
+#### server::redis::sentinels::username and server::reids::sentinels::password
 _Default: ""_
 
 Both of these parameters are optional settings, if your Redis sentinels require authentication.
@@ -634,11 +645,11 @@ server:
       password: some_secret
 ```
 
-### server::redis::cluster
+#### server::redis::cluster
 
 If NAuthilus should be connected to a Redis cluster, the following settings can be set to do so.
 
-### server::redis::cluster::addresses
+#### server::redis::cluster::addresses
 _Default: empty list_
 
 This is a list of one or more Redis sockets pointing to a Redis cluster.
@@ -657,7 +668,7 @@ server:
 
 This object defines settings related to a so-called **master user**
 
-### server::master\_user::enabled
+#### server::master\_user::enabled
 _Default: false_
 
 If this flag is turned on (true), Nauthilus honors login usernames that are master users. A master user looks something like this:
@@ -675,7 +686,7 @@ server:
     enabled: true
 ```
 
-### server::master\_user::delimiter
+#### server::master\_user::delimiter
 _Default: "*"_
 
 This is the character that splits the real username from the master user.
@@ -686,6 +697,80 @@ server:
     delimiter: "*"
 ```
 
+### server::frontend
+
+Nauthilus specific settings for the frontend (OIDC)
+
+#### server::frontend::enabled
+_Default: false_
+
+Turn on the frontend.
+
+```yaml
+server:
+  frontend:
+    enabled: true
+```
+
+#### server::frontend::csrf\_secret
+_Default: ""_<br/>
+_required_
+
+This key is required whenever CSRF (cross-site-request-forgery) attacks must be prevented. This is currently used, if
+Nauthilus is configured to communicate with Ory Hydra. The login, consent and logout pages are protected with a CSRF
+token. This value defines the secret used for that token.
+
+This value **MUST** be 32 bytes long.
+
+#### server::frontend::cookie\_store\_auth\_key and server::frontend::cookie\_store\_encryption\_key
+_Default: ""_<br/>
+_required_
+
+These keys are used to encrypt and decrypt session cookies.
+
+Both values **MUST** be 32 bytes long.
+
+### server::prometheus\_timer
+
+Turn on several Prometheus labels, which are timers for certain aspects of the application.
+
+#### server::prometheus\timer::enabled
+
+Turn on the prometheus timers.
+
+```yaml
+server:
+  prometheus_timer:
+    enabled: true
+```
+
+#### server::prometheus\timer::labels
+
+The following labels can be turned on:
+
+| Label name   | Description                                              |
+|--------------|----------------------------------------------------------|
+| account      | Mode "list-accounts" timer                               |
+| action       | Timers for Lua actions                                   |
+| backend      | Timers for backends                                      |
+| brute\_force | Timers for the brute force functions                     |
+| feature      | Timers for all features                                  |
+| filter       | Timers for Lua filters                                   |
+| request      | Timer for the entire client request without post actions |
+| store\_totp  | Timer for storing a new TOTP secret to a backend         |
+| post\_action | Timers for Lua post actions                              |
+| dns          | Timers for DNS queries                                   |
+
+Example:
+
+```yaml
+server:
+  prometheus_timer:
+    enabled: true
+    labels:
+      - request
+      - dns
+```
 ## realtime\_blackhole\_lists
 
 This is the *rbl* feature. It checks a remote client IP address against a list of defined RBL lists. The lists are run
@@ -821,24 +906,6 @@ brute_force:
     - ::1
     - 192.168.0.0/16
 ```
-
-## csrf\_secret
-_Default: ""_<br/>
-_required_
-
-This key is required whenever CSRF (cross-site-request-forgery) attacks must be prevented. This is currently used, if
-Nauthilus is configured to communicate with Ory Hydra. The login, consent and logout pages are protected with a CSRF
-token. This value defines the secret used for that token.
-
-This value **MUST** be 32 bytes long.
-
-## cookie\_store\_auth\_key and cookie\_store\_encryption\_key
-_Default: ""_<br/>
-_required_
-
-These keys are used to encrypt and decrypt session cookies.
-
-Both values **MUST** be 32 bytes long.
 
 ## password\_nonce
 _Default: ""_<br/>

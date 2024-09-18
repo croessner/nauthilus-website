@@ -4,10 +4,11 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions.">
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/configuration/lua-support.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/lua-support.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,18 +24,18 @@
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "croessner"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;croessner&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "git@github.com:croessner/nauthilus-website.git",
-    "accountId": "0bfad6a2-1607-4dc6-aa8b-7b255b1e41b1"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:croessner/nauthilus-website.git&quot;,
+    &quot;accountId&quot;: &quot;0bfad6a2-1607-4dc6-aa8b-7b255b1e41b1&quot;
   }
-}]]></component>
+}</component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="true" />
   </component>
@@ -58,25 +59,25 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
-    "git-widget-placeholder": "main",
-    "go.import.settings.migrated": "true",
-    "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/Users/croessner/GoLandProjects/nauthilus-website",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "npm.build.executor": "Run",
-    "npm.docusaurus.executor": "Run",
-    "npm.start.executor": "Run"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/croessner/GoLandProjects/nauthilus-website&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;npm.build.executor&quot;: &quot;Run&quot;,
+    &quot;npm.docusaurus.executor&quot;: &quot;Run&quot;,
+    &quot;npm.start.executor&quot;: &quot;Run&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="npm.build">
     <configuration name="build" type="js.build_tools.npm" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
@@ -181,7 +182,15 @@
       <option name="project" value="LOCAL" />
       <updated>1715281592253</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Update Docusaurus configuration, docs, and workspace.xml&#10;&#10;Expanded the documentation including new sections for server, front end, and HTTP3 support. Refactored markdown to include more detailed subsections and updated workspace.xml to track additional documentation files and GitHub settings.">
+      <option name="closed" value="true" />
+      <created>1726498131558</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1726498131558</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -196,7 +205,10 @@
     <MESSAGE value="Updated workspace documentation and Lua support&#10;&#10;Expanded the lua-support.md and workspace.xml documentation with detailed configuration attributes enhancing comprehension and usability. The updates cover sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains, providing an in-depth understanding of system settings and configurations. Increased local task counter to mirror the updates." />
     <MESSAGE value="Refactor documentation to focus on LDAP and Lua support&#10;&#10;The documentation has been revised to focus solely on LDAP and Lua for configuration, querying, and database type handling. Some sections that mentioned SQL support have been updated to talk only about LDAP or Lua. This revision provides clearer instructions for setting up and using LDAP and Lua with Nauthilus." />
     <MESSAGE value="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions." />
-    <option name="LAST_COMMIT_MESSAGE" value="Update Docusaurus dependencies and remove Redis documentation&#10;&#10;The Redis documentation file has been deleted, leading to the adjustments of the sidebar positions in other files. Docusaurus dependencies in package-lock.json have been updated to the latest versions." />
+    <MESSAGE value="Update Docusaurus configuration, docs, and workspace.xml&#10;&#10;Expanded the documentation including new sections for server, front end, and HTTP3 support. Refactored markdown to include more detailed subsections and updated workspace.xml to track additional documentation files and GitHub settings." />
+    <MESSAGE value="Update Docusaurus config, docs, and workspace.xml&#10;&#10;Expanded documentation with new sections for server, front end, and HTTP3 support. Refactored markdown for detailed subsections. Updated workspace.xml to track additional doc files and GitHub settings." />
+    <MESSAGE value="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings." />
+    <option name="LAST_COMMIT_MESSAGE" value="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

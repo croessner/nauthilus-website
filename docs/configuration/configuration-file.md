@@ -1126,6 +1126,15 @@ backend at the same time.
 
 If you define an LDAP and a Lua backend, both will be queried in the order you have defined in **server::backends**
 
+:::warning
+The "idea" of a backend is to check user credentials!
+
+Do not mix password verification and policy tasks in the backends!
+
+If you want to enforce policies, make use of Lua filters, because they never influence the brute-force-logic nor is it cached on Redis.
+If you combine both aspects in the backends, you will risk of learning correct passwords as wrong!
+:::
+
 ## Protocols
 
 Backends carry configuration information about protocols. A protocol is something like **smtp** or **imap** but can be
@@ -1463,24 +1472,32 @@ completed except of **post** actions. The latter run afterward, when the client 
 | Key          | Required | Description                                     | Example     |
 |--------------|:--------:|-------------------------------------------------|-------------|
 | type         |   yes    | The type of action. Can be repeated many times. | brute_force |
+| name         |   yes    | A unique name for the Lua action                | logging     |
 | script\_path |   yes    | Full path to the Lua action script              | -           |
 
 The following **type**s are known:
 
-* brute\_force - Run after a brute force attack has been detected
-* rbl - Runs after a requesting client IP was found on a real time blackhole list.
-* tls\_encryption - Runs, if a client connection was not encrypted.
-* relay\_domains - Runs, if the login name equals an e-mail address and the domain is not served.
-* lua - Runs, if any of the Lua features triggered.
-* post - Run always in background after the request already finished.
+| Type            | Description                                                                    |
+|-----------------|--------------------------------------------------------------------------------|
+| brute\_force    | Run after a brute force attack has been detected                               |
+| rbl             | Runs after a requesting client IP was found on a real time blackhole list.     |
+| tls\_encryption | Runs, if a client connection was not encrypted.                                |
+| relay\_domains  | Runs, if the login name equals an e-mail address and the domain is not served. |
+| lua             | Runs, if any of the Lua features triggered.                                    |
+| post            | Run always in background after the request already finished.                   |
 
 ### lua::config
 
-| Key          | Required | Description                                  | Example                                    |
-|--------------|:--------:|----------------------------------------------|--------------------------------------------|
-| script\path  |   yes    | Full path to the Lua backend script          | ./server/lua-plugins.d/backend/backend.lua |
-| package_path |    no    | Set a Lua module path for custom Lua modules | /usr/local/etc/nauthilus/lualib/?.lua      |
+| Key                    | Required | Description                                  | Example                                       |
+|------------------------|:--------:|----------------------------------------------|-----------------------------------------------|
+| backend\_script\_path  |   yes    | Full path to the Lua backend script          | ./server/lua-plugins.d/backend/backend.lua    |
+| callback\_script\_path |    no    | Full path to the Lua callback script         | ./server/lua-plugins.d/callback/callback.lua  |
+| package_path           |    no    | Set a Lua module path for custom Lua modules | /usr/local/etc/nauthilus/lualib/?.lua         |
 
+:::note
+The **callback** script can be used to provide additional information. If you use Dovecot, you might use this script to
+track a users' session and cleanup things on Redis. Look at the callback.lua script that is bundled with Nauthilus.
+:::
 
 ### lua::search
 
@@ -1507,12 +1524,16 @@ lua:
       
   actions:
     - type: brute_force
+      name: brute_force
       script_path: ./server/lua-plugins.d/actions/bruteforce.lua
     - type: post
+      name: demoe
       script_path: ./server/lua-plugins.d/actions/demo.lua
     - type: post
+      name: haveibeenpwnd
       script_path: ./server/lua-plugins.d/actions/haveibeenpwnd.lua
     - type: post
+      name: telegram
       script_path: ./server/lua-plugins.d/actions/telegram.lua
 
   config:
@@ -1543,6 +1564,7 @@ lua:
 ```yaml
 server:
   address: "[::]:9443"
+  http3: true
   haproxy_v2: false
 
   tls:
@@ -1610,7 +1632,13 @@ server:
   master_user:
     enabled: true
     delimiter: "*"
-    
+  
+  frontend:
+    enabled: true
+    csrf_secret: 32-byte-long-random-secret
+    cookie_store_auth_key: 32-byte-long-random-secret
+    cookie_store_encryption_key: 16-24-or-32-byte-long-random-secret
+
 realtime_blackhole_lists:
 
   threshold: 10
@@ -1723,10 +1751,6 @@ brute_force:
       ipv6: true
       failed_requests: 40
 
-csrf_secret: 32-byte-long-random-secret
-cookie_store_auth_key: 32-byte-long-random-secret
-cookie_store_encryption_key: 16-24-or-32-byte-long-random-secret
-
 oauth2:
   custom_scopes:
     - name: dovecot
@@ -1782,29 +1806,13 @@ ldap:
       base_dn: ou=people,ou=it,dc=example,dc=com
       filter:
         user: |
-            (&
-              (memberOf=cn=BasicAuth,ou=Nauthilus,ou=groups,ou=it,dc=example,dc=com)
-              (|
-                (uniqueIdentifier=%L{user})
-                (rnsMSRecipientAddress=%L{user})
-              )
-            )
+          (|
+            (uniqueIdentifier=%L{user})
+            (rnsMSRecipientAddress=%L{user})
+          )
       mapping:
         account_field: rnsMSDovecotUser
         attribute: rnsMSDovecotUser
-
-    - protocol: internal-basic-auth
-      cache_name: internal
-      base_dn: ou=people,ou=it,dc=example,dc=com
-      filter:
-        user: |
-            (&
-              (memberOf=cn=InternalBasicAuth,ou=Nauthilus,ou=groups,ou=it,dc=example,dc=com)
-              (cn=%L{user})
-            )
-      mapping:
-        account_field: cn
-        attribute: cn
 
     - protocol:
         - imap
@@ -1819,9 +1827,7 @@ ldap:
       filter:
         user: |
             (&
-              (memberOf=cn=Dovecot,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
               (objectClass=rnsMSDovecotAccount)
-              (rnsMSEnableDovecot=TRUE)
               (|
                 (uniqueIdentifier=%L{user})
                 (rnsMSRecipientAddress=%L{user})
@@ -1829,7 +1835,6 @@ ldap:
             )
         list_accounts: |
             (&
-              (memberOf=cn=Dovecot,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
               (objectClass=rnsMSDovecotAccount)
               (rnsMSEnableDovecot=TRUE)
               (!
@@ -1857,9 +1862,7 @@ ldap:
       filter:
         user: |
             (&
-              (memberOf=cn=Postfix,ou=Mail,ou=groups,ou=it,dc=example,dc=com)
               (objectClass=rnsMSPostfixAccount)
-              (rnsMSEnablePostfix=TRUE)
               (|
                 (uniqueIdentifier=%L{user})
                 (rnsMSRecipientAddress=%L{user})
@@ -1885,7 +1888,6 @@ ldap:
       filter:
         user: |
             (&
-              (memberOf=cn=Users,ou=Oauth,ou=groups,ou=it,dc=example,dc=com)
               (objectClass=inetOrgPerson)
               (|
                 (entryUUID=%{user})

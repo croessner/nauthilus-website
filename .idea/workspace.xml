@@ -4,11 +4,10 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings.">
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Fix references in docs and update workspace settings&#10;&#10;Corrected REST API paths in nginx-mail-plugin and rest-api docs to use consistent routes. Updated .idea/workspace.xml configurations to track changes in documentation files and incremented the localTasksCounter value.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/examples/nginx-mail-plugin.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/examples/nginx-mail-plugin.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/rest-api.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/rest-api.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -104,8 +103,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-gosdk-5df93f7ad4aa-dfc284eb1eb8-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-242.20224.424" />
-        <option value="bundled-js-predefined-d6986cc7102b-410509235cf1-JavaScript-GO-242.20224.424" />
+        <option value="bundled-gosdk-5df93f7ad4aa-df9ad98b711f-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-242.21829.220" />
+        <option value="bundled-js-predefined-d6986cc7102b-7c0b70fcd90d-JavaScript-GO-242.21829.220" />
       </set>
     </attachedChunks>
   </component>
@@ -190,7 +189,15 @@
       <option name="project" value="LOCAL" />
       <updated>1726498131558</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings.">
+      <option name="closed" value="true" />
+      <created>1726673099775</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1726673099775</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -208,7 +215,8 @@
     <MESSAGE value="Update Docusaurus configuration, docs, and workspace.xml&#10;&#10;Expanded the documentation including new sections for server, front end, and HTTP3 support. Refactored markdown to include more detailed subsections and updated workspace.xml to track additional documentation files and GitHub settings." />
     <MESSAGE value="Update Docusaurus config, docs, and workspace.xml&#10;&#10;Expanded documentation with new sections for server, front end, and HTTP3 support. Refactored markdown for detailed subsections. Updated workspace.xml to track additional doc files and GitHub settings." />
     <MESSAGE value="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings." />
-    <option name="LAST_COMMIT_MESSAGE" value="Update Docusaurus configuration and dependencies&#10;&#10;Updated Docusaurus to version 3.5.2 and added new documentation sections for server, frontend, and HTTP3 support. Refactored markdown with more detailed subsections and modified workspace.xml to track additional documentation files and GitHub settings." />
+    <MESSAGE value="Fix references in docs and update workspace settings&#10;&#10;Corrected REST API paths in nginx-mail-plugin and rest-api docs to use consistent routes. Updated .idea/workspace.xml configurations to track changes in documentation files and incremented the localTasksCounter value." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fix references in docs and update workspace settings&#10;&#10;Corrected REST API paths in nginx-mail-plugin and rest-api docs to use consistent routes. Updated .idea/workspace.xml configurations to track changes in documentation files and incremented the localTasksCounter value." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

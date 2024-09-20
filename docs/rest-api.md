@@ -23,7 +23,7 @@ sidebar_position: 7
   * [saslauthd with http backend](#saslauthd-with-http-backend)
       * [/etc/saslauthd.conf](#etcsaslauthdconf)
       * [Running saslauthd](#running-saslauthd)
-  * [Generic query endpoint _New in version 2.1.x_](#generic-query-endpoint-new-in-version-21x)
+  * [Generic query endpoint](#generic-query-endpoint)
 <!-- TOC -->
 
 The following is a set of tests which are used for developing. You can use them for your own set of tests.
@@ -42,7 +42,7 @@ The following is a set of tests which are used for developing. You can use them 
 ### REST calls
 
 * /api/v1/cache/flush
-* /api/v1br/uteforce/flush
+* /api/v1/bruteforce/flush
 
 ## Frontend channel
 
@@ -154,7 +154,7 @@ Content-Length: 120
 ## Flush an IP address from Redis cache
 
 ```
-DELETE http://127.0.0.1:8080/api/v1br/uteforce/flush
+DELETE http://127.0.0.1:8080/api/v1/bruteforce/flush
 Accept: */*
 Content-Type: application/json
 
@@ -190,7 +190,7 @@ Content-Length: 144
 ## Get a list with all known IP addresses that have been blocked
 
 ```
-DELETE http://127.0.0.1:8080/api/v1br/uteforce/list
+DELETE http://127.0.0.1:8080/api/v1/bruteforce/list
 Accept: */*
 
 ###
@@ -343,7 +343,7 @@ Content-Type: text/plain; charset=utf-8
 OK
 ```
 
-## Generic query endpoint _New in version 2.1.x_
+## Generic query endpoint
 
 ```
 GET http://127.0.0.1:8080/api/v1/generic/user

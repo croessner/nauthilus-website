@@ -18,7 +18,7 @@ Here are some real life examples on how to integrate nauthilus with Nginx:
 ```nginx
 server_name mail.example.test;
 
-auth_http http://127.0.0.1:9080/mail/nginx;
+auth_http http://127.0.0.1:9080/api/v1/mail/nginx;
 auth_http_pass_client_cert on;
 
 proxy_pass_error_message on;

@@ -7,6 +7,7 @@ sidebar_position: 7
 <!-- TOC -->
   * [Backend channel](#backend-channel)
     * [Protocol endpoints](#protocol-endpoints)
+      * [Protocol specific endpoints](#protocol-specific-endpoints)
     * [REST calls](#rest-calls)
   * [Frontend channel](#frontend-channel)
     * [HTTP basic authorization](#http-basic-authorization-)
@@ -23,7 +24,7 @@ sidebar_position: 7
   * [saslauthd with http backend](#saslauthd-with-http-backend)
       * [/etc/saslauthd.conf](#etcsaslauthdconf)
       * [Running saslauthd](#running-saslauthd)
-  * [Generic query endpoint](#generic-query-endpoint)
+  * [JSON query endpoint](#json-query-endpoint)
 <!-- TOC -->
 
 The following is a set of tests which are used for developing. You can use them for your own set of tests.
@@ -34,10 +35,13 @@ The following is a set of tests which are used for developing. You can use them 
 
 ### Protocol endpoints
 
-* /api/v1/mail/nginx<br/>Designed to be used with Nginx
-* /api/v1/mail/dovecot<br/>Designed to be used with Dovecot compatible servers
-* /api/v1/mail/saslauthd<br/>Designed to be used with cyrus-saslauthd and its httpform backend.
-* /api/v1/generic/user<br/>A general purpose endpoint
+* /api/v1/auth/json<br/>A general purpose endpoint using JSON
+* /api/v1/auth/header<br/>Designed to be used with any service that can deal with HTTP request and response headers
+
+#### Protocol specific endpoints
+
+* /api/v1/auth/nginx<br/>Designed to be used with Nginx
+* /api/v1/auth/saslauthd<br/>Designed to be used with cyrus-saslauthd and its httpform backend.
 
 ### REST calls
 
@@ -50,7 +54,7 @@ The following is a set of tests which are used for developing. You can use them 
 
 **Important!**: Please open this only if you really need it! It lacks the capability for two-factor authentication
 
-* /api/v1/http/basicauth
+* /api/v1/auth/basic
 
 ### OAuth-2.0 OpenID-Connect
 
@@ -80,7 +84,7 @@ A query parameter named **message** will be taken from the URL and displayed nic
 ## Normal user authentication
 
 ```
-GET http://127.0.0.1:8080/api/v1/mail/dovecot
+POST http://127.0.0.1:8080/api/v1/auth/header
 Accept: */*
 Auth-Method: plain
 Auth-User: testuser
@@ -100,12 +104,10 @@ Auth-SSL-Protocol: secured
 Example output:
 
 ```
-http://127.0.0.1:8080/api/v1/mail/dovecot
-
 HTTP/1.1 200 OK
 Auth-Status: OK
 Auth-User: testaccount@example.test
-X-Nauthilus-Guid: 2HDQSPruG03RGBCtVuu52ZL18Ip
+X-Nauthilus-Session: 2HDQSPruG03RGBCtVuu52ZL18Ip
 X-Nauthilus-Rnsmsdovecotfts: solr
 X-Nauthilus-Rnsmsdovecotftssolrurl: url=http://127.0.0.1:8983/solr/dovecot
 X-Nauthilus-Rnsmsmailpath: sdbox:~/sdbox
@@ -151,7 +153,7 @@ Content-Length: 120
 >
 > If you specify '*' (without the single quotes) as the **user** argument, then all users are flushed from the caches.
 
-## Flush an IP address from Redis cache
+## Flush an IP address from a brute force bucket
 
 ```
 DELETE http://127.0.0.1:8080/api/v1/bruteforce/flush
@@ -220,7 +222,7 @@ Content-Length: 123
 ## Mode no-auth
 
 ```
-GET http://127.0.0.1:8080/api/v1/mail/dovecot?mode=no-auth
+POST http://127.0.0.1:8080/api/v1/auth/header?mode=no-auth
 Accept: */*
 Auth-Method: plain
 Auth-User: testuser
@@ -242,7 +244,7 @@ Example output:
 HTTP/1.1 200 OK
 Auth-Status: OK
 Auth-User: testaccount@example.test
-X-Nauthilus-Guid: 2HDSiJqz9MrisZmLAt6iiobOuLQ
+X-Nauthilus-Session: 2HDSiJqz9MrisZmLAt6iiobOuLQ
 X-Nauthilus-Rnsmsdovecotfts: solr
 X-Nauthilus-Rnsmsdovecotftssolrurl: url=http://127.0.0.1:8983/solr/dovecot
 X-Nauthilus-Rnsmsmailpath: sdbox:~/sdbox
@@ -258,17 +260,18 @@ OK
 ## Mode list-accounts
 
 ```
-GET http://127.0.0.1:8080/api/v1/mail/dovecot?mode=list-accounts
+GET http://127.0.0.1:8080/api/v1/auth/header?mode=list-accounts
 Accept: */*
 ###
 ```
 
-The result is a list with all accounts - line by line.
+The result is a list with all accounts - line by line. If you use "application/json" for **Accept**, the result will be a 
+JSON list. If you speficy "application/x-www-form-urlencoded", the service returns a byte array with all accounts.
 
 ## Nginx
 
 ```
-GET http://127.0.0.1:8080/api/v1/mail/nginx
+POST http://127.0.0.1:8080/api/v1/auth/nginx
 Accept: */*
 Auth-Method: plain
 Auth-User: testuser
@@ -290,7 +293,7 @@ Auth-Port: 9931
 Auth-Server: 127.0.0.1
 Auth-Status: OK
 Auth-User: testaccount@example.test
-X-Nauthilus-Guid: 2HDTGUWG6hNRLfHwafEzDkaZLEC
+X-Nauthilus-Session: 2HDTGUWG6hNRLfHwafEzDkaZLEC
 Date: Mon, 07 Nov 2022 10:55:58 GMT
 Content-Length: 2
 Content-Type: text/plain; charset=utf-8
@@ -307,7 +310,7 @@ To use this mode, you need to install saslauthd and configure it to use to http 
 ```
 httpform_host: 127.0.0.1
 httpform_port: 9080
-httpform_uri: /api/v1/mail/saslauthd
+httpform_uri: /api/v1/auth/saslauthd
 httpform_data: protocol=submission&port=587&method=plain&tls=success&security=starttls&user_agent=saslauthd/2.1.27&username=%u&realm=%r&password=%p
 ```
 
@@ -321,7 +324,7 @@ Using this service prevents nauthilus from finding out the real remote client ad
 submission proxy service.
 
 ```
-POST http://127.0.0.1:8080/api/v1/mail/saslauthd
+POST http://127.0.0.1:8080/api/v1/auth/saslauthd
 Accept: */*
 Content-Type: application/x-www-form-urlencoded
 
@@ -335,7 +338,7 @@ Example output:
 HTTP/1.1 200 OK
 Auth-Status: OK
 Auth-User: testaccount@example.test
-X-Nauthilus-Guid: 2HDTeoN5dIpcNRvOZt2FNMIrTq3
+X-Nauthilus-Session: 2HDTeoN5dIpcNRvOZt2FNMIrTq3
 Date: Mon, 07 Nov 2022 10:59:11 GMT
 Content-Length: 2
 Content-Type: text/plain; charset=utf-8
@@ -343,21 +346,42 @@ Content-Type: text/plain; charset=utf-8
 OK
 ```
 
-## Generic query endpoint
+## JSON query endpoint
 
 ```
-GET http://127.0.0.1:8080/api/v1/generic/user
-Accept: */*
-Auth-Method: plain
-Auth-User: testuser
-Auth-Pass: testpassword
-Auth-Protocol: generic
-Auth-Login-Attempt: 0
-Client-IP: 127.0.0.1
-X-Auth-Port: 443
-Auth-SSL: success
-Auth-SSL-Protocol: secured
-###
+POST http://127.0.0.1:8080/api/v1/auth/json
+Content-Type: application/json
+```
+```json
+{
+  "username": "exampleUser",  // Required: The identifier of the client/user sending the request
+  "password": "examplePass",  // Optional: The authentication credential of the client/user sending the request
+  "client_ip": "192.168.1.1",  // Optional: The IP address of the client/user making the request
+  "client_port": "8080",  // Optional: The port number from which the client/user is sending the request
+  "client_hostname": "client.example.com",  // Optional: The hostname of the client which is sending the request
+  "client_id": "client123",  // Optional: The unique identifier of the client/user, usually assigned by the application
+  "local_ip": "10.0.0.1",  // Optional: The IP address of the server or endpoint receiving the request
+  "local_port": "443",  // Optional: The port number of the server or endpoint receiving the request
+  "service": "loginService",  // Required: The specific service that the client/user is trying to access with the request
+  "method": "LOGIN",  // Optional: The HTTP method used in the request (e.g., PLAIN, LOGIN, etc.)
+  "auth_login_attempt": 1,  // Optional: A flag indicating if the request is an attempt to authenticate (login)
+  "ssl": "on",  // Optional: Identfier, if TLS is used. Any non-empty value activates the usage of TLS for the transport
+  "ssl_session_id": "abc123",  // Optional: The session ID of the SSL/TLS handshake
+  "ssl_client_verify": "SUCCESS",  // Optional: The result of the client certificate verification
+  "ssl_client_dn": "CN=Client,C=US",  // Optional: The distinguished name of the client certificate
+  "ssl_client_cn": "ClientCN",  // Optional: The common name in the client certificate
+  "ssl_issuer": "IssuerOrg",  // Optional: The issuer of the SSL/TLS certificate
+  "ssl_client_notbefore": "2023-01-01T00:00:00Z",  // Optional: The start date of the client certificate validity
+  "ssl_client_notafter": "2023-12-31T23:59:59Z",  // Optional: The end date of the client certificate validity
+  "ssl_subject_dn": "CN=Client,C=US",  // Optional: The subject distinguished name of the SSL/TLS certificate
+  "ssl_issuer_dn": "CN=Issuer,C=US",  // Optional: The issuer distinguished name of the SSL/TLS certificate
+  "ssl_client_subject_dn": "CN=Client,C=US",  // Optional: The subject distinguished name of the client certificate
+  "ssl_client_issuer_dn": "CN=Issuer,C=US",  // Optional: The issuer distinguished name of the client certificate
+  "ssl_protocol": "TLSv1.2",  // Optional: The protocol of the SSL/TLS connection
+  "ssl_cipher": "ECDHE-RSA-AES256-GCM-SHA384",  // Optional: The cipher suite used in the SSL/TLS connection
+  "ssl_serial": "0123456789ABCDEF",  // Optional: The serial number of the SSL/TLS certificate
+  "ssl_fingerprint": "AA:BB:CC:DD:EE:FF"  // Optional: The fingerprint of the SSL/TLS certificate
+}
 ```
 
 Example output:
@@ -367,7 +391,7 @@ HTTP/1.1 200 OK
 Auth-Status: OK
 Auth-User: testaccount@example.test
 Content-Type: application/json
-X-Nauthilus-Guid: 2MNJnKgGpgGJ5rRuFGcTltWefrO
+X-Nauthilus-Session: 2MNJnKgGpgGJ5rRuFGcTltWefrO
 Date: Tue, 28 Feb 2023 16:37:51 GMT
 Content-Length: 656
 

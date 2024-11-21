@@ -29,81 +29,73 @@ chmod 640 http-auth.secret
 chown root:vmail http-auth.secret
 ```
 
-The Lua code:
+The Lua code (requires lua-cjson support):
 
 ```lua
 --
 -- START settings
 --
 
-local http_debug = true;
+local http_debug = false;
 local http_basicauthfile = "/etc/dovecot/http-auth.secret"
-local http_uri = "https://example.test:9443/api/v1/mail/dovecot"
-local http_passwordfail = "Invalid login or password"
-
+local http_uri = "https://login.example.com/api/v1/auth/json"
+local http_access_denied = "Account not enabled"
 
 --
 -- END settings
 --
 
+local json = require('cjson')
+
+local PASSDB = "passdb"
+local USERDB = "userdb"
 
 -- HTTP defaults
 local http_basicauthpassword
 local http_client = dovecot.http.client{
-    timeout = 300;
-    max_attempts = 3;
-    debug = http_debug;
-    user_agent = "Dovecot/2.3";
+  timeout = 300;
+  max_attempts = 3;
+  debug = http_debug;
+  user_agent = "Dovecot/2.3";
 }
 
-
-local json = require('cjson')
-
-
-function mysplit(inputstr, sep)
-  if sep == nil then
-    sep = "%s"
-  end
-  local t={}
-  for str in string.gmatch(inputstr, "([^" .. sep .. "]+)") do
-    table.insert(t, str)
-  end
-  return t
-end
-
-
--- Read the http basic auth credentials file
-function init_http()
-  -- Read nauthilus password
+local function init_http()
+  -- Read Nauthilus password
   local file = assert (io.open(http_basicauthfile))
+
   http_basicauthpassword = file:read("*all")
+
   file:close()
 end
 
-
--- Recursive function that can deal with a Dovecot master user
-function query_db(request, password, dbtype)
+local function query_db(request, password, dbtype)
   local remote_ip = request.remote_ip
   local remote_port = request.remote_port
   local local_ip = request.local_ip
   local local_port = request.local_port
   local client_id = request.client_id
-  local user_field = ""
   local qs_noauth = ""
+  local extra_fields = {}
 
+  local function add_extra_field(pf, key, value)
+    if value ~= nil and value:len()>0 then
+      extra_fields[pf .. key] = value
+    end
+  end
 
-  if dbtype == "userdb" then
+  if dbtype == USERDB then
     qs_noauth = "?mode=no-auth"
   end
   local auth_request = http_client:request {
     url = http_uri .. qs_noauth;
-    method = "GET";
+    method = "POST";
   }
-
 
   -- Basic Authorization
   auth_request:add_header("Authorization", "Basic " .. http_basicauthpassword)
 
+  -- Set CT
+  auth_request:add_header("Content-Type", "application/json")
 
   if remote_ip == nil then
     remote_ip = "127.0.0.1"
@@ -121,197 +113,207 @@ function query_db(request, password, dbtype)
     client_id = ""
   end
 
-
-  -- Do not log internal checks
-  if remote_port ~= "0" then
-    dovecot.i_info(dbtype .. " service=" .. request.service .. " auth_user=<" .. request.auth_user .. "> user=<" .. request.user .. "> client_addr=" .. remote_ip .. ":" .. remote_port)
-  end
-
-
-  -- Master user: change passdb-query to userdb-query
-  if dbtype == "passdb" then
+  if dbtype == PASSDB then
+    -- Master user: change passdb-query to userdb-query
     if request.auth_user:lower() ~= request.user:lower() then
-      user_field = "user=" .. request.user
-      local userdb_status = query_db(request, "", "userdb")
+      add_extra_field("", "user", request.user)
+
+      local userdb_status = query_db(request, "", USERDB)
+
       if userdb_status == dovecot.auth.USERDB_RESULT_USER_UNKNOWN then
         return dovecot.auth.PASSDB_RESULT_USER_UNKNOWN, ""
+      elseif userdb_status == dovecot.auth.USERDB_RESULT_INTERNAL_FAILURE then
+        return dovecot.auth.PASSDB_RESULT_INTERNAL_FAILURE, ""
       else
-        return dovecot.auth.PASSDB_RESULT_OK, user_field
+        return dovecot.auth.PASSDB_RESULT_OK, extra_fields
       end
     end
   end
 
+  local req = {}
 
-  -- Request
-  auth_request:add_header("Auth-Method", request.mech:lower())
-  auth_request:add_header("Auth-User", request.user)
-  if dbtype == "passdb" then
-    auth_request:add_header("Auth-Pass", password)
+  req.username = request.user
+  req.password = password
+  req.client_ip = remote_ip
+  req.client_port = remote_port
+  req.client_id = client_id
+  req.local_ip = local_ip
+  req.local_port = local_port
+  req.service = request.service
+  req.method = request.mech:lower()
+
+  if request.secured == "TLS" or request.secured == "secured" then
+    req.ssl = "1"
+    req.ssl_protocol = request.secured
+
+    if request.cert ~= "" then
+      req.ssl_client_verify = "1"
+    end
   end
-  auth_request:add_header("Auth-Protocol", request.service)
-  auth_request:add_header("Auth-Login-Attempt", "0")
-  auth_request:add_header("Client-IP", remote_ip)
-  auth_request:add_header("X-Client-Port", remote_port)
-  auth_request:add_header("X-Client-Id", client_id)
-  auth_request:add_header("X-Local-IP", local_ip)
-  auth_request:add_header("X-Auth-Port", local_port)
-  if request.secured ~= "" then
-    -- Fake SSL certificate
-    auth_request:add_header("Auth-SSL", "success")
-    auth_request:add_header("Auth-SSL-Protocol", request.secured)
+
+  if request.session ~= nil then
+    auth_request:add_header("X-Dovecot-Session", request.session)
   end
 
+  auth_request:set_payload(json.encode(req))
 
+  -- Send
   local auth_response = auth_request:submit()
-  local resp_status = auth_response:status()
-
 
   -- Response
-  local resp_auth_status = auth_response:header("Auth-Status")
-  local resp_auth_user = auth_response:header("Auth-User")
+  local auth_status_code = auth_response:status()
+  local auth_status_message = auth_response:header("Auth-Status")
 
+  local dovecot_account = auth_response:header("Auth-User")
+  local nauthilus_session = auth_response:header("X-Nauthilus-Session")
 
-  if resp_status == 200 then
-    -- Nauthilus GUID
-    local nauthilus_guid = auth_response:header("X-Nauthilus-Guid")
+  dovecot.i_info("request=" .. dbtype .. " auth_status_code=" .. tostring(auth_status_code) .. " auth_status_message=<" .. auth_status_message .. "> nauthilus_session=" .. nauthilus_session)
 
+  -- Handle valid logins
+  if auth_status_code == 200 then
+    local resp = json.decode(auth_response:payload())
+    local pf = ""
 
-if guid ~= "" then
-  dovecot.i_info(dbtype .. " nauthilus_guid=" .. nauthilus_guid .. " nauthilus_status=\"" .. resp_auth_status .. "\" auth_user=&lt;" .. request.auth_user .. "> user=&lt;" .. request.user .. "> client_addr=" .. remote_ip .. ":" .. remote_port)
-end
+    if dovecot_account and dovecot_account ~= "" then
+      add_extra_field("", "user", dovecot_account)
+    end
 
-if resp_auth_user ~= "" then
-  user_field = "user=" .. resp_auth_user
-else
-  return dovecot.auth.USERDB_RESULT_USER_UNKNOWN, ""
-end
+    if dbtype == PASSDB then
+      pf = "userdb_"
+    end
 
-if resp_auth_status == "OK" then
-  local pf = ""
-  if dbtype == "passdb" then
-    pf = "userdb_"
+    if resp and    resp.attributes then
+      if resp.attributes.rnsMSQuota then
+        add_extra_field(pf, "quota_rule=*:bytes", resp.attributes.rnsMSQuota[1])
+      end
+
+      if resp.attributes.rnsMSOverQuota then
+        add_extra_field(pf, "quota_over_flag", resp.attributes.rnsMSOverQuota[1])
+      end
+
+      if resp.attributes.rnsMSMailPath then
+        add_extra_field(pf, "mail", resp.attributes.rnsMSMailPath[1])
+      end
+
+      if resp.attributes["ACL-Groups"] then
+        add_extra_field(pf, "acl_groups", resp.attributes["ACL-Groups"][1])
+      end
+    end
+
+    if request.session then
+      if dbtype == PASSDB then
+        if resp and resp.attributes then
+          local proxy_host
+          local master_user
+
+          if resp.attributes["Proxy-Host"] then
+            proxy_host =    resp.attributes["Proxy-Host"][1]
+          end
+
+          if resp.attributes.rnsMSDovecotMaster then
+            master_user = resp.attributes.rnsMSDovecotMaster[1]
+          end
+
+          -- Master users must not be proxied
+          if master_user and master_user == "" then
+            if proxy_host and    proxy_host ~= "" then
+              extra_fields.proxy_maybe = "y"
+              extra_fields.proxy_timeout = "120"
+              extra_fields.host = proxy_host
+            end
+          end
+        end
+      end
+    end
+
+    if dbtype == PASSDB then
+      return dovecot.auth.PASSDB_RESULT_OK, extra_fields
+    else
+      return dovecot.auth.USERDB_RESULT_OK, extra_fields
+    end
   end
-  local extra_fields = ""
 
-  -- Extra fields
-  local quota     = auth_response:header("X-Nauthilus-Rnsmsquota")
-  local quotaof   = auth_response:header("X-Nauthilus-Rnsmsoverquota")
-  local home      = auth_response:header("X-Nauthilus-Rnsmsmailboxhome")
-  local mail      = auth_response:header("X-Nauthilus-Rnsmsmailpath")
-  local fts       = auth_response:header("X-Nauthilus-Rnsmsdovecotfts")
-  local ftssolr   = auth_response:header("X-Nauthilus-Rnsmsdovecotftssolrurl")
-  local aclgroups = auth_response:header("X-Nauthilus-Rnsmsaclgroups")
-  local uid       = auth_response:header("X-Nauthilus-Uid")
+  -- Handle failed logins
+  if auth_status_code == 403 then
+    if dbtype == PASSDB then
+      if auth_status_message == http_access_denied then
+        return dovecot.auth.PASSDB_RESULT_USER_DISABLED, auth_status_message
+      end
 
-  if quota ~= nil and quota:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "quota_rule=*:bytes=" .. quota
-  end
-  if quotaof ~= nil and quotaof:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "quota_over_flag=" .. quotaof
-  end
-  if home ~= nil and home:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "home=" .. home
-  end
-  if mail ~= nil and mail:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "mail=" .. mail
-  end
-  if fts ~= nil and fts:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "fts=" .. fts
-  end
-  if ftssolr ~= nil and ftssolr:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "fts_solr=" .. ftssolr
-  end
-  if aclgroups ~= nil and aclgroups:len()>0 then
-    extra_fields = extra_fields .. " " .. pf .. "acl_groups=" .. aclgroups
+      return dovecot.auth.PASSDB_RESULT_PASSWORD_MISMATCH, auth_status_message
+    else
+      return dovecot.auth.USERDB_RESULT_USER_UNKNOWN, auth_status_message
+    end
   end
 
-  -- extra_fields = extra_fields .. " " .. pf .. "rawlog_dir=/srv/vmail/rawlog/" .. resp_auth_user
-
-  -- Do not log internal checks
-  if remote_port ~= "0" then
-    dovecot.i_info(dbtype .. " result(" .. uid .. ")=" .. user_field .. extra_fields)
-  end
-elseif resp_auth_status == http_passwordfail then
-  dovecot.i_info(dbtype .. " result=" .. user_field .. " PASSWORD_MISMATCH")
-  return dovecot.auth.PASSDB_RESULT_PASSWORD_MISMATCH, ""
-end
-
-  end
-
-
-  dovecot.i_info(dbtype .. " result=" .. user_field .. " INTERNAL_FAILURE")
-  if dbtype == "passdb" then
+  -- Unable to communicate with Nauthilus (implies status codes 50X)
+  if dbtype == PASSDB then
     return dovecot.auth.PASSDB_RESULT_INTERNAL_FAILURE, ""
   else
     return dovecot.auth.USERDB_RESULT_INTERNAL_FAILURE, ""
   end
 end
 
-
 function auth_userdb_lookup(request)
-  return query_db(request, "", "userdb")
+  return query_db(request, "", USERDB)
 end
 
-
 -- {{{
--- This is a dummy function, because Dovecot requires it even it is unused!
--- Create a password: openssl rand -hex 32
 function auth_passdb_lookup(request)
-  return dovecot.auth.PASSDB_RESULT_OK, "password={PLAIN}bfd988d76f7f9c08aa15060c5fb47179df1c10784bf1d75e2d3a2fcb161e4101"
+  _ = request
+
+  return dovecot.auth.PASSDB_RESULT_OK, "nopassword=y"
 end
 -- }}}
 
-
 function auth_password_verify(request, password)
-  return query_db(request, password, "passdb")
+  return query_db(request, password, PASSDB)
 end
-
 
 function script_init()
   init_http()
+
   return 0
 end
-
 
 function script_deinit()
 end
 
-
 function auth_userdb_iterate()
   local user_accounts = {}
-
 
   local list_request = http_client:request {
     url = http_uri .. "?mode=list-accounts";
     method = "GET";
   }
 
-
   -- Basic Authorization
   list_request:add_header("Authorization", "Basic " .. http_basicauthpassword)
 
+  -- Set CT
+  list_request:add_header("Accept", "application/json")
 
   local list_response = list_request:submit()
   local resp_status = list_response:status()
 
-
   if resp_status == 200 then
-    local payload = list_response:payload()
-    user_accounts = mysplit(payload, "\r\n")
+    user_accounts = json.decode(list_response:payload())
   end
-
 
   return user_accounts
 end
+
 ```
 
 Look at the code especially to the response headers. Nauthilus is delivering all extra fields by prefixing HTTP headers
-with X-Nauthilus- and the name of an extra field.
+with X-Nauthilus- and the name of an extra field. The result itself is JSON. Most of the time, you will use values from the
+**attributes** list. In the example above, you can see my current working configuration with OpenLDAP and my own schema.
 
 ## Nauthilus modes
 
 As Dovecot needs three different things like passdb, userdb and iterator, nauthilus was made compatible to deal with
-these requirements. By adding a query string to the HTTP request, nauthilus knows what to deliver.
+these requirements. By adding a query string to the HTTP request, nauthilus knows what to deliver. See the description
+at the endpoint page.
 
 #### ?mode=no-auth
 

@@ -13,6 +13,7 @@ what happens with an incoming authentication request.
 * [Lua Support](#lua-support)
   * [Authentication workflow](#authentication-workflow)
   * [Additional things to know](#additional-things-to-know)
+    * [While runtime...](#while-runtime)
   * [Configuration](#configuration)
   * [Lua components](#lua-components)
   * [Lua libraries](#lua-libraries)
@@ -103,7 +104,7 @@ Filters may change the backend result in one or the other way (accepting a forme
 is especially useful for other remote services that can influence the authentication process. 
 
 After all this has finished, it is possible to do some **post actions**, which are run independent 
-of all other steps in the whole pipeline and therefor can not influence the final result anymore. 
+of all other steps in the whole pipeline and therefore can not influence the final result anymore. 
 
 In the following sequence diagram you can see the processing of the request in more detail.
 
@@ -166,6 +167,12 @@ sequenceDiagram
 ```
 ## Additional things to know
 
+When starting the server, it is possible to call an init script, which may be used to register prometheus elements, start
+connection tracker or define custom redis pools. The latter is interesting, if you prefer using other redis servers for all
+your custom Lua scripts.
+
+### While runtime...
+
 When an incoming authentication request is started, a Lua context is created.
 
 All parts of a request share that common request context. Lua scripts can set arbitrary data in the context and read/delete
@@ -175,7 +182,7 @@ Lua scripts can modify the final log line by adding key-value pairs from each sc
 
 ## Configuration
 
-For the configuration please have a look for the [configuration file](configuration-file.md) document.
+For the configuration, please have a look for the [configuration file](configuration-file.md) document.
 
 ## Lua components
 
@@ -275,7 +282,7 @@ Whenever a brute froce attack is recognized, **action**s may be called. The requ
 finished. Actions are processed by a central action worker. No results are returned to the regular request, so actions
 in general do their own logging!
 
-Also, **features** may call actions, if they were triggered. The request is waiting to finish all actions by the worker 
+Also, **features** may call actions if they were triggered. The request is waiting to finish all actions by the worker 
 process.
 
 ### Features
@@ -633,13 +640,50 @@ nauthilus_context.context_delete("key")
 
 ## Redis
 
-There is basic Redis support in Nauthilus. Most of the time it should be sufficient to use simple Redis keys and string values
+There is basic Redis support in Nauthilus. Most of the time it should be enough to use simple Redis keys and string values
 as arguments. Type conversion can be done within Lua itself.
 
 ```lua
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 ```
+
+## Redis custom pools
+
+In the init script of the Nauthilus server, you can define custom pools. For each Redis command, the first parameter is
+either a string called "default" or a connection handle. The "default" will use Redis servers from the Nauthilus server itself.
+
+### How to register a new pool?
+
+Example of a sentinel custom pool:
+
+```lua
+local _, err_redis_reg = nauthilus_redis.register_redis_pool("my_custom_name", "sentinel", {
+            addresses = { "redis-sentinel-sentinel.ot-operators:26379" },
+            master_name = "myMaster",
+            password = "",
+            db = 3,
+            pool_size = 10,
+            min_idle_conns = 1,
+            tls_enabled = false
+        })
+```
+
+To get the handle of this pool, do the following in you Lua scripts:
+
+```lua
+local custom_pool, err_redis_client = nauthilus_redis.get_redis_connection("my_custom_name")
+```
+
+Now you can use **custom\_pool** as the first argument to each Redis function.
+
+You can define as many pools as you like. Currently supported is "standalone", "sentinel" and "cluster".
+
+Documentation for the parameters is TODO.
+
+In the following, I will use the name "handle" for a pool handler.
+
+## Functions
 
 ### nauthilus\_redis.redis\_set
 
@@ -649,7 +693,7 @@ You can store a value in Redis with the following function:
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
-local result, error = nauthilus_redis.redis_set("key", "value", 3600)
+local result, error = nauthilus_redis.redis_set(handle, "key", "value", 3600)
 ```
 
 The expiration value is optional.
@@ -664,7 +708,7 @@ You can increment a value in Redis with the following function:
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
-local number, error = nauthilus_redis.redis_incr("key")
+local number, error = nauthilus_redis.redis_incr(handle, "key")
 ```
 
 If anything went fine, the current **number** is returned. In cases of an **error**, number equals nil and a string is returned.
@@ -677,7 +721,7 @@ To retrieve a value from Redis use the following function:
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
-local result, error = nauthilus_redis.redis_get("key")
+local result, error = nauthilus_redis.redis_get(handle, "key")
 ```
 
 If anything went fine, the returned value is stored in **result**. In cases of errors, the **result** equals nil and a string is returned to **error*.
@@ -690,7 +734,7 @@ A Redis key can have an expiration time in seconds. Use the following function t
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
-local result, error = nauthilus_redis.redis_expire("key")
+local result, error = nauthilus_redis.redis_expire(handle, "key")
 ```
 
 If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
@@ -703,7 +747,7 @@ To delete a Redis key, use the following function:
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
-local result, error = nauthilus_redis.redis_del("key")
+local result, error = nauthilus_redis.redis_del(handle, "key")
 ```
 If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
 
@@ -718,7 +762,7 @@ local nauthilus_redis = require("nauthilus_redis")
 local oldkey = "abc"
 local newkey = "def"
 
-local result, err = nauthilus_redis.redis_rename(oldkey, newkey)
+local result, err = nauthilus_redis.redis_rename(handle, oldkey, newkey)
 ```
 
 ### nauthilus\_redis.redis\_hget
@@ -730,7 +774,7 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
-local already_sent_mail, err_redis_hget2 = nauthilus_redis.redis_hget(redis_key, "send_mail")
+local already_sent_mail, err_redis_hget2 = nauthilus_redis.redis_hget(handle, redis_key, "send_mail")
 ```
 
 ### nauthilus\_redis.redis\_hset
@@ -742,7 +786,7 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
-local _, err_redis_hset = nauthilus_redis.redis_hset(redis_key, "send_mail", 1)
+local _, err_redis_hset = nauthilus_redis.redis_hset(handle, redis_key, "send_mail", 1)
 ```
 
 ### nauthilus\_redis.redis\_hdel
@@ -757,7 +801,7 @@ local result = {}
 result.dovecot_session = "123"
 
 local redis_key = "some_key"
-local deleted, err_redis_hdel = nauthilus_redis.redis_hdel(redis_key, result.dovecot_session)
+local deleted, err_redis_hdel = nauthilus_redis.redis_hdel(handle, redis_key, result.dovecot_session)
 ```
 
 ### nauthilus\_redis.redis\_hlen
@@ -769,7 +813,7 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
-local length, err_redis_hlen = nauthilus_redis.redis_hlen(redis_key)
+local length, err_redis_hlen = nauthilus_redis.redis_hlen(handle, redis_key)
 ```
 
 ### nauthilus\_redis.redis\_hgetall
@@ -781,7 +825,7 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
-local all_sessions, err_redis_hgetall = nauthilus_redis.redis_hgetall(redis_key)
+local all_sessions, err_redis_hgetall = nauthilus_redis.redis_hgetall(handle, redis_key)
 ```
 
 ### nauthilus\_redis.redis\_hincrby
@@ -796,7 +840,7 @@ local key = "some_key"
 local field = "some_field"
 local increment = 1
 
-local result, err = nauthilus_redis.redis_hincrby(key, field, increment)
+local result, err = nauthilus_redis.redis_hincrby(handle, key, field, increment)
 ```
 
 ### nauthilus\_redis.redis\_hincrbyfloat
@@ -811,7 +855,7 @@ local key = "some_key"
 local field = "some_field"
 local increment = 1.3
 
-local result, err = nauthilus_redis.redis_hincrbyfloat(key, field, increment)
+local result, err = nauthilus_redis.redis_hincrbyfloat(handle, key, field, increment)
 ```
 
 ### nauthilus\_redis.redis\_hexists
@@ -823,7 +867,7 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local field = "some_field"
 
-local result, err = nauthilus_redis.redis_hexists(key, field)
+local result, err = nauthilus_redis.redis_hexists(handle, key, field)
 ```
 
 ### nauthilus\_redis.redis\_sadd
@@ -837,7 +881,7 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local value = "some_value"
 
-local result, err = nauthilus_redis.redis_sadd(key, value)
+local result, err = nauthilus_redis.redis_sadd(handle, key, value)
 ```
 
 ### nauthilus\_redis.redis\_sismember
@@ -851,7 +895,7 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local value = "some_value"
 
-local result, err = nauthilus_redis.redis_sismember(key, value)
+local result, err = nauthilus_redis.redis_sismember(handle, key, value)
 ```
 ### nauthilus\_redis.redis\_smembers
 
@@ -863,7 +907,7 @@ local nauthilus_redis = require("nauthilus_redis")
 
 local key = "some_key"
 
-local result, err = nauthilus_redis.redis_smembers(key)
+local result, err = nauthilus_redis.redis_smembers(handle, key)
 ```
 
 ### nauthilus\_redis.redis\_srem
@@ -877,7 +921,7 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local value = "some_value"
 
-local result, err = nauthilus_redis.redis_srem(key, value)
+local result, err = nauthilus_redis.redis_srem(handle, key, value)
 ```
 
 ### nauthilus\_redis.redis\_scard
@@ -890,8 +934,34 @@ local nauthilus_redis = require("nauthilus_redis")
 
 local key = "some_key"
 
-local result, err = nauthilus_redis.redis_scard(key)
+local result, err = nauthilus_redis.redis_scard(handle, key)
 ```
+
+TODO:
+
+* redis_upload_script(handle, "Redis lua code...", "upload\_script\_name")
+* redis_run_script(handle, "script or empty", "upload\_script\_name", \{ redis\_key \}, \{ args \})
+
+## Prometheus
+
+TODO:
+
+* nauthilus_prometheus.create_gauge_vec
+* increment_gauge
+* decrement_gauge
+
+* create_counter_vec
+* increment_counter
+
+* create_histogram_vec
+* start_histogram_timer
+* stop_timer
+
+## PS net
+
+TODO:
+
+* nauthilus_psnet.register_connection_target
 
 ## HTTP request
 

@@ -6,6 +6,8 @@
   <component name="ChangeListManager">
     <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Fix references in docs and update workspace settings&#10;&#10;Corrected REST API paths in nginx-mail-plugin and rest-api docs to use consistent routes. Updated .idea/workspace.xml configurations to track changes in documentation files and incremented the localTasksCounter value.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/lua-support.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/lua-support.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/examples/dovecot-lua.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/examples/dovecot-lua.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/examples/nginx-mail-plugin.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/examples/nginx-mail-plugin.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/rest-api.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/rest-api.md" afterDir="false" />
     </list>
@@ -58,25 +60,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/croessner/GoLandProjects/nauthilus-website&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;npm.build.executor&quot;: &quot;Run&quot;,
-    &quot;npm.docusaurus.executor&quot;: &quot;Run&quot;,
-    &quot;npm.start.executor&quot;: &quot;Run&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
+    "git-widget-placeholder": "main",
+    "go.import.settings.migrated": "true",
+    "go.sdk.automatically.set": "true",
+    "last_opened_file_path": "/Users/croessner/GoLandProjects/nauthilus-website",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "npm.build.executor": "Run",
+    "npm.docusaurus.executor": "Run",
+    "npm.start.executor": "Run"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="npm.build">
     <configuration name="build" type="js.build_tools.npm" nameIsGenerated="true">
       <package-json value="$PROJECT_DIR$/package.json" />
@@ -103,8 +106,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-gosdk-5df93f7ad4aa-df9ad98b711f-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-242.21829.220" />
-        <option value="bundled-js-predefined-d6986cc7102b-7c0b70fcd90d-JavaScript-GO-242.21829.220" />
+        <option value="bundled-gosdk-d297c17c1fbd-b87a2f8923ed-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.21565.208" />
+        <option value="bundled-js-predefined-d6986cc7102b-e768b9ed790e-JavaScript-GO-243.21565.208" />
       </set>
     </attachedChunks>
   </component>
@@ -197,7 +200,15 @@
       <option name="project" value="LOCAL" />
       <updated>1726673099775</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Fix references in docs and update workspace settings&#10;&#10;Corrected REST API paths in nginx-mail-plugin and rest-api docs to use consistent routes. Updated .idea/workspace.xml configurations to track changes in documentation files and incremented the localTasksCounter value.">
+      <option name="closed" value="true" />
+      <created>1726815461139</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1726815461139</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

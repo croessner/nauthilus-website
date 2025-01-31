@@ -24,6 +24,7 @@ This is an overview of features that are currently supported.
 - Static list of known domains. If the login is equal to an email address, Nauthilus can check, if it is responsible for
   this domain
 - OAuth2 and OpenID connect support using Ory Hydra. Nauthilus implements the login, consent and logout flows. It ships
+- SSO support in keycloak is also available with the custom authenticator found [here](https://github.com/croessner/nauthilus-keycloak)
   with templates that can be customized to suite your CI/CD.
 - Fully optimized LDAP pooling with idle connections
 - Basic reloading by reloading the configuration file and restarting database connections
@@ -39,6 +40,7 @@ This is an overview of features that are currently supported.
   (rejecting a request) or doing some other stuff after the request has already been processed.
 - All Lua hooks can use a shared in-memory cache as well as basic Redis support (GET, SET, DEL and EXPIRE).
 - All Lua hooks contain LDAP search functions to incorporate with the LDAP pool, if the LDAP backend is tunred on.
+- A POC for Nauthilus as a replacement in Dovecot >2.4.0 is shown [here](https://github.com/croessner/nauthilus-demo)
 
 ## Database support aka backends
 

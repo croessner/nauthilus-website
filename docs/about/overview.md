@@ -46,3 +46,7 @@ flowchart LR
 :::note
 Built-in MySQL/MariaDB, PostgreSQL and sqlite support is available by using the Lua backend.
 ::: 
+
+:::note
+Your help is very welcome to improve Nauthilus and its documentation. Feel free to send PRs on Github.
+:::

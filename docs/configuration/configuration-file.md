@@ -196,7 +196,7 @@ Enable HTTP/3 support for the server. There does not exist the PROXY protocol fo
 
 ### server::disabled\_endpoints
 
-_New in version 1.4.9_</br>
+_New in version 1.4.9_<br/>
 _Default: All endpoints are enabled_
 
 It is possible to disable certain HTTP location endpoints that are not needed.

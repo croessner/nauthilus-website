@@ -14,7 +14,10 @@ sidebar_position: 2
     * [server::address](#serveraddress)
     * [server::haproxy_v2](#serverhaproxy_v2)
     * [server::http3](#serverhttp3)
-    * [serer::tls](#serertls)
+    * [server::disabled\_endpoints](#serverdisabled_endpoints)
+      * [Meaning](#meaning-1)
+    * [server::http\_client](#serverhttp_client)
+    * [server::tls](#servertls)
       * [server::tls::enabled](#servertlsenabled)
       * [server::tls::cert and server::tls::key](#servertlscert-and-servertlskey)
       * [server::tls::http\_client\_skip\_verify](#servertlshttp_client_skip_verify)
@@ -71,6 +74,8 @@ sidebar_position: 2
   * [cleartext\_networks](#cleartext_networks)
   * [relay\_domains](#relay_domains)
     * [relay\_domains::static](#relay_domainsstatic)
+  * [backend\_server\_monitoring](#backend_server_monitoring)
+    * [backend\_server\_monitoring::backend\_servers](#backend_server_monitoringbackend_servers)
   * [brute\_force](#brute_force)
       * [Recommendation](#recommendation)
     * [brute\_force::buckets](#brute_forcebuckets)
@@ -142,6 +147,8 @@ full example is shown at the end of this document.
 Each section has individual subsections. See details below. If you do not require some sections, please do not include
 it into the configuration file.
 
+--- 
+
 ## Reloading
 
 You can send a HUP-signal to Nauthilus, which will stop LDAP connections, reload the configuration file and
@@ -153,6 +160,8 @@ second signal **-SIGUSR1** to restart the server process itself.
 :::warning
 Changing environment variables need a full restart of the service. Re-reading variables can not be done by sending signals.
 :::
+
+---
 
 ## server
 
@@ -185,7 +194,77 @@ _Default: false_
 
 Enable HTTP/3 support for the server. There does not exist the PROXY protocol for this version!
 
-### serer::tls
+### server::disabled\_endpoints
+
+_New in version 1.4.9_</br>
+_Default: All endpoints are enabled_
+
+It is possible to disable certain HTTP location endpoints that are not needed.
+
+```yaml
+server:
+  disabled_endpoints:
+    auth_header: false
+    auth_json: false
+    auth_basic: false
+    auth_nginx: false
+    auth_saslauthd: false
+```
+
+:::tip
+Disableing unused endpoints may enhance overall security!
+:::
+
+#### Meaning
+
+| Key-name        | location               | description                                                    |
+|-----------------|------------------------|----------------------------------------------------------------|
+| auth\_header    | /api/v1/auth/header    | Turn off requests based on HTTP headers                        |
+| auth\_json      | /api/v1/auth/json      | Turn off HTTP JSON-POST requests                               |
+| auth\_basic     | /api/v1/auth/basic     | Turn off HTTP Basic Authorization requests (recommended!)      |
+| auth\_nginx     | /api/v1/auth/nginx     | Turn off Nginx based requests used by the mail plugin of Nginx |
+| auth\_saslauthd | /api/v1/auth/saslauthd | Turn off saslauthd requests used with cyrus-sasl               |
+| custom\_hooks   | /api/v1/custom/*       | Turn off all Lua based custom hooks                            |
+
+### server::http\_client
+
+Whenever Nauthilus is acting as an HTTP client, a common shared Go-builtin HTTP client is used to handle all requests.
+
+There do exist the following HTTP clients in Nauthilus:
+
+| Scope   | Usage                                                                                     |
+|---------|-------------------------------------------------------------------------------------------|
+| core    | If the Ory hydra frontend is turned on, all admin-API requests are handled by this client |
+| action  | Used for Lua actions, if HTTP requests are used                                           |
+| filter  | Used for Lua filters, if HTTP requests are used                                           |
+| feature | Used for Lua featuress, if HTTP requests are used                                         |
+| hook    | Used for Lua custom hooks, if HTTP requests are used                                      |
+
+Settings are shared with all HTTP clients!
+
+| Setting                           | Meaning (Used from official Go docs)                                                                                                                  | Default      |
+|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
+| max\_connections\_per\_host       | Limits the total number of connections per host, including connections in the dialing, active, and idle states. On limit violation, dials will block. | 0, no limits |
+| max\_idle\_connections            | Controls the maximum number of idle (keep-alive) connections across all hosts.                                                                        | 0, no limits |
+| max\_idle\_connections\_per\_host | Controls the maximum idle (keep-alive) connections to keep per-host.                                                                                  | 0, no limits |
+| idle\_connection\_timeout         | Is the maximum amount of time an idle (keep-alive) connection will remain idle before closing itself.                                                 | 0, no limits |
+
+Units for the timeout option should add a time unit like
+
+* s - seconds
+* m - minutes
+* h - hours
+
+```yaml
+server:
+  http_client:
+      max_connections_per_host: 10
+      max_idle_connections: 5
+      max_idle_connections_per_host: 1
+      idle_connection_timeout: 60s
+```
+
+### server::tls
 
 This object defines TLS related settings.
 
@@ -537,6 +616,14 @@ server:
     negative_cache_ttl: 7200
 ```
 
+_Changes in version 1.4.9:_
+
+Units should now add a time unit like
+
+* s - seconds
+* m - minutes
+* h - hours
+
 #### server::redis::master
 
 If running Redis standalone or in master-slave mode, you have to define the master object.
@@ -771,6 +858,9 @@ server:
       - request
       - dns
 ```
+
+---
+
 ## realtime\_blackhole\_lists
 
 This is the *rbl* feature. It checks a remote client IP address against a list of defined RBL lists. The lists are run
@@ -823,6 +913,8 @@ realtime_blackhole_lists:
     - fe80::/10
 ```
 
+---
+
 ## cleartext\_networks
 _Default: empty list_
 
@@ -841,6 +933,8 @@ cleartext_networks:
   - ::1
 ```
 
+---
+
 ## relay\_domains
 
 If the username equals to an email address, Nauthilus can split the login into the local and domain part. The latter is
@@ -857,6 +951,66 @@ relay_domains:
     - example.com
     - foobar.org
 ```
+
+---
+
+## backend\_server\_monitoring
+
+If you have turned on the feature **backend\_server\_monitoring**, Nauthilus is able to do liveness probes for backend servers.
+The result is updated every 20 seconds (hard-coded for now). This information can be used in Lua scripts. The initial idea was to
+chose a backend server for the Nginx-based authentication process. Other usecases are also possible, depending on your needs.
+
+### backend\_server\_monitoring::backend\_servers
+
+This configuration block defines servers to be monitored.
+
+The following protocols can be used to monitor a backend server:
+
+* smtp
+* lmtp
+* pop3
+* imap
+* sieve
+* http
+
+Servers can have a lightweight check, where only the connection is tested.
+
+:::note
+A connect timeout of 5 seconds is used. Also for reading and writing to an established connection.
+:::
+
+If the HAproxy flag is set, this is checked as well.
+
+Having TLS settings for a backend, a handshake is done on top of the connection.
+
+:::warn
+We currently only support plain or TLS-on-connect connections. Only sieve has STARTTLS support 
+:::
+
+If deep checks are enabled, Nauthilus talks the configured protocol with each backend. Optionally, a givven test user and its password can
+be used to verify a successful connection to the backend. We recommend to have one test user for each backend to prevent
+technical problems with backend servers (for example index issues with Dovecot).
+
+Example usage:
+
+```yaml
+backend_server_monitoring:
+
+  backend_servers:
+    - protocol: imap
+      host: 192.168.0.2
+      port: 993
+      deep_check: true
+      test_username: some_unique_test_user
+      test_password: some_password
+      tls: true
+      tls_skip_verify: true
+      haproxy_v2: true
+```
+
+The settings should be self-explained.
+
+---
 
 ## brute\_force
 
@@ -907,6 +1061,8 @@ brute_force:
     - 192.168.0.0/16
 ```
 
+---
+
 ## password\_nonce
 _Default: ""_<br/>
 _required_
@@ -918,6 +1074,8 @@ is used in Redis.
 flowchart LR
   Password --> prep["Nonce\0Password"] --> SHA256 -- truncate --> bytes["Pseudo password"]
 ```
+
+---
 
 ## oauth2
 _Default: nil_
@@ -1135,6 +1293,8 @@ If you want to enforce policies, make use of Lua filters, because they never inf
 If you combine both aspects in the backends, you will risk of learning correct passwords as wrong!
 :::
 
+---
+
 ## Protocols
 
 Backends carry configuration information about protocols. A protocol is something like **smtp** or **imap** but can be
@@ -1170,6 +1330,8 @@ will use this backend for username and passowrd checks.
 
 The protocol **ory-hydra** is for OAuth2/OpenID Connect. Note that it is ory-hydra and not oauth2, as other servers may
 appear in the future with different bindings/dependencies to Nauthilus.
+
+---
 
 ## Macros
 
@@ -1225,6 +1387,8 @@ Lower case form of a username (full email, if user string contains a '@' charact
 %L{user}
 ```
 
+---
+
 ## Cache namespaces
 
 Each protocol block can define a Redis cache namespace. That is especially useful, if you require different results
@@ -1234,6 +1398,8 @@ You can apply the same namespaces to different protocols as long as the requeste
 you use the Dovecot IMAP/POP3 server i.e. with the submission proxy feature, Dovecot requires the same information for *
 *imap** and **submission**, but your protocol sections may serve different queries/filters. But the list of returned
 keys (not values) will be the same. See the full example below to get an idea.
+
+---
 
 ## Encrypted passwords
 
@@ -1255,6 +1421,8 @@ Encoded formats:
 * Argon2id
 
 The Lua backend can use a built-in function to compare such passwords.
+
+---
 
 ## LDAP
 _Default: nil_
@@ -1428,6 +1596,8 @@ objectclass ( RNSLDAPoc:1
 
 It will be anhanced over time to support webauthn as well.
 
+---
+
 ## Lua backend
 _Default: nil_
 
@@ -1559,6 +1729,8 @@ lua:
       cache_name: oidc
 ```
 
+---
+
 ## Full example (standalone)
 
 ```yaml
@@ -1575,8 +1747,8 @@ server:
 
   basic_auth:
     enabled: true
-    username: authserv
-    password: authserv
+    username: nauthilus
+    password: nauthilus
 
   instance_name: nauthilus_demo
 
@@ -1623,8 +1795,8 @@ server:
     prefix: nt_
     pool_size: 10
 
-    positive_cache_ttl: 3600
-    negative_cache_ttl: 7200
+    positive_cache_ttl: 3600s
+    negative_cache_ttl: 7200s
 
     master:
       address: 127.0.0.1:6379

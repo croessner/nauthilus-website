@@ -170,6 +170,9 @@ sequenceDiagram
     end
     deactivate Actions
 ```
+
+---
+
 ## Additional things to know
 
 When starting the server, it is possible to call an init script, which may be used to register prometheus elements, start
@@ -185,9 +188,13 @@ things from there.
 
 Lua scripts can modify the final log line by adding key-value pairs from each script.
 
+---
+
 ## Configuration
 
 For the configuration, please have a look for the [configuration file](configuration-file.md) document.
+
+---
 
 ## Lua components
 
@@ -195,6 +202,8 @@ Each component does provide a set of global functions, constants, ... and requir
 
 Every Lua script that has been configured, is pre-compiled and kept in memory for future use. To make script changes, you
 must reload the service.
+
+---
 
 ## Lua libraries
 
@@ -337,12 +346,16 @@ As an example have a look at the telegram script. Lua scripts in earlier stages 
 information by using the Lua context. The telegram script may pick up these information and decide to send out some 
 notifications to an operator channel.
 
+---
+
 ## Required functions and constants
 
 Every Lua script must provide a pre-defined Lua function with a request parameter. Concerning the actual script, there is
 a requried return statement.
 
 Nauthilus will look for these functions and parses the results.
+
+---
 
 ## Common request fields for all Lua scripts
 
@@ -555,6 +568,8 @@ Only "debug" and "session" from the common requests are available.
 
 Only "debug" and "session" from the common requests as well as "totp\_secret" (string)  are available.
 
+---
+
 ## UserData object backend\_result
 
 The **nauthilus\_backend\_result** object can be initialized in the Lua backend and in Lua filters. The following methods exist:
@@ -600,6 +615,8 @@ sent back to the client application that talked to Nauthilus. These headeres wil
 
 For the generic endpoints, "attributes" will bew returned in the JSON respone.
 
+---
+
 # API
 
 ## Context
@@ -643,6 +660,8 @@ local nauthilus_context = require("nauthilus_context")
 nauthilus_context.context_delete("key")
 ```
 
+---
+
 ## Redis
 
 There is basic Redis support in Nauthilus. Most of the time it should be enough to use simple Redis keys and string values
@@ -652,6 +671,8 @@ as arguments. Type conversion can be done within Lua itself.
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 ```
+
+---
 
 ## Redis custom pools
 
@@ -687,6 +708,8 @@ You can define as many pools as you like. Currently supported is "standalone", "
 Documentation for the parameters is TODO.
 
 In the following, I will use the name "handle" for a pool handler.
+
+---
 
 ## Functions
 
@@ -947,6 +970,8 @@ TODO:
 * redis_upload_script(handle, "Redis lua code...", "upload\_script\_name")
 * redis_run_script(handle, "script or empty", "upload\_script\_name", \{ redis\_key \}, \{ args \})
 
+---
+
 ## Prometheus
 
 TODO:
@@ -962,11 +987,15 @@ TODO:
 * start_histogram_timer
 * stop_timer
 
+---
+
 ## PS net
 
 TODO:
 
 * nauthilus_psnet.register_connection_target
+
+---
 
 ## HTTP request
 
@@ -1017,6 +1046,8 @@ local nauthilus_http_request = require("nauthilus_http_request")
 local body = nauthilus_http_request.get_http_request_body()
 ```
 
+---
+
 ## Generic Lua functions
 
 ### nauthilus\_builtin.status\_message\_set
@@ -1044,6 +1075,8 @@ nauthilus_builtin.custom_log_add("key", value)
 ```
 
 A **value** can be a string, number or boolean. Anything else is replaced as "UNSUPPORTED".
+
+---
 
 ## Feature backend\_server\_monitoring enabled
 
@@ -1154,6 +1187,8 @@ If anything went fine, **error** equals nil, else it stores a string with an err
 Normally you should not do this, as this will open a connection for each client  request!
 :::
 
+---
+
 ## Backend LDAP used
 
 It is possible to send LDAP search requests to the main LDAP worker pool, if the **ldap** backend is enabled.
@@ -1201,6 +1236,8 @@ are Lua tables with all values (multi value).
 LDAP search requests are blocking operations!
 :::
 
+---
+
 ## Password
 
 ```lua
@@ -1242,6 +1279,8 @@ local ppolicy_ok = nauthilus_password.check_password_policy({
             min_special = 0,
         }, password)
 ```
+
+---
 
 ## Mail
 
@@ -1308,6 +1347,8 @@ The table expects the following keys:
 | starttls  | Use starttls command true/false                        |
 | lmtp      | Do we send with LMTP (true) or SMTP (false)?           |
 
+---
+
 ## Misc
 
 ```lua
@@ -1337,6 +1378,8 @@ local nauthilus_misc = require("nauthilus_misc")
 
 nauthilus_misc.wait_random(500, 3000)
 ```
+
+---
 
 ## Additional notes
 

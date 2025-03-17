@@ -4,6 +4,7 @@ description: Full documentation for the configuration file
 keywords: [Configuration, File]
 sidebar_position: 2
 ---
+
 <!-- TOC -->
   * [Structure](#structure)
     * [Features](#features)
@@ -1601,7 +1602,7 @@ It will be anhanced over time to support webauthn as well.
 ## Lua backend
 _Default: nil_
 
-The Lua backend is described in detail [here](/docs/configuration/lua-support.md).
+The Lua backend is described in detail in the [Lua API](/docs/lua-api/introduction).
 
 ### lua::features
 

@@ -29,6 +29,8 @@ sidebar_position: 12
   * [nauthilus\_redis.redis\_smembers](#nauthilus_redisredis_smembers)
   * [nauthilus\_redis.redis\_srem](#nauthilus_redisredis_srem)
   * [nauthilus\_redis.redis\_scard](#nauthilus_redisredis_scard)
+  * [nauthilus\_redis.redis\_upload\script](#nauthilus_redisredis_uploadscript)
+  * [nauthilus\_redis.redis\_run\redis](#nauthilus_redisredis_runredis)
 <!-- TOC -->
 
 # Redis
@@ -334,7 +336,49 @@ local key = "some_key"
 local result, err = nauthilus_redis.redis_scard(handle, key)
 ```
 
-TODO:
+## nauthilus\_redis.redis\_upload\script
 
-* redis_upload_script(handle, "Redis lua code...", "upload\_script\_name")
-* redis_run_script(handle, "script or empty", "upload\_script\_name", \{ redis\_key \}, \{ args \})
+Upload a Redis script onto a Redis server. If successful an sha1 hash is returned, nil on failure with an error returned as second result.
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local script = [[
+        local redis_key = KEYS[1]
+        local send_mail = redis.call('HGET', redis_key, 'send_mail')
+
+        if send_mail == false then
+            redis.call('HSET', redis_key, 'send_mail', '1')
+
+            return {'send_email', redis_key}
+        else
+            return {'email_already_sent'}
+        end
+    ]]
+
+local upload_script_name = "nauthilus_send_mail_hash"
+local sha1, err_upload = nauthilus_redis.redis_upload_script(handle, script, upload_script_name)
+```
+
+:::tip
+Use an init script to upload scripts at startup
+:::
+
+## nauthilus\_redis.redis\_run\redis
+
+With this command, you can either upload a script and run it once, or you can run an already uploaded script by
+giving the upload-script-name (defined by an upload call earlier. See above).
+
+```lua
+local redis_key = "some_redis_key"
+local script = ""
+local upload_script_name = "nauthilus_send_mail_hash"
+
+-- Set either script or upload_script_name!
+local script_result, err_run_script = nauthilus_redis.redis_run_script(handle, script, upload_script_name, { redis_key }, {})
+```
+
+:::note
+If running a script, you must set the upload-script-name to ""
+:::

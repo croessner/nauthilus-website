@@ -1,5 +1,5 @@
 ---
-title: Lua support
+title: Introduction
 description: Introduction to the Nauthilus builtin Lua support
 keywords: [Lua]
 sidebar_position: 1
@@ -225,7 +225,7 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 dynamic_loader("nauthilus_context")
-local nauthilus_builtin.context = require("nauthilus_context")
+local nauthilus_builtin_context = require("nauthilus_context")
 
 dynamic_loader("nauthilus_gluacrypto")
 local crypto = require("crypto")

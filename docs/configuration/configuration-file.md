@@ -984,7 +984,7 @@ If the HAproxy flag is set, this is checked as well.
 
 Having TLS settings for a backend, a handshake is done on top of the connection.
 
-:::warn
+:::warning
 We currently only support plain or TLS-on-connect connections. Only sieve has STARTTLS support 
 :::
 

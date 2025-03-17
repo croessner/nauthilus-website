@@ -4,12 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Refactored Lua support documentation.&#10;&#10;The Lua support documentation has been split into many smaller pages to enhance the user experience.">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/introduction.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/introduction.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/css/custom.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/css/custom.css" afterDir="false" />
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Add pan-zoom support for Mermaid diagrams and refine layout&#10;&#10;Introduced `panzoom` integration to allow interactive zooming and panning for Mermaid diagrams, enhancing user interactivity. Updated CSS styles and added a dynamic description for usability. Refined project dependencies, including `panzoom`, and adjusted DOM observation for rendering Mermaid containers effectively.">
+      <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -253,14 +249,21 @@
       <option name="project" value="LOCAL" />
       <updated>1742220489909</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="Add pan-zoom support for Mermaid diagrams and refine layout&#10;&#10;Introduced `panzoom` integration to allow interactive zooming and panning for Mermaid diagrams, enhancing user interactivity. Updated CSS styles and added a dynamic description for usability. Refined project dependencies, including `panzoom`, and adjusted DOM observation for rendering Mermaid containers effectively.">
+      <option name="closed" value="true" />
+      <created>1742225012804</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1742225012804</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Updating documentation" />
     <MESSAGE value="Update documentation WIP" />
     <MESSAGE value="Update configuration documentation and add golinter settings&#10;&#10;Extended the configuration-file documentation with more detailed descriptions and added golinter settings in the .idea workspace. The changes in workspace also include adjusting commit messages in the Git settings and task updates." />
     <MESSAGE value="Update configuration documentation&#10;&#10;Detailed configuration attributes have been added to the documentation. The changes encompass sections including Redis, realtime_blackhole_lists, brute_force, and relay_domains among others. The update improves comprehension and usability." />
@@ -285,7 +288,8 @@
     <MESSAGE value="Remove Lua support documentation.&#10;&#10;The Lua support documentation has been deleted as part of repository cleanup. This might indicate deprecation or migration of Lua-related features, pending further updates on functionality changes." />
     <MESSAGE value="Remove Lua support documentation&#10;&#10;The Lua support documentation for Nauthilus has been completely removed. This change suggests that Lua-related functionality may no longer require dedicated documentation or might have been deprecated. Ensure compatibility or reference alternative resources if required." />
     <MESSAGE value="Refactored Lua support documentation.&#10;&#10;The Lua support documentation has been split into many smaller pages to enhance the user experience." />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactored Lua support documentation.&#10;&#10;The Lua support documentation has been split into many smaller pages to enhance the user experience." />
+    <MESSAGE value="Add pan-zoom support for Mermaid diagrams and refine layout&#10;&#10;Introduced `panzoom` integration to allow interactive zooming and panning for Mermaid diagrams, enhancing user interactivity. Updated CSS styles and added a dynamic description for usability. Refined project dependencies, including `panzoom`, and adjusted DOM observation for rendering Mermaid containers effectively." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add pan-zoom support for Mermaid diagrams and refine layout&#10;&#10;Introduced `panzoom` integration to allow interactive zooming and panning for Mermaid diagrams, enhancing user interactivity. Updated CSS styles and added a dynamic description for usability. Refined project dependencies, including `panzoom`, and adjusted DOM observation for rendering Mermaid containers effectively." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

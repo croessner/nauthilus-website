@@ -120,8 +120,6 @@ sequenceDiagram
     deactivate Actions
 ```
 
----
-
 ## Additional things to know
 
 When starting the server, it is possible to call an init script, which may be used to register prometheus elements, start

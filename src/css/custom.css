@@ -28,3 +28,26 @@
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+.mermaid-description {
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+  color: #6c757d;
+  margin-bottom: 10px;
+}
+
+.docusaurus-mermaid-container {
+  overflow: hidden;
+  max-width: 100%;
+  height: auto;
+  position: relative;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .docusaurus-mermaid-container {
+    max-height: 300px;
+  }
+}
+

@@ -45,6 +45,7 @@ This method retrieves all associsated networks for a given username and feature.
 ```lua
 local username = "testuser"
 local feature = "brute_force"
+
 local result_table = nauthilus_soft_whitelist.soft_whitelist_get(username, feature)
 
 -- result_table will be { [1] = "192.168.0.0/24" } for the example above

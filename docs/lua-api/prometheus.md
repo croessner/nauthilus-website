@@ -7,21 +7,21 @@ sidebar_position: 10
 
 <!-- TOC -->
 * [Prometheus](#prometheus)
-  * [Gauges](#gauges)
+  * [Gauge vector](#gauge-vector)
     * [nauthilus\_prometheus.create\_gauge\_vec](#nauthilus_prometheuscreate_gauge_vec)
     * [nauthilus\_prometheus.add\_gauge](#nauthilus_prometheusadd_gauge)
     * [nauthilus\_prometheus.sub\_gauge](#nauthilus_prometheussub_gauge)
     * [nauthilus\_prometheus.set\_gauge](#nauthilus_prometheusset_gauge)
     * [nauthilus\_prometheus.increment\_gauge](#nauthilus_prometheusincrement_gauge)
     * [nauthilus\_prometheus.decrement\_gauge](#nauthilus_prometheusdecrement_gauge)
-  * [Counter](#counter)
+  * [Counter vector](#counter-vector)
     * [nauthilus\_prometheus.create\_counter\_vec](#nauthilus_prometheuscreate_counter_vec)
     * [nauthilus\_prometheus.increment\_counter](#nauthilus_prometheusincrement_counter)
   * [Summary vector](#summary-vector)
     * [nauthilus\_prometheus.create_summary_vec](#nauthilus_prometheuscreate_summary_vec)
     * [nauthilus\_prometheus.start\_summary\_timer](#nauthilus_prometheusstart_summary_timer)
     * [nauthilus\_prometheus.stop\_timer](#nauthilus_prometheusstop_timer)
-  * [Histogram](#histogram)
+  * [Histogram vector](#histogram-vector)
     * [nauthilus\_prometheus.create\_histogram\_vec](#nauthilus_prometheuscreate_histogram_vec)
     * [nauthilus\_prometheus.start\_histogram\_timer](#nauthilus_prometheusstart_histogram_timer)
     * [nauthilus\_prometheus.stop\_timer](#nauthilus_prometheusstop_timer-1)
@@ -36,9 +36,9 @@ dynamic_loader("nauthilus_prometheus")
 local nauthilus_prometheus = require("nauthilus_prometheus")
 ```
 
-## Gauges
+## Gauge vector
 
-You must create a gauge vec first before using it. This should be done in an init script.
+You must create a gauge vector first before using it. This should be done in an init script.
 
 ### nauthilus\_prometheus.create\_gauge\_vec
 
@@ -110,9 +110,9 @@ nauthilus_prometheus.decrement_gauge(name, { service = "some_service_name" })
 
 ---
 
-## Counter
+## Counter vector
 
-You must create a counter vec first before using it. This should be done in an init script.
+You must create a counter vector first before using it. This should be done in an init script.
 
 ### nauthilus\_prometheus.create\_counter\_vec
 
@@ -141,7 +141,7 @@ nauthilus_prometheus.increment_counter(name, labels)
 
 ## Summary vector
 
-You must create a summary vec first before using it. This should be done in an init script.
+You must create a summary vector first before using it. This should be done in an init script.
 
 ### nauthilus\_prometheus.create_summary_vec
 
@@ -178,9 +178,9 @@ nauthilus_prometheus.stop_timer(user_data_timer)
 
 ---
 
-## Histogram
+## Histogram vector
 
-You must create a histogram vec first before using it. This should be done in an init script.
+You must create a histogram vector first before using it. This should be done in an init script.
 
 ### nauthilus\_prometheus.create\_histogram\_vec
 

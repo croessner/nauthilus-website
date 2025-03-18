@@ -30,52 +30,42 @@ flowchart TB
         app --> postfix
         app --> keycloak
     end
-
     subgraph Nauthilus
         direction TB
         as(((Nauthilus)))
     end
-
-
     subgraph Keycloak
         direction TB
         keycloak[Keycloak OIDC/SAML] --> nauthiluskeycloak[Nauthilus-Keycloak] 
         nauthiluskeycloak --> as
     end
-
     subgraph Resources
         as -. uses .-> redis[(Redis DB)]
         as -. may use .-> ldap[(LDAP)]
         as -. may use .-> lua[(Lua backend)]
         as -. may use .-> dns[(DNS Resolver)]
     end
-
     subgraph Metrics
         prom[Prometheus] -. uses .-> as
     end
-
     subgraph Postfix
         direction LR
         postfix[Postfix] -. uses .-> pfxhttp
         pfxhttp --> as
     end
-
     subgraph Dovecot
         direction LR
         dcot[Dovecot] -. uses .-> luabackend[Lua backend]
         luabackend --> as
     end
-
     subgraph Nginx
         direction LR
         ngx[Nginx] -. uses .-> ngxmailplugin[Mail plugin]
         ngxmailplugin --> as
     end
-
     subgraph GeoIP Policyd
         as -. may use .-> geopol[GeoIP Policyd]
     end
-
     subgraph Blocklist
         as -. may use .-> blocklist[Blocklist service]
     end

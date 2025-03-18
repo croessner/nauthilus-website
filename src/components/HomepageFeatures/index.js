@@ -22,11 +22,20 @@ const FeatureList = [
     ),
   },
   {
+    title: 'Postfix',
+    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    description: (
+      <>
+        With the help of the program pfxhttp, Nauthilus can be used for socket maps and policy services.
+      </>
+    ),
+  },
+  {
     title: 'SSO',
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        With the help of the open source OAuth2 OpenID connect server from Ory Hydra, Nauthilus can be used for their login, consent and logout flows.
+        Nauthilus works seamlessly with Keycloak. By using nauthilus-keycloak, Nauthilus can serve as an authentication and authorization backend.
       </>
     ),
   },
@@ -53,7 +62,7 @@ const FeatureList = [
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        There is currently support for OpenLDAP/AD, MySQL/MariaDB, Postgres and Lua.
+        Nauthilus has native support for OpenLDAP/AD and Lua. Support for other databases is included in the Lua API.
       </>
     ),
   },

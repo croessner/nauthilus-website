@@ -382,3 +382,260 @@ local script_result, err_run_script = nauthilus_redis.redis_run_script(handle, s
 :::note
 If running a script, you must set the upload-script-name to ""
 :::
+
+
+## nauthilus\_redis.redis\_zadd
+
+_New in version 1.4.10_
+
+Adds members with their associated scores to a Redis Sorted Set.
+
+### Syntax
+
+```lua
+local result, err = nauthilus_redis.redis_zadd(key, members)
+```
+
+### Parameters
+
+- `key` (string): The name of the Redis Sorted Set.
+- `members` (table): A Lua table where:
+  - **Keys** are the members (strings).
+  - **Values** are the scores (numbers).
+
+### Returns
+
+- `result` (number): The total number of members successfully added.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local added, err = nauthilus_redis.redis_zadd("my_sorted_set", { member1 = 10, member2 = 20 })
+if err then
+    print("Error:", err)
+else
+    print("Added elements:", added)
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zrange
+
+_New in version 1.4.10_
+
+Retrieves a subset of elements from a Redis Sorted Set based on an index range (in ascending order).
+
+### Syntax
+
+```lua
+local elements, err = nauthilus_redis.redis_zrange(key, start, stop)
+```
+
+### Parameters
+
+- `key` (string): The name of the Redis Sorted Set.
+- `start` (number): The starting index of the range.
+- `stop` (number): The stopping index of the range.
+
+### Returns
+
+- `elements` (table): A Lua table containing the retrieved elements.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local elements, err = nauthilus_redis.redis_zrange("my_sorted_set", 0, -1)
+if err then
+    print("Error:", err)
+else
+    for _, val in ipairs(elements) do
+        print(val)
+    end
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zrevrange
+
+_New in version 1.4.10_
+
+Retrieves a subset of elements from a Redis Sorted Set in descending order based on an index range.
+
+### Syntax
+
+```lua
+local elements, err = nauthilus_redis.redis_zrevrange(key, start, stop)
+```
+
+### Parameters
+- `key` (string): The name of the Redis Sorted Set.
+- `start` (number): The starting index of the range.
+- `stop` (number): The stopping index of the range.
+
+### Returns
+- `elements` (table): A Lua table containing the retrieved elements.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local elements, err = nauthilus_redis.redis_zrevrange("my_sorted_set", 0, -1)
+if err then
+    print("Error:", err)
+else
+    for _, val in ipairs(elements) do
+        print(val)
+    end
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zrangebyscore
+
+_New in version 1.4.10_
+
+Retrieves elements within a score range from a Redis Sorted Set. Optional pagination is supported.
+
+### Syntax
+
+```lua
+local elements, err = nauthilus_redis.redis_zrangebyscore(key, min_score, max_score, options)
+```
+
+### Parameters
+
+- `key` (string): The name of the Redis Sorted Set.
+- `min_score` (number): The lower bound of the score range.
+- `max_score` (number): The upper bound of the score range.
+- `options` (table, optional): A Lua table for optional pagination:
+  - `offset` (number): The starting position of the results.
+  - `count` (number): The maximum number of results retrieved.
+
+### Returns
+
+- `elements` (table): A Lua table containing the retrieved elements.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local elements, err = nauthilus_redis.redis_zrangebyscore("my_sorted_set", 10, 50, { offset = 0, count = 5 })
+if err then
+    print("Error:", err)
+else
+    for _, val in ipairs(elements) do
+        print(val)
+    end
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zrem
+
+_New in version 1.4.10_
+
+Removes members from a Redis Sorted Set.
+
+### Syntax
+
+```lua
+local result, err = nauthilus_redis.redis_zrem(key, members)
+```
+
+### Parameters
+
+- `key` (string): The name of the Redis Sorted Set.
+- `members` (table): A Lua table containing the members (as strings) to be removed.
+
+### Returns
+
+- `result` (number): The number of members successfully removed.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local removed, err = nauthilus_redis.redis_zrem("my_sorted_set", { "member1", "member2" })
+if err then
+    print("Error:", err)
+else
+    print("Removed elements:", removed)
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zrank
+
+_New in version 1.4.10_
+
+Gets the rank of a member in a Redis Sorted Set, with scores sorted in ascending order.
+
+### Syntax
+
+```lua
+local rank, err = nauthilus_redis.redis_zrank(key, member)
+```
+
+### Parameters
+
+- `key` (string): The name of the Redis Sorted Set.
+- `member` (string): The member whose rank you want to retrieve.
+
+### Returns
+
+- `rank` (number): The rank of the member (0-based index).
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local rank, err = nauthilus_redis.redis_zrank("my_sorted_set", "member1")
+if err then
+    print("Error:", err)
+else
+    print("Rank of member:", rank)
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zremrangebyscore
+
+_New in version 1.4.10_
+
+Removes all members within a given score range from a Redis Sorted Set.
+
+### Syntax
+
+```lua
+local result, err = nauthilus_redis.redis_zremrangebyscore(key, min_score, max_score)
+```
+
+### Parameters
+
+- `key` (string): The name of the Redis Sorted Set.
+- `min_score` (number): The lower bound of the score range.
+- `max_score` (number): The upper bound of the score range.
+
+### Returns
+
+- `result` (number): The number of members removed.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+local removed, err = nauthilus_redis.redis_zremrangebyscore("my_sorted_set", 10, 20)
+if err then
+    print("Error:", err)
+else
+    print("Removed elements:", removed)
+end
+```

@@ -29,6 +29,28 @@
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
 
+.hero--primary, .hero__title, .hero__subtitle, .navbar, .footer {
+  background-color: #162756;
+  color: #ffffff;
+}
+
+b.navbar__title {
+  color: #ffffff;
+}
+a.navbar__link {
+  color: #ffffff;
+}
+a.navbar__link:hover {
+  color: #d9d9d9;
+}
+
+a.navbar__link--active {
+  color: #ffffff;
+}
+a.navbar__link--active:hover {
+  color: #d9d9d9;
+}
+
 .mermaid-description {
   font-size: 12px;
   font-style: italic;

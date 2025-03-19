@@ -66,6 +66,15 @@ const FeatureList = [
       </>
     ),
   },
+  {
+    title: 'Commerical support',
+    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    description: (
+        <>
+          Nauthilus offers commercial support. For inquiries, please contact us at: <a href="mailto:support@nauthilus.com">support@nauthilus.com</a>.
+        </>
+    ),
+  },
 ];
 
 function Feature({Svg, title, description}) {

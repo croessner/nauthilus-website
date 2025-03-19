@@ -9,7 +9,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Nauthilus',
-  tagline: 'General purpose authentication and authorization server',
+  tagline: 'Authentication and authorization server',
   favicon: 'img/favicon.ico',
   onBrokenAnchors: "ignore",
 
@@ -187,8 +187,9 @@ const config = {
       },
 
       prism: {
-        theme: prismThemes.github,
-        darkTheme: prismThemes.dracula,
+        theme: prismThemes.vsLight,
+        darkTheme: prismThemes.vsDark,
+        additionalLanguages: ['lua', 'yaml'],
       },
     }),
 

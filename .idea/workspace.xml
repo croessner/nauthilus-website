@@ -4,13 +4,14 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Add Redis Sorted Set API methods in Lua documentation&#10;&#10;Documented Redis Sorted Set methods (`zadd`, `zrange`, `zrangebyscore`, etc.) with detailed syntax, parameters, return values, and examples. These additions aim to enhance developer understanding and API usability. Updated workspace settings to align with the new documentation changes.">
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Add commercial support info and improve UI and docs&#10;&#10;Added a new card to highlight Nauthilus commercial support on the homepage, along with an email contact link. Updated documentation to include deprecated features and clarify existing features. Improved the Docusaurus UI with theme updates, additional syntax highlighting, and color adjustments for better accessibility.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/about/current-features.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/about/current-features.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/lua-api/redis.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/redis.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docusaurus.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/docusaurus.config.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/components/HomepageFeatures/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/HomepageFeatures/index.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/css/custom.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/css/custom.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/static/img/logo.png" beforeDir="false" afterPath="$PROJECT_DIR$/static/img/logo.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/impressum.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/index.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,27 +65,27 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
-    "git-widget-placeholder": "main",
-    "go.import.settings.migrated": "true",
-    "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/Users/croessner",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "npm.build.executor": "Run",
-    "npm.docusaurus.executor": "Run",
-    "npm.start.executor": "Run",
-    "ts.external.directory.path": "/Users/croessner/Applications/GoLand.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/croessner&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;npm.build.executor&quot;: &quot;Run&quot;,
+    &quot;npm.docusaurus.executor&quot;: &quot;Run&quot;,
+    &quot;npm.start.executor&quot;: &quot;Run&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/croessner/Applications/GoLand.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/docs/Lua API" />
@@ -116,8 +117,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-gosdk-d297c17c1fbd-57c114c3cede-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.25659.52" />
-        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-GO-243.25659.52" />
+        <option value="bundled-gosdk-d297c17c1fbd-57c114c3cede-org.jetbrains.plugins.go.sharedIndexes.bundled-GO-243.26053.20" />
+        <option value="bundled-js-predefined-d6986cc7102b-1632447f56bf-JavaScript-GO-243.26053.20" />
       </set>
     </attachedChunks>
   </component>
@@ -346,14 +347,21 @@
       <option name="project" value="LOCAL" />
       <updated>1742387974806</updated>
     </task>
-    <option name="localTasksCounter" value="28" />
+    <task id="LOCAL-00028" summary="Add commercial support info and improve UI and docs&#10;&#10;Added a new card to highlight Nauthilus commercial support on the homepage, along with an email contact link. Updated documentation to include deprecated features and clarify existing features. Improved the Docusaurus UI with theme updates, additional syntax highlighting, and color adjustments for better accessibility.">
+      <option name="closed" value="true" />
+      <created>1742397345730</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1742397345730</updated>
+    </task>
+    <option name="localTasksCounter" value="29" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Update API paths and dovecot-lua.md for streamlined auth&#10;&#10;Updated references to use consistent API paths for various authentication services. Enhanced the dovecot-lua.md example with more descriptive variable names and added support for session handling and JSON-based configurations." />
     <MESSAGE value="Update workspace tracking and dovecot Lua script improvements&#10;&#10;Added .md files to workspace tracking for better documentation oversight. Enhanced dovecot Lua script for more robust error handling and configuration, including added support for json-based authentication and improved HTTP request logic. Updated REST API documentation to reflect new endpoints and configuration details." />
     <MESSAGE value="Update documentation and workspace settings&#10;&#10;Added new sections to docs for community support, features like SSO in Keycloak, and updates to Lua configuration, including Redis custom pools and Prometheus integration. Updated `.idea/workspace.xml` to track these changes for improved documentation oversight. Enhanced clarity and accessibility of existing documentation with additional examples and links." />
     <MESSAGE value="Add new configuration sections and Lua script features&#10;&#10;Updated documentation with new server configurations, including `disabled_endpoints`, `http_client`, and `backend_server_monitoring`. Enhanced Lua functionality with features like Redis custom pools and backend server monitoring support. Improved clarity and consistency across documentation with examples, links, and updated workspace settings." />
@@ -378,7 +386,8 @@
     <MESSAGE value="Refactor Prometheus Lua API docs and update workspace setup&#10;&#10;Revised Prometheus Lua API documentation with clearer terminology and detailed examples for gauge, counter, summary, and histogram vectors. Updated `.idea/workspace.xml` to incorporate project changes and improve task tracking. These changes enhance documentation clarity, maintainability, and project organization." />
     <MESSAGE value="Add Redis Sorted Set API methods in Lua documentation&#10;&#10;Introduced comprehensive documentation for Redis Sorted Set methods in the Lua API, including `zadd`, `zrange`, `zrangebyscore`, and others. These additions describe syntax, parameters, return values, and examples to enhance developer understanding. Updated workspace settings to reflect related changes." />
     <MESSAGE value="Add Redis Sorted Set API methods in Lua documentation&#10;&#10;Documented Redis Sorted Set methods (`zadd`, `zrange`, `zrangebyscore`, etc.) with detailed syntax, parameters, return values, and examples. These additions aim to enhance developer understanding and API usability. Updated workspace settings to align with the new documentation changes." />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Redis Sorted Set API methods in Lua documentation&#10;&#10;Documented Redis Sorted Set methods (`zadd`, `zrange`, `zrangebyscore`, etc.) with detailed syntax, parameters, return values, and examples. These additions aim to enhance developer understanding and API usability. Updated workspace settings to align with the new documentation changes." />
+    <MESSAGE value="Add commercial support info and improve UI and docs&#10;&#10;Added a new card to highlight Nauthilus commercial support on the homepage, along with an email contact link. Updated documentation to include deprecated features and clarify existing features. Improved the Docusaurus UI with theme updates, additional syntax highlighting, and color adjustments for better accessibility." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add commercial support info and improve UI and docs&#10;&#10;Added a new card to highlight Nauthilus commercial support on the homepage, along with an email contact link. Updated documentation to include deprecated features and clarify existing features. Improved the Docusaurus UI with theme updates, additional syntax highlighting, and color adjustments for better accessibility." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

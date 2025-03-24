@@ -140,11 +140,15 @@ const config = {
             ],
           },
           {
-            title: 'Legal stuff',
+            title: 'Legal information',
             items: [
               {
-                label: 'Imprint (German)',
-                to: '/impressum',
+                label: 'Legal notice',
+                to: '/legal-notice',
+              },
+              {
+                label: 'Privacy policy',
+                to: '/privacy-policy',
               },
             ],
           },

@@ -52,6 +52,7 @@ sidebar_position: 2
       * [server::redis::master::username and server::redis::master::password](#serverredismasterusername-and-serverredismasterpassword)
       * [server::redis::replica](#serverredisreplica)
       * [server::redis::replica::address](#serverredisreplicaaddress)
+      * [server::redis::replica::addresses](#serverredisreplicaaddresses)
       * [server::redis::sentinels](#serverredissentinels)
       * [server::redis::sentinels::master](#serverredissentinelsmaster)
       * [server::redis::sentinels::addresses](#serverredissentinelsaddresses)
@@ -81,6 +82,7 @@ sidebar_position: 2
       * [Recommendation](#recommendation)
     * [brute\_force::buckets](#brute_forcebuckets)
     * [brute\_force::ip\_whitelist](#brute_forceip_whitelist)
+    * [brute\_force::learning](#brute_forcelearning)
   * [password\_nonce](#password_nonce)
   * [oauth2](#oauth2)
       * [Configuration flow](#configuration-flow)
@@ -661,6 +663,7 @@ replica server, consider using sentinel instead or use some load balancer in fro
 connections to more than one replica instance.
 
 #### server::redis::replica::address
+_Deprecated in version 1.4.10_<br/>
 _Default: ""_
 
 This is the socket for a Redis connection to a replica instance.
@@ -670,6 +673,20 @@ server:
   redis:
     replica:
       address: 10.10.10.10:6379
+```
+
+#### server::redis::replica::addresses
+_New in version 1.4.10_<br/>
+_Default: []
+
+This is a list of one or more sockets for a Redis connection to a replica instance.
+
+```yaml
+server:
+  redis:
+    replica:
+      addresses:
+        - 10.10.10.10:6379
 ```
 
 #### server::redis::sentinels
@@ -1060,6 +1077,26 @@ brute_force:
     - 127.0.0.0/8
     - ::1
     - 192.168.0.0/16
+```
+
+### brute\_force::learning
+
+By default, Nauthilus does not learn from features such as `relay_domains` or RBLs, as this could lead to incorrect 
+learning. However, in environments where false positives can be ruled out, Nauthilus can also count violations in the buckets.
+
+The `learning` parameter can include the following strings to enable learning:
+
+* `realtime_blackhole_lists`
+* `cleartext_networks`
+* `relay_domains`
+* `brute_force`
+* `lua`
+
+```yaml
+brute_force:
+  learning:
+    - realtime_blackhole_lists
+    - lua
 ```
 
 ---

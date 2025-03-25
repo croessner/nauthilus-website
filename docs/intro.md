@@ -28,4 +28,4 @@ visit [https://nauthilus.org](https://nauthilus.org) for more information.
 
 ## License
 
-This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GPLv3 License - see the [LICENSE](https://www.gnu.org/licenses/gpl-3.0.txt) file for details.

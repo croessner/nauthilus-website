@@ -75,8 +75,15 @@ const config = {
         theme: { light: 'default', dark: 'dark' },
       },
       metadata: [
-        {name: 'keywords', content: 'authentication, mail'},
-        {name: 'twitter:card', content: 'summary_large_image'},
+        { name: 'keywords', content: 'authentication, authorization' },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { property: 'og:title', content: 'Nauthilus - Authentication & Authorization Server' },
+        { property: 'og:description', content: 'Nauthilus provides a powerful authentication and authorization server for modern applications.' },
+        { property: 'og:image', content: 'https://nauthilus.org/img/logo_nauthilus.png' },
+        { property: 'og:url', content: 'https://nauthilus.org' },
+        { name: 'twitter:title', content: 'Nauthilus - Authentication & Authorization Server' },
+        { name: 'twitter:description', content: 'Nauthilus provides a powerful authentication and authorization server for modern applications.' },
+        { name: 'twitter:image', content: 'https://nauthilus.org/img/logo_nauthilus.png' },
       ],
       headTags: [
         // Declare a <link> preconnect tag

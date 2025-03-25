@@ -23,8 +23,7 @@ This support ensures you have access to expert advice, guidance, and reliable so
 needs. Whether you require help with integration, troubleshooting, or customization, commercial support can provide
 you with peace of mind by ensuring smooth operations.
 
-If you are interested in purchasing commercial support for **Nauthilus**, please contact us for further details or
-visit [https://nauthilus.org](https://nauthilus.org) for more information.
+If you are interested in purchasing commercial support for **Nauthilus**, please contact us at [support@nauthilus.com](mailto:support@nauthilus.com)
 
 ## License
 

@@ -4,15 +4,7 @@ description: Compiling Nauthilus from source
 keywords: [Source, Build, Compile]
 sidebar_position: 2
 ---
-<!-- TOC -->
-* [Compiling](#compiling)
-  * [Pre requirements](#pre-requirements)
-  * [Building](#building)
-  * [Build tags](#build-tags)
-    * [dev](#dev)
-    * [register2fa](#register2fa)
-    * [avx and sonic](#avx-and-sonic)
-<!-- TOC -->
+
 # Compiling
 
 If you want to compile the source code by yourself, follow these steps.

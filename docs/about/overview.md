@@ -4,14 +4,6 @@ description: See how Nauthilus is integrated into a larger IT eco system
 keywords: [Overview, Components, Design]
 sidebar_position: 2
 ---
-
-<!-- TOC -->
-* [The big picture](#the-big-picture)
-  * [Compontents](#compontents)
-  * [Additional notes](#additional-notes)
-  * [Related projects](#related-projects)
-<!-- TOC -->
-
 # The big picture
 
 See how Nauthilus is integrated into a larger IT eco system.

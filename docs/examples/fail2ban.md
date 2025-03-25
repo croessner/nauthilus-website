@@ -8,15 +8,6 @@ sidebar_position: 4
 
 You can easily use fail2ban with nauthilus. This especially interesting, if you use the "rbl" feature.
 
-<!-- TOC -->
-* [Fail2Ban](#fail2ban)
-  * [Example log line for RBL](#example-log-line-for-rbl)
-  * [Example log line for failed logins](#example-log-line-for-failed-logins)
-  * [/etc/fail2ban/filter.d/nauthilus.conf](#etcfail2banfilterdnauthilusconf)
-  * [/etc/fail2ban/jail.local](#etcfail2banjaillocal)
-<!-- TOC -->
-
-
 ## Example log line for RBL
 
 ```

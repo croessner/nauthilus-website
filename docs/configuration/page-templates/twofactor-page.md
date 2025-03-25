@@ -9,11 +9,6 @@ sidebar_position: 7
 You can customize the two-factor template. For this, you should use the default file **twofactor.html** and make changes
 as you need.
 
-<!-- TOC -->
-* [Two factor page](#two-factor-page)
-  * [Fields and description](#fields-and-description)
-<!-- TOC -->
-
 There are several template fields that are required for Nauthilus to work.
 
 ## Fields and description

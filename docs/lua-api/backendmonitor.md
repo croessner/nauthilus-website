@@ -4,15 +4,6 @@ description: Backend server monitoring related functions
 keywords: [Lua]
 sidebar_position: 3
 ---
-
-<!-- TOC -->
-* [Backend server monitoring](#backend-server-monitoring)
-  * [nauthilus\_backend.get\_backend\_servers](#nauthilus_backendget_backend_servers)
-  * [nauthilus\_backend.select\_backend\_server and nauthilus\_backend.apply\_backend\_result](#nauthilus_backendselect_backend_server-and-nauthilus_backendapply_backend_result)
-  * [nauthilus\_backend.remove\_from\_backend\_result](#nauthilus_backendremove_from_backend_result)
-  * [nauthilus\_backend.check\_backend\_connection](#nauthilus_backendcheck_backend_connection)
-<!-- TOC -->
-
 # Backend server monitoring
 
 If the feature **backend\_server\_monitorin** is turned on, the following functions are available in **filters**:

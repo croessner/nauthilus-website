@@ -4,14 +4,6 @@ description: Soft whitelisting related functions for Nauthilus builtin features
 keywords: [Lua]
 sidebar_position: 13
 ---
-
-<!-- TOC -->
-* [Soft whitelisting](#soft-whitelisting)
-  * [nauthilus\_soft\_whitelist.soft\_whitelist\_set](#nauthilus_soft_whitelistsoft_whitelist_set)
-  * [nauthilus\_soft\_whitelist.soft\_whitelist\_get](#nauthilus_soft_whitelistsoft_whitelist_get)
-  * [nauthilus\_soft\_whitelist.soft\_whitelist\_delete](#nauthilus_soft_whitelistsoft_whitelist_delete)
-<!-- TOC -->
-
 # Soft whitelisting
 
 Features like **brute\_force**, **relay\_domains** and **rbl** support soft whitelists. You can dynamically adjust

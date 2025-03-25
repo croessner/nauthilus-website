@@ -4,14 +4,6 @@ description: HTTP request functions to deal with headers and body
 keywords: [Lua]
 sidebar_position: 5
 ---
-
-<!-- TOC -->
-* [HTTP request](#http-request)
-  * [nauthilus\_http.get\_all\_http\_request\_headers](#nauthilus_httpget_all_http_request_headers)
-  * [nauthilus\_http\_request.get\_http\_request\_header](#nauthilus_http_requestget_http_request_header)
-  * [nauthilus\_http\_request.get\_http\_request\_body](#nauthilus_http_requestget_http_request_body)
-<!-- TOC -->
-
 # HTTP request
 
 ```lua

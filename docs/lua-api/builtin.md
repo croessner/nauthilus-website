@@ -4,13 +4,6 @@ description: Logging and status messages
 keywords: [Lua]
 sidebar_position: 2
 ---
-
-<!-- TOC -->
-* [Builtin Lua functions](#builtin-lua-functions)
-  * [nauthilus\_builtin.status\_message\_set](#nauthilus_builtinstatus_message_set)
-  * [nauthilu\_builtin.custom\_log\_add](#nauthilu_builtincustom_log_add)
-<!-- TOC -->
-
 # Builtin Lua functions
 
 ## nauthilus\_builtin.status\_message\_set

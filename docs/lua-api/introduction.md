@@ -4,45 +4,6 @@ description: Introduction to the Nauthilus builtin Lua support
 keywords: [Lua]
 sidebar_position: 1
 ---
-
-<!-- TOC -->
-* [Lua Support](#lua-support)
-  * [Authentication workflow](#authentication-workflow)
-  * [Additional things to know](#additional-things-to-know)
-    * [While runtime...](#while-runtime)
-  * [Configuration](#configuration)
-  * [Lua components](#lua-components)
-  * [Lua libraries](#lua-libraries)
-    * [Actions](#actions)
-    * [Features](#features)
-    * [Lua backend](#lua-backend)
-    * [Filters](#filters)
-    * [Post actions](#post-actions)
-  * [Required functions and constants](#required-functions-and-constants)
-  * [Common request fields for all Lua scripts](#common-request-fields-for-all-lua-scripts)
-    * [Features](#features-1)
-      * [Constants for the returned result](#constants-for-the-returned-result)
-    * [Request fields](#request-fields)
-    * [Filters](#filters-1)
-      * [Constants for the returned result](#constants-for-the-returned-result-1)
-    * [Request fields](#request-fields-1)
-    * [Actions (including post)](#actions-including-post)
-      * [Constants for the returned result](#constants-for-the-returned-result-2)
-    * [Request fields](#request-fields-2)
-    * [Lua Backend](#lua-backend-1)
-      * [Constants for the returned result](#constants-for-the-returned-result-3)
-    * [Request fields](#request-fields-3)
-    * [Function nauthilus\_backend\_verify\_password request fields](#function-nauthilus_backend_verify_password-request-fields)
-    * [Function nauthilus\_backend\_list\_accounts request fields](#function-nauthilus_backend_list_accounts-request-fields)
-      * [Function nauthilus\_backend\_add\_totp request fields](#function-nauthilus_backend_add_totp-request-fields)
-  * [UserData object backend\_result](#userdata-object-backend_result)
-    * [backend](#backend)
-    * [filters](#filters-2)
-    * [Example usage for nauthilus\_backend\_result](#example-usage-for-nauthilus_backend_result)
-      * [Endpoints /api/v1/mail/dovecot, /api/v1/generic/user and /api/v1/generic/json](#endpoints-apiv1maildovecot-apiv1genericuser-and-apiv1genericjson)
-  * [Additional notes](#additional-notes)
-<!-- TOC -->
-
 # Lua Support
 
 Nauthilus has Lua 5.1 support in all areas of the service. To understand the interfaces, you must first get an idea of

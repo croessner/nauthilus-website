@@ -5,7 +5,7 @@ keywords: [Docker, Compose]
 sidebar_position: 1
 ---
 # Docker
-#
+
 The recommended way of installing Nauthilus is using docker.
 
 ## Using docker compose

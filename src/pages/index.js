@@ -12,11 +12,11 @@ function HomepageHeader() {
         <header className={clsx('hero hero--primary', styles.heroBanner)} style={{ textAlign: 'center' }}>
             <div className="container">
                 <img
-                    src="/img/logo_nauthilus.png"  // Pfad zum Bild
+                    className="logo-nauthilus logo-effect"
+                    src="/img/logo_nauthilus.png"
                     alt="Nauthilus Logo"
-                    style={{ width: '500px', height: 'auto' }}
                 />
-                <p className="hero__subtitle">Authentication and authorization Server</p>
+                <p className="hero__subtitle">Authentication & Authorization Server</p>
                 <div className={styles.buttons}>
                     <Link
                         className="button button--secondary button--lg"

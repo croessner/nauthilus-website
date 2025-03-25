@@ -4,14 +4,6 @@ description: Shared Lua context between features, backend, filters and actions
 keywords: [Lua]
 sidebar_position: 4
 ---
-
-<!-- TOC -->
-* [Context](#context)
-  * [nauthilus\_context.context\_set](#nauthilus_contextcontext_set)
-  * [nauthilus\_context.context\_get](#nauthilus_contextcontext_get)
-  * [nauthilus\_context.context\_delete](#nauthilus_contextcontext_delete)
-<!-- TOC -->
-
 # Context
 
 ```lua

@@ -4,13 +4,6 @@ description: Password related functions
 keywords: [Lua]
 sidebar_position: 9
 ---
-
-<!-- TOC -->
-* [Password](#password)
-  * [nauthilus\_password.compare\_passwords](#nauthilus_passwordcompare_passwords)
-  * [nauthilus\_password.check\_password\_policy](#nauthilus_passwordcheck_password_policy)
-<!-- TOC -->
-
 # Password
 
 ```lua

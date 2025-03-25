@@ -4,13 +4,6 @@ description: TCP connection counting related functions
 keywords: [Lua]
 sidebar_position: 11
 ---
-
-<!-- TOC -->
-* [PS net](#ps-net)
-  * [nauthilus\_psnet.register\_connection\_target](#nauthilus_psnetregister_connection_target)
-  * [nauthilus\_psnet.get\_connection\_target](#nauthilus_psnetget_connection_target)
-<!-- TOC -->
-
 # PS net
 
 Register connections and count established connections.

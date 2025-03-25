@@ -9,11 +9,6 @@ sidebar_position: 3
 There is some limited support for Prometheus and Grafana. For an example have a look at the contrib folder included with
 the source code.
 
-<!-- TOC -->
-* [Prometheus support](#prometheus-support)
-  * [Prometheus](#prometheus)
-<!-- TOC -->
-
 ## Prometheus
 
 ```yaml

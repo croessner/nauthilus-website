@@ -8,10 +8,6 @@ sidebar_position: 2
 
 Here is a sample HAproxy configuration that shows how to put Nauthilus behind a load balancer.
 
-<!-- TOC -->
-* [HAProxy](#haproxy)
-<!-- TOC -->
-
 :::warning
 This is not a complete haproxy.cfg file. Only relevaant snippets are shown here.
 :::

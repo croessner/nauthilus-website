@@ -4,12 +4,6 @@ description: LDAP related functions
 keywords: [Lua]
 sidebar_position: 6
 ---
-
-<!-- TOC -->
-* [Backend LDAP](#backend-ldap)
-  * [nauthilus\_ldap.ldap\_search](#nauthilus_ldapldap_search)
-<!-- TOC -->
-
 # Backend LDAP
 
 It is possible to send LDAP search requests to the main LDAP worker pool, if the **ldap** backend is enabled.

@@ -8,19 +8,6 @@ sidebar_position: 3
 
 Find out how to deploy Nauthilus.
 
-<!-- TOC -->
-* [Getting started](#getting-started)
-  * [Preliminary consideration](#preliminary-consideration)
-  * [Example use cases](#example-use-cases)
-  * [Install software](#install-software)
-  * [Integration](#integration)
-    * [Dovecot](#dovecot)
-    * [Nginx](#nginx)
-    * [Cyrus SASL](#cyrus-sasl)
-    * [SSO](#sso)
-  * [Final words](#final-words)
-<!-- TOC -->
-
 ## Preliminary consideration
 
 Before starting to deply a service such as Nauthilus, you must know what you want

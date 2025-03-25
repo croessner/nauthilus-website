@@ -4,10 +4,6 @@ description: Systemd integration for Nauthilus
 keywords: [Systemd, Unit, Configuration]
 sidebar_position: 3
 ---
-<!-- TOC -->
-  * [/etc/systemd/system/nauthilus.service](#etcsystemdsystemnauthilusservice)
-  * [/etc/sysconfig/nauthilus](#etcsysconfignauthilus)
-<!-- TOC -->
 # Using binaries
 
 There are no binaries yet. Please compile the code and come back here.

@@ -9,11 +9,6 @@ sidebar_position: 4
 You can customize the notify template. For this, you should use the default file **notify.html** and make changes as you
 need.
 
-<!-- TOC -->
-* [Notify page](#notify-page)
-  * [Fields and description](#fields-and-description)
-<!-- TOC -->
-
 There are several template fields that are required for Nauthilus to work.
 
 ## Fields and description

@@ -4,13 +4,6 @@ description: Miscellaneous functions
 keywords: [Lua]
 sidebar_position: 8
 ---
-
-<!-- TOC -->
-* [Misc](#misc)
-  * [nauthilus\_misc.get\_country\_name](#nauthilus_miscget_country_name)
-  * [nauthilus\_misc.wait\_random](#nauthilus_miscwait_random)
-<!-- TOC -->
-
 # Misc
 
 ```lua

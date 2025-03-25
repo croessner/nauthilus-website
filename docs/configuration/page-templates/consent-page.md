@@ -9,12 +9,6 @@ sidebar_position: 2
 You can customize the consent template. For this, you should use the default file **consent.html** and make changes as
 you need.
 
-
-<!-- TOC -->
-* [Consent page](#consent-page)
-  * [Fields and description](#fields-and-description)
-<!-- TOC -->
-
 There are several template fields that are required for Nauthilus to work.
 
 ## Fields and description

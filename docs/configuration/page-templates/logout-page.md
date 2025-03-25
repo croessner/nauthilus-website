@@ -9,11 +9,6 @@ sidebar_position: 3
 You can customize the logout template. For this, you should use the default file **logout.html** and make changes as
 you need.
 
-<!-- TOC -->
-* [Logout page](#logout-page)
-  * [Fields and description](#fields-and-description)
-<!-- TOC -->
-
 There are several template fields that are required for Nauthilus to work.
 
 :::note

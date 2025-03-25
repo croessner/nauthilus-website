@@ -4,14 +4,6 @@ description: This is an overview of features that are currently supported
 keywords: [Features]
 sidebar_position: 1
 ---
-
-<!-- TOC -->
-* [Features](#features)
-  * [Database support aka backends](#database-support-aka-backends)
-  * [Roadmap](#roadmap)
-* [Deprecated features](#deprecated-features)
-<!-- TOC -->
-
 # Features
 
 This is an overview of features that are currently supported.

@@ -9,11 +9,6 @@ sidebar_position: 1
 You can customize the login template. For this, you should use the default file **login.html** and make changes as you
 need.
 
-<!-- TOC -->
-* [Login page](#login-page)
-  * [Fields and description](#fields-and-description)
-<!-- TOC -->
-
 There are several template fields that are required for Nauthilus to work.
 
 ## Fields and description

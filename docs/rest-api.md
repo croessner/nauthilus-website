@@ -4,28 +4,7 @@ description: Nauthilus REST API
 keywords: [REST, API]
 sidebar_position: 7
 ---
-<!-- TOC -->
-  * [Backend channel](#backend-channel)
-    * [Protocol endpoints](#protocol-endpoints)
-      * [Protocol specific endpoints](#protocol-specific-endpoints)
-    * [REST calls](#rest-calls)
-  * [Frontend channel](#frontend-channel)
-    * [HTTP basic authorization](#http-basic-authorization-)
-    * [OAuth-2.0 OpenID-Connect](#oauth-20-openid-connect)
-    * [Manage two-factor authentication requests](#manage-two-factor-authentication-requests)
-    * [Other endpoints](#other-endpoints)
-  * [Normal user authentication](#normal-user-authentication)
-  * [Flush a user from Redis cache](#flush-a-user-from-redis-cache)
-  * [Flush an IP address from Redis cache](#flush-an-ip-address-from-redis-cache)
-  * [Get a list with all known IP addresses that have been blocked](#get-a-list-with-all-known-ip-addresses-that-have-been-blocked)
-  * [Mode no-auth](#mode-no-auth)
-  * [Mode list-accounts](#mode-list-accounts)
-  * [Nginx](#nginx)
-  * [saslauthd with http backend](#saslauthd-with-http-backend)
-      * [/etc/saslauthd.conf](#etcsaslauthdconf)
-      * [Running saslauthd](#running-saslauthd)
-  * [JSON query endpoint](#json-query-endpoint)
-<!-- TOC -->
+# REST API
 
 The following is a set of tests which are used for developing. You can use them for your own set of tests.
 

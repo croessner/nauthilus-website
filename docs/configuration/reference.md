@@ -8,19 +8,6 @@ sidebar_position: 1
 
 This page describes all available environment variables, there meaning and there defaults.
 
-<!-- TOC -->
-* [Reference](#reference)
-  * [Nauthilus](#nauthilus)
-  * [Nginx](#nginx)
-  * [OAuth2 / Ory Hydra settings](#oauth2--ory-hydra-settings)
-    * [Login page (including 2FA page)](#login-page-including-2fa-page)
-    * [Device page](#device-page)
-    * [Consent page](#consent-page)
-    * [Logout page](#logout-page)
-    * [2FA specific settings](#2fa-specific-settings)
-    * [WebAuthn](#webauthn)
-<!-- TOC -->
-
 :::note
 All variables are prefixed with NAUTHILUS_. For better readability the prefix is left away in this document.
 :::

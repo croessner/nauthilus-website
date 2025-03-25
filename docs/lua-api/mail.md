@@ -4,12 +4,6 @@ description: SMTP and LMTP related functions
 keywords: [Lua]
 sidebar_position: 7
 ---
-
-<!-- TOC -->
-* [Mail](#mail)
-  * [nauthilus\_mail.send\_mail](#nauthilus_mailsend_mail)
-<!-- TOC -->
-
 # Mail
 
 SMTP/LMTP related functions

@@ -17,13 +17,6 @@ function HomepageHeader() {
                     alt="Nauthilus Logo"
                 />
                 <p className="hero__subtitle">Authentication & Authorization Server</p>
-                <div className={styles.buttons}>
-                    <Link
-                        className="button button--secondary button--lg"
-                        to="/docs/intro">
-                        Nauthilus documentation
-                    </Link>
-                </div>
             </div>
         </header>
     );

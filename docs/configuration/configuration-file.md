@@ -1359,17 +1359,18 @@ server in the order that was defined.
 
 The following table list keys and examples to configure LDAP:
 
-| Key                      | Required | Description                                                           | Example               |
-|--------------------------|:--------:|-----------------------------------------------------------------------|-----------------------|
-| lookup\_pool\_size       |    no    | Maximum number of connection that can be opened                       | 8                     |
-| lookup\_idle\_pool\_size |    no    | Minimum number of connections that must be kept open                  | 2                     |
-| auth\_pool\_size         |    no    | Maximum number of connection that can be opened                       | 8                     |
-| auth\_idle\_pool\_size   |    no    | Minimum number of connections that must be kept open                  | 2                     |
-| server\_uri              |   yes    | A string containing a LDAP URI or a list of URIs                      | ldap://localhost:389/ |
-| starttls                 |    no    | Is STARTTLS used with the LDAP connection                             | true / false          |
-| tls\_skip\_verify        |    no    | If you use self signed certificates, you may to skip TLS verification | ture / false          |
-| sasl\_external           |    no    | Use simple bind or SASL/EXTERNAL                                      | true / false          |
-| pool\_only               |    no    | Use Lua to communicate with LDAP                                      | true / false          |
+| Key                      | Required | Description                                                                                                                                                     | Example                               |
+|--------------------------|:--------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------|
+| lookup\_pool\_size       |    no    | Maximum number of connection that can be opened                                                                                                                 | 8                                     |
+| lookup\_idle\_pool\_size |    no    | Minimum number of connections that must be kept open                                                                                                            | 2                                     |
+| auth\_pool\_size         |    no    | Maximum number of connection that can be opened                                                                                                                 | 8                                     |
+| auth\_idle\_pool\_size   |    no    | Minimum number of connections that must be kept open                                                                                                            | 2                                     |
+| server\_uri              |   yes    | A string containing a LDAP URI or a list of URIs                                                                                                                | ldap://localhost:389/                 |
+| starttls                 |    no    | Is STARTTLS used with the LDAP connection                                                                                                                       | true / false                          |
+| tls\_skip\_verify        |    no    | If you use self signed certificates, you may to skip TLS verification                                                                                           | ture / false                          |
+| sasl\_external           |    no    | Use simple bind or SASL/EXTERNAL                                                                                                                                | true / false                          |
+| pool\_only               |    no    | Use Lua to communicate with LDAP                                                                                                                                | true / false                          |
+| connect\_abort\_timeout  |    no    | _New in version 1.4.12_:<br/>If a pool is exhausted and a new connection can not be established within **connect\_abort\_timeout**, the request will temp-fail. | 10s (default). Maximum 10m is allowed |
 
 The **lookup** pool settings define a pooling to find user objects in LDAP. The **auth** pooling is used to authenticate users.
 

@@ -4,10 +4,9 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update logo_nauthilus.png  &#10;&#10;Replaced the existing logo with a new version to reflect updated branding. This ensures consistency across all visual assets.">
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="Update logo, refine CSS, and simplify homepage UI&#10;&#10;Replaced the logo with a new version to align with updated branding. Adjusted CSS by modifying padding for better layout consistency. Simplified the homepage UI by removing redundant buttons for a cleaner user experience.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/css/custom.css" beforeDir="false" afterPath="$PROJECT_DIR$/src/css/custom.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/pages/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/configuration-file.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/configuration-file.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -383,14 +382,21 @@
       <option name="project" value="LOCAL" />
       <updated>1742903485925</updated>
     </task>
-    <option name="localTasksCounter" value="33" />
+    <task id="LOCAL-00033" summary="Update logo, refine CSS, and simplify homepage UI&#10;&#10;Replaced the logo with a new version to align with updated branding. Adjusted CSS by modifying padding for better layout consistency. Simplified the homepage UI by removing redundant buttons for a cleaner user experience.">
+      <option name="closed" value="true" />
+      <created>1742972094069</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1742972094069</updated>
+    </task>
+    <option name="localTasksCounter" value="34" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Remove Lua support documentation&#10;&#10;Deleted the extensive Lua support documentation from the repository. This may indicate either the deprecation of Lua as an integration or a migration of this content to a different location or format for better maintenance and usage." />
     <MESSAGE value="Remove Lua support documentation.&#10;&#10;The `lua-support.md` file was deleted, as its contents are no longer needed or relevant. This simplifies the documentation structure by removing redundant or outdated information." />
     <MESSAGE value="Remove Lua support documentation.&#10;&#10;The Lua support documentation for Nauthilus was entirely removed from the repository. This may indicate deprecation or migration of Lua capabilities, and users should consult other resources for information on Lua integration." />
     <MESSAGE value="Remove Lua support documentation.&#10;&#10;Deleted extensive documentation on Lua support as it is no longer relevant or necessary for the project. This cleanup reduces repository bloat and ensures that only essential documentation is maintained." />
@@ -415,7 +421,8 @@
     <MESSAGE value="Update license link and remove redundant TOC entries.&#10;&#10;Replaced the license file link in `docs/intro.md` with a direct URL to the GPLv3 license for improved accessibility. Removed redundant auto-generated Table of Contents (TOC) entries from documentation to enhance readability and align with standard practices. Updated workspace settings accordingly." />
     <MESSAGE value="Update documentation and metadata for Nauthilus  &#10;&#10;Revised commercial support contact info in docs/intro.md to use a mailto link for clarity. Enhanced metadata in docusaurus.config.js with Open Graph and Twitter tags for better SEO and social sharing. Simplified the homepage title in src/pages/index.js for cleaner display." />
     <MESSAGE value="Update logo_nauthilus.png  &#10;&#10;Replaced the existing logo with a new version to reflect updated branding. This ensures consistency across all visual assets." />
-    <option name="LAST_COMMIT_MESSAGE" value="Update logo_nauthilus.png  &#10;&#10;Replaced the existing logo with a new version to reflect updated branding. This ensures consistency across all visual assets." />
+    <MESSAGE value="Update logo, refine CSS, and simplify homepage UI&#10;&#10;Replaced the logo with a new version to align with updated branding. Adjusted CSS by modifying padding for better layout consistency. Simplified the homepage UI by removing redundant buttons for a cleaner user experience." />
+    <option name="LAST_COMMIT_MESSAGE" value="Update logo, refine CSS, and simplify homepage UI&#10;&#10;Replaced the logo with a new version to align with updated branding. Adjusted CSS by modifying padding for better layout consistency. Simplified the homepage UI by removing redundant buttons for a cleaner user experience." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

@@ -18,7 +18,7 @@ is used in Redis.
 
 ```mermaid
 flowchart LR
-  Password --> prep["Nonce\0Password"] --> SHA256 -- truncate --> bytes["Pseudo password"]
+  Password --> prep["Nonce\0Password"] --> SHA256 -->|truncate| bytes["Pseudo password"]
 ```
 
 ## Example Configuration

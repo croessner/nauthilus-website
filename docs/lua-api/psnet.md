@@ -10,38 +10,79 @@ Register connections and count established connections.
 
 ```lua
 dynamic_loader("nauthilus_psnet")
-local nauthilus_misc = require("nauthilus_psnet")
+local nauthilus_psnet = require("nauthilus_psnet")
 ```
 
 ## nauthilus\_psnet.register\_connection\_target
 
-Registers a target, for which Nauthilus will count established connections. It can count connection originating from
-Nauthilus or incoming connections.
+Registers a target for which Nauthilus will count established connections.
 
-| parameter   | description                                                               |
-|-------------|---------------------------------------------------------------------------|
-| target      | Hostname:port or IP-address:port tuple                                    |
-| direction   | **remote** means the target is outside, local** means the target is local |
-| description | Some description about this target.                                       |
+### Syntax
 
 ```lua
+nauthilus_psnet.register_connection_target(target, direction, description)
+```
+
+### Parameters
+
+- `target` (string): Hostname:port or IP-address:port tuple
+- `direction` (string): Connection direction
+  - **remote**: The target is outside of Nauthilus
+  - **local**: The target is local to Nauthilus
+- `description` (string): A description about this target
+
+### Returns
+
+None
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_psnet")
+local nauthilus_psnet = require("nauthilus_psnet")
+
 local target = "api.pwnedpasswords.com:443"
 local direction = "remote"
 local description = "Some meaningful description"
 
 nauthilus_psnet.register_connection_target(target, direction, description)
 ```
-:::tip
-You can register targtes in an init Lua script
-:::
+
+::::tip
+You can register targets in an init Lua script
+::::
 
 ## nauthilus\_psnet.get\_connection\_target
 
-Get the current number of established connections for a target.
+Gets the current number of established connections for a target.
+
+### Syntax
 
 ```lua
-local target = "api.pwnedpasswords.com:443"
-
 local count, err = nauthilus_psnet.get_connections_target(target)
 ```
 
+### Parameters
+
+- `target` (string): Hostname:port or IP-address:port tuple
+
+### Returns
+
+- `count` (number): The number of established connections
+- `err` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_psnet")
+local nauthilus_psnet = require("nauthilus_psnet")
+
+local target = "api.pwnedpasswords.com:443"
+
+local count, err = nauthilus_psnet.get_connections_target(target)
+if err then
+    print("Error:", err)
+else
+    print("Current connections:", count)
+end
+```

@@ -1,21 +1,24 @@
 ---
 title: Overview
-description: See how Nauthilus is integrated into a larger IT eco system
-keywords: [Overview, Components, Design]
+description: See how Nauthilus is integrated into a larger IT ecosystem
+keywords: [Overview, Components, Design, Architecture, Integration]
 sidebar_position: 2
 ---
-# The big picture
+# The Big Picture
 
-See how Nauthilus is integrated into a larger IT eco system.
+See how Nauthilus is integrated into a larger IT ecosystem.
 
-## Compontents
+## What is Nauthilus?
 
-Nauthilus is part of a number of different services around it. To get an idea, how things work together and want you can
-achieve with this software, the following picture is a detailed overview.
+Nauthilus is a universal authentication and authorization platform written in Go. It serves as a central hub for handling various authentication requests from different services such as mail servers (SMTP, IMAP, POP3), web applications via OAuth2/OpenID Connect, and custom applications through its flexible API.
+
+## Components
+
+Nauthilus interacts with a number of different services around it. To get an idea of how these components work together and what you can achieve with this software, the following diagram provides a detailed overview.
 
 ```mermaid
 flowchart TB
-    subgraph Example applications and there communication paths
+    subgraph Example applications and their communication paths
         direction TB
         app(((Application))) --> ngx
         app --> dcot
@@ -63,15 +66,33 @@ flowchart TB
     end
 ```
 
-## Additional notes
+## Key Features
 
-Built-in MySQL/MariaDB, PostgreSQL and sqlite support is available by using the Lua backend.
+Nauthilus provides a wide range of features, including:
 
-## Related projects
+- Multiple authentication backends (LDAP, Lua scripts)
+- Redis-based caching for performance optimization
+- Brute force attack protection
+- Realtime blackhole list (RBL) checking
+- Integration with OAuth2/OpenID Connect for Single Sign-On
+- Extensibility through Lua scripts
+- Comprehensive monitoring via Prometheus metrics
+
+For a complete list of features, see the [Features](./current-features.md) page.
+
+## Additional Notes
+
+Built-in MySQL/MariaDB, PostgreSQL, and SQLite support is available by using the Lua backend.
+
+## Related Projects
 
 | Project             | Link                                                                                               |
 |---------------------|----------------------------------------------------------------------------------------------------|
-| nauthilus-keycloack | [https://github.com/croessner/nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak) |
+| nauthilus-keycloak  | [https://github.com/croessner/nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak) |
 | pfxhttp             | [https://github.com/croessner/pfxhttp](https://github.com/croessner/pfxhttp)                       |
 | geoip-policyd       | [https://github.com/croessner/geoip-policyd](https://github.com/croessner/geoip-policyd)           |
 | blocklist           | Bundled with Nauthilus                                                                             |
+
+## Getting Started
+
+Ready to deploy Nauthilus? Check out our [Getting Started](./getting-started.md) guide for deployment options, configuration examples, and integration instructions.

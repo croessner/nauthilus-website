@@ -7,41 +7,85 @@ sidebar_position: 2
 
 # Compiling
 
-If you want to compile the source code by yourself, follow these steps.
+This guide explains how to compile Nauthilus from source code. Follow these instructions if you want to build the application yourself instead of using pre-built binaries.
 
-## Pre requirements
+## Prerequisites
 
-You will need the Go compiler at version 1.21 or later.
+- Go compiler version 1.21 or later
+- Git (to clone the repository)
 
-You can clone the repository
+## Getting the Source Code
 
-using git:
+Clone the repository using git:
 
-```
+```bash
 git clone https://github.com/croessner/nauthilus.git
+cd nauthilus
 ```
 
-The "main" branch *should* mostly be stable, as it gets merges from the "features" branch. If you require stable
-packages, use the binaries provided with each release or checkout the corresponding git tag!
+### Branch Selection
 
-## Building
+- The `main` branch is generally stable and receives merges from the `features` branch
+- For production use, consider using a specific release tag:
+  ```bash
+  git checkout v1.x.x  # Replace with the desired version tag
+  ```
 
-```
+## Building Nauthilus
+
+### Basic Build
+
+The simplest way to build Nauthilus:
+
+```bash
 go build -mod=vendor -o nauthilus .
 ```
 
-If everything went fine, follow the instructions found on the
-page "[Using binaries](/docs/installation/using-binaries)".
+### Using Make
 
-## Build tags
+Alternatively, you can use the provided Makefile:
 
-Tags can be added to the build command like -tags="tag1 tag2 ...tagN".
+```bash
+make build
+```
 
-### dev
+This will:
+- Resolve dependencies
+- Build the application with version information from git
+- Place the binary in `nauthilus/bin/nauthilus`
 
-If you add **dev** to the build tags, the built will contain experimental, not yet fully implemented code. This setting is mainly for developers.
+### Additional Make Targets
 
-### register2fa
+- `make test`: Run tests
+- `make race`: Run tests with race condition detection
+- `make clean`: Remove previous build artifacts
 
-If you require a registration endpoint for two-factor-authentication, which will enable you to add a TOTP token to your users accounts, you cann add this tag.
+## Build Tags
 
+Build tags allow you to customize the compilation with additional features. Add them to your build command like this:
+
+```bash
+go build -mod=vendor -tags="tag1 tag2" -o nauthilus .
+```
+
+### Available Build Tags
+
+#### dev
+
+```bash
+go build -mod=vendor -tags="dev" -o nauthilus .
+```
+
+The `dev` tag enables experimental features that are not yet fully implemented. This is primarily intended for developers working on Nauthilus.
+
+#### register2fa
+
+```bash
+go build -mod=vendor -tags="register2fa" -o nauthilus .
+```
+
+The `register2fa` tag enables a registration endpoint for two-factor authentication, allowing you to add TOTP tokens to user accounts.
+
+## Next Steps
+
+After successfully building Nauthilus, follow the instructions on the [Using Binaries](/docs/installation/using-binaries) page to configure and run the application.

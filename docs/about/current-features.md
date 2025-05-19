@@ -1,57 +1,125 @@
 ---
 title: Features
-description: This is an overview of features that are currently supported
-keywords: [Features]
+description: A comprehensive overview of features supported by Nauthilus
+keywords: [Features, Authentication, Authorization, Security]
 sidebar_position: 1
 ---
-# Features
 
-This is an overview of features that are currently supported.
+# Nauthilus Features
 
-- Authentication service for Nginx using there HTTP-protocol
-- Authentication service for Dovecot using a custom Lua backend
-- Authentication service for Cyrus-SASL using the httppost-backend
-- Realtime Blackhole lists support
-- Using Redis (standalone, sentinel and cluster) for storing runtime information
-- Redis cache backend in front of database backends
-- TLS support and HTTP basic authorization
-- HTTP/2, HTTP/3 support and HAproxy v2 support
-- Metrics support for prometheus. A sample template for grafana is included
-- Brute force buckets to detect password attacks
-- Static list of known domains. If the login is equal to an email address, Nauthilus can check, if it is responsible for
-  this domain
-- SSO support in keycloak is also available with the custom authenticator found [here](https://github.com/croessner/nauthilus-keycloak)
-  with templates that can be customized to suite your CI/CD.
-- Fully optimized LDAP pooling with idle connections
-- Basic reloading by reloading the configuration file and restarting LDAP connections
-- Nauthilus provides custom namespaces for the Redis cache to dynamically deal with different protocol dependent data
-- Lua features to block unwanted authentication requests before talking to
-  database backends.
-- Lua filters to talk to third party endpoints and override the authentication
-  decision. This can also be used in conjunction with Dovecot to provide dynamic proxy settings (Dovecot 2.4 and later
-  do not contain the director code anymore).
-- Lua post actions to trigger some work flows after features were triggered
-  (rejecting a request) or doing some other stuff after the request has already been processed.
-- All Lua hooks can use a shared in-memory cache as well as basic Redis support (GET, SET, DEL and EXPIRE).
-- All Lua hooks contain LDAP search functions to incorporate with the LDAP pool, if the LDAP backend is tunred on.
-- A POC for Nauthilus as a replacement in Dovecot >2.4.0 is shown [here](https://github.com/croessner/nauthilus-demo)
+This document provides a comprehensive overview of all features currently supported by Nauthilus.
 
-## Database support aka backends
+## Core Authentication Features
 
-- OpenLDAP and Active-Directory support
-- Lua
+- **Multi-Protocol Authentication Service**
+  - HTTP/Nginx authentication using the HTTP protocol
+  - Dovecot authentication using a custom Lua backend
+  - Cyrus-SASL authentication using the httppost-backend
+  - Support for mail protocols (IMAP, POP3, SMTP, LMTP, Sieve)
+  - Support for web applications via OAuth2/OpenID Connect
+
+- **Multiple Authentication Backends**
+  - LDAP backend with support for OpenLDAP and Active Directory
+  - Lua backend for custom authentication logic
+  - Redis cache backend for improved performance
+
+- **Authentication Methods**
+  - Password-based authentication with secure password handling
+  - JWT (JSON Web Token) authentication with role-based access control
+  - HTTP Basic Authentication for simple integrations
+
+## Security Features
+
+- **Brute Force Protection**
+  - Configurable brute force buckets to detect password attacks
+  - Multiple bucket types based on time periods and network ranges
+  - Customizable thresholds and actions
+
+- **Realtime Blackhole Lists (RBL)**
+  - Integration with multiple RBL services
+  - Configurable thresholds and scoring
+  - IPv4 and IPv6 support
+
+- **Network Security**
+  - TLS support with certificate validation
+  - Cleartext network definitions for enforcing encryption
+  - Client IP verification and filtering
+
+- **Domain Security**
+  - Static list of known domains for email address validation
+  - Relay domain verification for email authentication
+
+## Performance and Reliability
+
+- **Redis Integration**
+  - Support for multiple Redis deployment models:
+    - Standalone Redis
+    - Master-replica configuration
+    - Redis Sentinel
+    - Redis Cluster
+  - Configurable connection pooling
+  - Custom namespaces for protocol-dependent data
+
+- **Connection Handling**
+  - HTTP/2 and HTTP/3 support
+  - HAproxy v2 protocol support
+  - Keep-alive optimization
+  - Connection monitoring
+
+- **Caching**
+  - Redis-based caching for authentication results
+  - Configurable TTLs for positive and negative caches
+  - Optimized LDAP pooling with idle connections
+
+## Extensibility
+
+- **Lua Scripting**
+  - Lua features to filter authentication requests before backend processing
+  - Lua filters to integrate with third-party endpoints and override authentication decisions
+  - Lua post-actions for workflow triggers after request processing
+  - Custom HTTP endpoints via Lua hooks
+  - Shared in-memory cache for Lua scripts
+  - Redis and LDAP integration in Lua scripts
+
+- **Monitoring and Metrics**
+  - Prometheus metrics support
+  - Grafana dashboard templates included
+  - Backend server monitoring
+  - Detailed logging with configurable levels
+
+- **API Integration**
+  - RESTful API for authentication requests
+  - JSON response format
+  - Custom headers support
+
+## Single Sign-On (SSO)
+
+- **OAuth2/OpenID Connect**
+  - Integration with Keycloak via [nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak)
+  - Customizable templates for CI/CD integration
+  - Role-based access control
+
+## Administration
+
+- **Configuration**
+  - YAML-based configuration
+  - Environment variable support
+  - Hot reloading of configuration
+  - Restart of LDAP connections without service interruption
+
+- **Deployment**
+  - Docker support
+  - Kubernetes compatibility
+  - Systemd integration
+
+## Deprecated Features
+
+The following features were originally designed to work with Ory Hydra. It is recommended to use Keycloak instead, as it offers full compatibility with [nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak).
+
+- OAuth2 and OpenID Connect support with Ory Hydra, including implementations for login, consent, and logout flows
+- TOTP-based two-factor authentication support in Nauthilus
+- User account registration with TOTP as a second-factor authentication (requires the build tag **register2fa**)
 
 ## Roadmap
 
-- Two-factor authentication – Webauthn
-
-# Deprecated features
-
-The following features were originally designed to work with Ory Hydra. However, it is recommended to use Keycloak 
-instead, as it offers full compatibility with [nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak).
-
--  OAuth2 and OpenID Connect support with Ory Hydra, including implementations for login, consent, and logout flows.
--  TOTP-based two-factor authentication support in Nauthilus.
--  User account registration with TOTP as a second-factor authentication (requires the build tag **register2fa**).
-
-No further developments are planned for Webauthn.
+- WebAuthn support for two-factor authentication

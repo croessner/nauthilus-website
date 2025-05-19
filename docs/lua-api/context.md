@@ -12,35 +12,83 @@ local nauthilus_context = require("nauthilus_context")
 ```
 
 ## nauthilus\_context.context\_set
-Add a value to the shared Lua context. Values can be strings, numbers, booleans and tables. You can not add functions here.
+
+Adds a value to the shared Lua context.
+
+### Syntax
+
+```lua
+nauthilus_context.context_set(key, value)
+```
+
+### Parameters
+
+- `key` (string): The key to store the value under
+- `value` (string/number/boolean/table): The value to store (cannot be a function)
+
+### Returns
+
+None
+
+### Example
 
 ```lua
 dynamic_loader("nauthilus_context")
 local nauthilus_context = require("nauthilus_context")
 
-nauthilus_context.context_set("key", value)
+nauthilus_context.context_set("user_id", 12345)
 ```
-
-Get a Lua context value:
 
 ## nauthilus\_context.context\_get
 
+Retrieves a value from the shared Lua context.
+
+### Syntax
+
+```lua
+local value = nauthilus_context.context_get(key)
+```
+
+### Parameters
+
+- `key` (string): The key to retrieve the value for
+
+### Returns
+
+- `value` (any): The stored value, or nil if the key doesn't exist
+
+### Example
+
 ```lua
 dynamic_loader("nauthilus_context")
 local nauthilus_context = require("nauthilus_context")
 
-local value = nauthilus_context.context_get("key")
+local user_id = nauthilus_context.context_get("user_id")
 ```
-
-If there is no result, nil is returned.
 
 ## nauthilus\_context.context\_delete
 
-To delete a key/value pair from the Lua context, use the following function:
+Deletes a key/value pair from the shared Lua context.
+
+### Syntax
+
+```lua
+nauthilus_context.context_delete(key)
+```
+
+### Parameters
+
+- `key` (string): The key to delete
+
+### Returns
+
+None
+
+### Example
 
 ```lua
 dynamic_loader("nauthilus_context")
 local nauthilus_context = require("nauthilus_context")
 
-nauthilus_context.context_delete("key")
+nauthilus_context.context_delete("user_id")
 ```

@@ -1,138 +1,438 @@
 ---
 title: Getting started
-description: Find out how to deploy Nauthilus
-keywords: [Quickstart]
+description: A comprehensive guide to deploying and configuring Nauthilus
+keywords: [Quickstart, Setup, Configuration, Authentication]
 sidebar_position: 3
 ---
-# Getting started
 
-Find out how to deploy Nauthilus.
+# Getting Started with Nauthilus
 
-## Preliminary consideration
+This guide will help you understand, deploy, and configure Nauthilus for your environment.
 
-Before starting to deply a service such as Nauthilus, you must know what you want
-to achieve with this software. Below is just an example of what it can do for you.
+## What is Nauthilus?
 
-## Example use cases
+Nauthilus is a universal authentication and authorization platform written in Go. It serves as a central hub for handling various authentication requests from different services such as:
 
-1. Using Nauthilus in your mail server environment
-2. Using Nauthilus for web pages that support OAuth 2 Open-ID Connect
+- Mail servers (SMTP, IMAP, POP3)
+- Web applications via OAuth2/OpenID Connect
+- Custom applications through its flexible API
 
-## Install software
+Key features include:
 
-First install docker on a system that shall be the host for Nauthilus. After that
-create your docker compose file with Nauthilus. You may also add additional services
-like Redis or SQL as well.
+- Multiple authentication backends (LDAP, Lua scripts)
+- Redis-based caching for performance
+- Brute force attack protection
+- Realtime blackhole list (RBL) checking
+- Two-factor authentication support
+- OAuth2/OpenID Connect integration
+- Extensibility through Lua scripts
 
-Configure your environment variables documented in [Reference](/docs/configuration/reference). This
-settings are static and changes will always need a restart of the service.
+## Prerequisites
 
-Create the nauthilus yaml configuration file. See the [configuration file](/docs/configuration/configuration-file)
-document for details.
+Before deploying Nauthilus, ensure you have:
 
-Depending on the backend you wish to use, you must provide the required settings.
+- A system with Docker installed (for containerized deployment)
+- Redis server (standalone, master-replica, sentinel, or cluster)
+- Authentication backend (LDAP server or Lua scripts)
+- Basic understanding of YAML configuration
 
-A normal Nauthilus installation always uses **cache** as its first backend followed by
-one of **ldap** or **lua**. You may also specify both of them, but you can only
-address one single instance of a database type at runtime for a single user.
+## Deployment Options
 
-The next step is to decide what protocols you want to serve. Nauthilus is desinged
-to lookup several settings depending on a protocol. The protocol is set in an HTTP
-request using the header **AUTH-Protocol**. This information is required to select the
-correct configuration block inside a backend section of the configuration file.
+### Docker Deployment (Recommended)
 
-You can also define a **default** protocol in exactly one of the protocol sections
-for each backend. In this case the settings will be taken from there, if no protocol
-information was provided.
+1. **Create a Docker Compose File**
 
-A protocol section will then list all required filters/attributes and mappings to gather
-runtime settings for an incoming request.
+   Create a `docker-compose.yml` file with Nauthilus and Redis:
 
-In addition to this, each protocol block does define a cache prefix, so the underlying
-Redis database has different places to store different information for all protocol
-requests.
+   ```yaml
+   version: '3'
 
-This brings us to Redis. This is the main store for Nauthilus. You must decide on
-how to create this environment. At the current moment you can use a single
-instance of a master node and one slave. If you need more replicas, it is suggested
-to use Redis sentinel for that purpose. You may also use a load balancer like
-HAProxy and fake such a distributed Redis system.
+   services:
+     nauthilus:
+       image: nauthilus/nauthilus:latest
+       ports:
+         - "9443:9443"
+       volumes:
+         - ./config:/etc/nauthilus
+       environment:
+         - TZ=UTC
+       depends_on:
+         - redis
 
-## Integration
+     redis:
+       image: redis:alpine
+       ports:
+         - "6379:6379"
+       volumes:
+         - redis-data:/data
+       command: redis-server --appendonly yes
 
-### Dovecot
+   volumes:
+     redis-data:
+   ```
 
-You can integrate Nautilus in many ways. One is Dovecot with its Lua backend. An
-HTTP client must provide all required information for a request. Nauthilus will
-anser with HTTP response headers (or JSON, if using a different endpoint...).
-For this have a look at the Dovecot Lua example [here](/docs/examples/dovecot-lua).
+2. **Create Configuration Directory**
 
-### Nginx
+   ```bash
+   mkdir -p config
+   ```
 
-An alternative is the Nginx reverse proxy. For details on how to integrate it,
-follow [this link](/docs/examples/nginx-mail-plugin).
+3. **Create Configuration File**
 
-The recommended way of using it is the Dovecot Lua plugin, as it provides most
-flexible settings.
+   Create `config/nauthilus.yml` with your configuration (see example below).
 
-### Cyrus SASL
+4. **Start the Services**
 
-If Dovecot is not your SMTP submission service and you are using Postfix, you
-may want to use Cyrus SASL with the http interface. This is the most weakiest
-integration and not all power of Nauthilus can be used to fight attackers!
+   ```bash
+   docker-compose up -d
+   ```
 
-### SSO
+### Manual Installation
 
-If you plan on using Nauthilus for SSO and your web applications, you should
-integrate the software into a load balancer. Define routes for the following
-endpoints (example is for HAProxy):
+For manual installation, refer to the project documentation or build from source:
+
+1. Clone the repository
+2. Build the binary
+3. Configure the service
+4. Set up as a system service
+
+## Basic Configuration
+
+Create a minimal `nauthilus.yml` configuration file:
+
+```yaml
+server:
+  address: "0.0.0.0:9443"  # Listen on all interfaces
+  log:
+    level: "info"
+  redis:
+    master:
+      address: "redis:6379"  # Use "localhost:6379" for non-Docker setup
+    password_nonce: "generate-a-random-string-here"
+    pool_size: 10
+    positive_cache_ttl: 3600s
+    negative_cache_ttl: 7200s
+  backends:
+    - cache
+    - ldap  # Or "lua" if using Lua backend
+
+# LDAP Backend Configuration (if using LDAP)
+ldap:
+  config:
+    server_uri: "ldap://ldap-server:389"
+    bind_dn: "cn=admin,dc=example,dc=com"
+    bind_pw: "password"
+    lookup_pool_size: 8
+    auth_pool_size: 8
+  search:
+    - protocol:
+        - "imap"
+        - "smtp"
+        - "default"
+      cache_name: "mail"
+      base_dn: "ou=people,dc=example,dc=com"
+      filter:
+        user: "(&(objectClass=inetOrgPerson)(uid=%u))"
+      mapping:
+        account_field: "uid"
+      attribute:
+        - "uid"
+        - "userPassword"
+```
+
+## Configuration Structure
+
+Nauthilus configuration consists of several main sections:
+
+1. **Server Configuration**: Core settings for the server
+2. **Backend Configuration**: Authentication backends (LDAP, Lua)
+3. **Feature Configuration**: Optional features like RBL checks
+4. **Protocol Configuration**: Settings for different protocols
+
+### Environment Variables
+
+Some settings can be configured using environment variables. These are typically used for sensitive information like passwords. See the [Reference](/docs/configuration/reference) for details.
+
+### Configuration File Location
+
+By default, Nauthilus looks for its configuration file in these locations:
+
+- `/usr/local/etc/nauthilus/nauthilus.yml`
+- `/etc/nauthilus/nauthilus.yml`
+- `$HOME/.nauthilus/nauthilus.yml`
+- `./nauthilus.yml` (current directory)
+
+## Understanding Backends and Protocols
+
+### Backends
+
+Nauthilus supports multiple authentication backends:
+
+- **cache**: Redis-based caching (should always be first)
+- **ldap**: LDAP directory service
+- **lua**: Custom Lua scripts
+
+A typical configuration uses cache followed by either LDAP or Lua (or both):
+
+```yaml
+server:
+  backends:
+    - cache
+    - ldap
+    - lua
+```
+
+### Protocols
+
+Protocols define how Nauthilus handles different types of authentication requests. When a client connects to Nauthilus, it specifies a protocol in the `AUTH-Protocol` header.
+
+Each protocol can have its own configuration for:
+- Filters and attributes to retrieve
+- Cache prefixes for Redis storage
+- Authentication rules
+
+Example protocol configuration for LDAP:
+
+```yaml
+ldap:
+  search:
+    - protocol:
+        - "imap"
+        - "pop3"
+      cache_name: "mail"
+      base_dn: "ou=people,dc=example,dc=com"
+      filter:
+        user: "(&(objectClass=inetOrgPerson)(uid=%u))"
+      mapping:
+        account_field: "uid"
+      attribute:
+        - "uid"
+        - "userPassword"
+```
+
+## Redis Configuration
+
+Redis is essential for Nauthilus as it stores authentication results, brute force detection data, and more. You can configure Redis in several ways:
+
+### Standalone or Master-Replica
+
+```yaml
+server:
+  redis:
+    master:
+      address: "redis:6379"
+    replica:
+      addresses:
+        - "redis-replica:6379"
+```
+
+### Redis Sentinel
+
+```yaml
+server:
+  redis:
+    sentinels:
+      master: "mymaster"
+      addresses:
+        - "sentinel1:26379"
+        - "sentinel2:26379"
+        - "sentinel3:26379"
+```
+
+### Redis Cluster
+
+```yaml
+server:
+  redis:
+    cluster:
+      addresses:
+        - "redis1:6379"
+        - "redis2:6379"
+        - "redis3:6379"
+```
+
+## Integration Options
+
+### Mail Server Integration
+
+#### Dovecot Integration (Recommended)
+
+Dovecot can be integrated with Nauthilus using its Lua backend:
+
+1. Configure Dovecot to use the HTTP authentication backend
+2. Set up the Lua script to communicate with Nauthilus
+3. Configure Nauthilus to handle Dovecot authentication requests
+
+See the [Dovecot Lua example](/docs/examples/dovecot-lua) for detailed instructions.
+
+#### Nginx Mail Proxy
+
+Nauthilus can be integrated with Nginx's mail module:
+
+1. Configure Nginx to use the HTTP authentication backend
+2. Set up Nginx to forward authentication requests to Nauthilus
+3. Configure Nauthilus to handle Nginx authentication requests
+
+See the [Nginx mail plugin example](/docs/examples/nginx-mail-plugin) for details.
+
+#### Postfix with Cyrus SASL
+
+For Postfix SMTP submission:
+
+1. Configure Cyrus SASL to use the HTTP authentication backend
+2. Set up Cyrus SASL to communicate with Nauthilus
+3. Configure Nauthilus to handle SASL authentication requests
+
+Note: This integration provides fewer features compared to Dovecot integration.
+
+### Web Application Integration (OAuth2/OpenID Connect)
+
+For Single Sign-On (SSO) with web applications:
+
+1. Set up Ory Hydra as the OAuth2/OpenID Connect provider
+2. Configure Nauthilus as the login and consent provider for Hydra
+3. Configure your load balancer to route authentication requests to Nauthilus
+
+Example HAProxy configuration:
 
 ```haproxy
 acl oidc path_beg,url_dec -m beg -i /login /device /consent /logout /2fa/v1 /notify /static
-```
 
-Now you can route to a different backend:
+use_backend be_nauthilus_oidc if oidc
 
-```haproxy
 backend be_nauthilus_oidc
   mode http
   balance roundrobin
   option forwardfor
-  option log-health-checks
-  option httpchk
   http-check connect ssl alpn h2,http/1.1
   http-check send meth GET uri /ping body "pong"
   http-check expect status 200
-  http-request set-header X-SSL %[ssl_fc]
-  http-request set-header X-SSL-Session-ID %[ssl_fc_session_id,hex]
-  http-request set-header X-SSL-Client-Verify %[ssl_c_verify]
-  http-request set-header X-SSL-Client-DN %{+Q}[ssl_c_s_dn]
-  http-request set-header X-SSL-Client-CN %{+Q}[ssl_c_s_dn(cn)]
-  http-request set-header X-SSL-Issuer %{+Q}[ssl_c_i_dn]
-  http-request set-header X-SSL-Client-NotBefore %{+Q}[ssl_c_notbefore]
-  http-request set-header X-SSL-Client-NotAfter %{+Q}[ssl_c_notafter]
-  http-request set-header X-SSL-Subject-DN %{+Q}[ssl_c_s_dn]
-  http-request set-header X-SSL-Issuer-DN %{+Q}[ssl_c_i_dn]
-  http-request set-header X-SSL-Client-Subject-DN %{+Q}[ssl_c_s_dn]
-  http-request set-header X-SSL-Client-Issuer-DN %{+Q}[ssl_c_i_dn]
-  http-request set-header X-SSL-Cipher %[ssl_fc_cipher]
-  http-request set-header X-SSL-Protocol %[ssl_fc_protocol]
-  ... other settings ...
+  server nauthilus1 nauthilus:9443 check ssl
 ```
 
-Nauthilus is not an OAuth 2 Open-ID server! It requires additional software to
-be part of such. In this case Ory Hydra is required. See [this link](https://ory.sh/hydra)
-to learn on how to install and configure the required service.
+## Security Features
 
-If hydra was installed, you must configure each of your web services. Each
-client ID must be mirrored to the Nauthilus configuration file, because
-Nauthilus does provide several **claims** to the HTTP client upon a successful
-login.
+### Brute Force Protection
 
-## Final words
+Configure brute force protection to prevent password guessing attacks:
 
-This is just a qick walk-through and you are definetely invited to read all the
-other documents as well. Especially the reference and configuration file documents
-are the first place for settings in Nauthilus.
+```yaml
+server:
+  brute_force_protocols:
+    - imap
+    - smtp
+    - submission
+    - ory-hydra
 
-Have fun.
+brute_force:
+  buckets:
+    - name: b_1min_ipv4_32
+      period: 60
+      cidr: 32
+      ipv4: true
+      failed_requests: 10
+```
+
+### Realtime Blackhole Lists (RBL)
+
+Check client IP addresses against RBL services:
+
+```yaml
+server:
+  features:
+    - rbl
+
+realtime_blackhole_lists:
+  threshold: 10
+  lists:
+    - name: "SpamRats AuthBL"
+      rbl: "auth.spamrats.com"
+      ipv4: true
+      ipv6: false
+      return_code: "127.0.0.43"
+      weight: 10
+```
+
+## Monitoring and Maintenance
+
+### Health Checks
+
+Nauthilus provides a `/ping` endpoint that returns "pong" when the service is healthy.
+
+### Reloading Configuration
+
+To reload the configuration without restarting Nauthilus:
+
+```bash
+kill -HUP $(pidof nauthilus)
+```
+
+For changes to web server settings, follow with:
+
+```bash
+kill -SIGUSR1 $(pidof nauthilus)
+```
+
+### Metrics
+
+Enable Prometheus metrics for monitoring:
+
+```yaml
+server:
+  prometheus_timer:
+    enabled: true
+    labels:
+      - request
+      - backend
+      - brute_force
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Authentication Failures**
+   - Check LDAP connection and credentials
+   - Verify protocol configuration matches client requests
+   - Examine Redis connectivity
+
+2. **Performance Issues**
+   - Increase Redis pool size
+   - Optimize LDAP queries
+   - Enable caching for frequently used requests
+
+3. **Configuration Errors**
+   - Validate YAML syntax
+   - Check log files for configuration parsing errors
+   - Ensure all required fields are provided
+
+### Logging
+
+Increase log verbosity for troubleshooting:
+
+```yaml
+server:
+  log:
+    level: debug
+    debug_modules:
+      - auth
+      - ldap
+      - cache
+```
+
+## Next Steps
+
+After basic setup, consider exploring:
+
+- [Advanced Configuration](/docs/configuration/index.md) - Detailed configuration options
+- [LDAP Backend](/docs/configuration/database-backends/ldap.md) - LDAP integration details
+- [Lua Backend](/docs/configuration/database-backends/lua.md) - Custom authentication with Lua
+- [OAuth2 Configuration](/docs/configuration/oauth2.md) - Setting up SSO
+- [Full Configuration Example](/docs/configuration/full-example.md) - Complete configuration reference
+
+## Getting Help
+
+- Visit the [official website](https://nauthilus.org)
+- Subscribe to the [mailing lists](https://lists.nauthilus.org)
+- Check the [documentation](https://nauthilus.org/docs)
+- Consider [commercial support](https://nauthilus.org) for enterprise deployments

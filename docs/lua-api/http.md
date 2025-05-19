@@ -12,7 +12,25 @@ local nauthilus_http_request = require("nauthilus_http_request")
 ```
 ## nauthilus\_http.get\_all\_http\_request\_headers
 
-It is possible to get the full set of HTTP request headers from a connecting service in Lua with the following function:
+Gets the full set of HTTP request headers from a connecting service.
+
+### Syntax
+
+```lua
+local header_table = nauthilus_http_request.get_all_http_request_headers()
+```
+
+### Parameters
+
+None
+
+### Returns
+
+- `header_table` (table): A Lua table where:
+  - **Keys** are the header names (strings)
+  - **Values** are tables containing all values for that header (as strings)
+
+### Example
 
 ```lua
 dynamic_loader("nauthilus_http_request")
@@ -20,31 +38,60 @@ local nauthilus_http_request = require("nauthilus_http_request")
 
 local header_table = nauthilus_http_request.get_all_http_request_headers()
 
-for header_key, header_value_table in pair(header_table) do
+for header_key, header_value_table in pairs(header_table) do
   print("header key: " .. header_key)
-  for index, header_value in ipars(header_value_table) do
+  for index, header_value in ipairs(header_value_table) do
     print("header_value[" .. tostring(index) .. "]: " .. header_value)
   end
 end 
 ```
 
-As the example demonstrates, the result is a Lua table. The names for each header are stored in the key of this table, while the values
-are also stored in a Lua table as list of strings.
-
 ## nauthilus\_http\_request.get\_http\_request\_header
 
-Get a table of values for an HTTP request header.
+Gets a table of values for a specific HTTP request header.
+
+### Syntax
+
+```lua
+local header_table = nauthilus_http_request.get_http_request_header(header_name)
+```
+
+### Parameters
+
+- `header_name` (string): The name of the HTTP header to retrieve
+
+### Returns
+
+- `header_table` (table): A Lua table containing all values for the specified header (as strings)
+
+### Example
 
 ```lua
 dynamic_loader("nauthilus_http_request")
 local nauthilus_http_request = require("nauthilus_http_request")
 
-local header_table = nauthilus_http_request.get_http_request_headers("Content-Type")
+local header_table = nauthilus_http_request.get_http_request_header("Content-Type")
 ```
 
 ## nauthilus\_http\_request.get\_http\_request\_body
 
-Get the payload of an HTTP request  as a string.
+Gets the payload of an HTTP request as a string.
+
+### Syntax
+
+```lua
+local body = nauthilus_http_request.get_http_request_body()
+```
+
+### Parameters
+
+None
+
+### Returns
+
+- `body` (string): The HTTP request body content
+
+### Example
 
 ```lua
 dynamic_loader("nauthilus_http_request")

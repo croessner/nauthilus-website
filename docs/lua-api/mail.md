@@ -15,7 +15,35 @@ local nauthilus_mail = require("nauthilus_mail")
 
 ## nauthilus\_mail.send\_mail
 
-Send an email using SMTP or LMTP
+Sends an email using SMTP or LMTP protocol.
+
+### Syntax
+
+```lua
+local error = nauthilus_mail.send_mail(mail_params)
+```
+
+### Parameters
+
+- `mail_params` (table): A Lua table containing the email parameters:
+  - `username` (string, optional): Username for authentication
+  - `password` (string, optional): Password for authentication
+  - `from` (string): The sender including an optional canonical name
+  - `to` (table): A table of recipients
+  - `server` (string): The address of the mail server
+  - `port` (number): The port number of the mail server
+  - `helo_name` (string): The HELO/LHLO name
+  - `subject` (string): The subject of the message
+  - `body` (string): The body of the message
+  - `tls` (boolean): Should the connection be secured aka SMTPS?
+  - `starttls` (boolean): Use starttls command
+  - `lmtp` (boolean): Do we send with LMTP (true) or SMTP (false)?
+
+### Returns
+
+- `error` (string): An error message if sending fails, nil if successful
+
+### Example
 
 ```lua
 dynamic_loader("nauthilus_mail")
@@ -51,20 +79,3 @@ local err_email = nauthilus_mail.send_mail({
                     body = mustache:render(smtp_message, tmpl_data),
                 })
 ```
-
-The table expects the following keys:
-
-| Name      | Description                                            |
-|-----------|--------------------------------------------------------|
-| username  | Username for authentication (optional)                 |
-| password  | Password for authentication (optional)                 |
-| from      | The sender including an optional canonical name        |
-| to        | A table of recipients                                  |
-| server    | The address of the mail server                         |
-| port      | The port number of the mail server                     |
-| helo_name | The HELO/LHLO name                                     |
-| subject   | The subject of the message                             |
-| body      | The body of the message                                |
-| tls       | Should the connection be secured aka SMTPS? true/false |
-| starttls  | Use starttls command true/false                        |
-| lmtp      | Do we send with LMTP (true) or SMTP (false)?           |

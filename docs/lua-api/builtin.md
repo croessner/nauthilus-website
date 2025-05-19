@@ -8,26 +8,56 @@ sidebar_position: 2
 
 ## nauthilus\_builtin.status\_message\_set
 
-If a client request should be rejected, you can overwrite the returned status message with the following function:
+Sets a custom status message to be returned when a client request is rejected.
+
+### Syntax
 
 ```lua
-nauthilus_builtin.status_message_set("Reject message here")
+nauthilus_builtin.status_message_set(message)
 ```
 
-## nauthilu\_builtin.custom\_log\_add
+### Parameters
 
-This function adds key-value pairs to the result log. In case of **features*, **backend** and **filters**, the logs are all added to the final result log line.
-In cases of **actions**, logging is appended to the **action** log line. The reason is simple: Actions may run asynchronous to the main request, which
-might already have been closed.
+- `message` (string): The custom rejection message to display to the client
 
-You cann call this function as many times as you like. Even with same key-value pairs.
+### Returns
 
-:::note
-Logs can not be removed if once set!
-:::
+None
+
+### Example
 
 ```lua
-nauthilus_builtin.custom_log_add("key", value)
+nauthilus_builtin.status_message_set("Authentication failed: Too many login attempts")
 ```
 
-A **value** can be a string, number or boolean. Anything else is replaced as "UNSUPPORTED".
+## nauthilus\_builtin.custom\_log\_add
+
+Adds key-value pairs to the result log.
+
+### Syntax
+
+```lua
+nauthilus_builtin.custom_log_add(key, value)
+```
+
+### Parameters
+
+- `key` (string): The name of the log field
+- `value` (string/number/boolean): The value to log (other types will be replaced with "UNSUPPORTED")
+
+### Returns
+
+None
+
+### Example
+
+```lua
+nauthilus_builtin.custom_log_add("user_id", 12345)
+nauthilus_builtin.custom_log_add("login_source", "mobile_app")
+```
+
+::::note
+In **features**, **backend**, and **filters**, logs are added to the final result log line. In **actions**, logging is appended to the **action** log line because actions may run asynchronously after the main request has closed.
+
+You can call this function multiple times, even with the same key-value pairs. Logs cannot be removed once set.
+::::

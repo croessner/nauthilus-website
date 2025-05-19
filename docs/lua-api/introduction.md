@@ -100,7 +100,7 @@ Lua scripts can modify the final log line by adding key-value pairs from each sc
 
 ## Configuration
 
-For the configuration, please have a look for the [configuration file](/docs/configuration/configuration-file.md) document.
+For the configuration, please have a look for the [configuration file](/docs/configuration/index.md) document.
 
 ---
 
@@ -360,7 +360,7 @@ function nauthilus_call_filter(request)
   if request.authenticated then
     -- do something
   end
-  
+
   return filter_action, failure_info -- See details below
 end
 ```
@@ -424,7 +424,7 @@ The Lua backend script must provide the following function:
 function nauthilus_backend_verify_password(request)
   local backend_result_object = backend_result:new()
   -- Do something with backend_result_object
-  
+
   return failure_info, backend_result_object -- See details below
 end
 ```
@@ -436,7 +436,7 @@ For user account listing, the following function is required:
 ------@return number, table
 function nauthilus_backend_list_accounts(request)
   local accounts = {}
-  
+
   return failure_info, accounts -- See details below
 end
 ```

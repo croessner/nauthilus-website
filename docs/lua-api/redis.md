@@ -28,7 +28,7 @@ Register a custom pool
 ### Syntax
 
 ```lua
-local result, error = nauthilus_redis.register_redis_pool(name, mode, config,)
+local result, error = nauthilus_redis.register_redis_pool(name, mode, config)
 ```
 ### Parameters
 
@@ -52,7 +52,7 @@ local result, error = nauthilus_redis.register_redis_pool(name, mode, config,)
   * **tls\_enabled** (boolean) - Activates TLS support
   * **tls\_cert\_file** (string) - Optional path to a certificate file in PEM format
   * **tls\_key\_file** (string) - Optional path to a key file in PEM format
-  
+
 ### Returns
 
 - `result` (string) -  "OK" is returned, if the pool was configured successfully.
@@ -92,13 +92,25 @@ In the following, I will use the name "handle" for a pool handler.
 
 ## nauthilus\_redis.redis\_set
 
-You can store a value in Redis with the following function:
+Stores a value in Redis with an optional expiration time.
 
 ### Syntax
 
+```lua
+local result, error = nauthilus_redis.redis_set(handle, key, value, expiration)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key to store the value under
+- `value` (string): The value to store
+- `expiration` (number, optional): Time in seconds after which the key will expire
+
 ### Returns
+
+- `result` (string): "OK" if the operation was successful
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -109,19 +121,25 @@ local nauthilus_redis = require("nauthilus_redis")
 local result, error = nauthilus_redis.redis_set(handle, "key", "value", 3600)
 ```
 
-The expiration value is optional.
-
-If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
-
 ## nauthilus\_redis.redis\_incr
 
-You can increment a value in Redis with the following function:
+Increments a numeric value stored in Redis by one.
 
 ### Syntax
 
+```lua
+local number, error = nauthilus_redis.redis_incr(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key whose value should be incremented
+
 ### Returns
+
+- `number` (number): The new value after incrementing
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -132,17 +150,25 @@ local nauthilus_redis = require("nauthilus_redis")
 local number, error = nauthilus_redis.redis_incr(handle, "key")
 ```
 
-If anything went fine, the current **number** is returned. In cases of an **error**, number equals nil and a string is returned.
-
 ## nauthilus\_redis.redis\_get
 
-To retrieve a value from Redis use the following function:
+Retrieves a value from Redis by key.
 
 ### Syntax
 
+```lua
+local result, error = nauthilus_redis.redis_get(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key to retrieve the value for
+
 ### Returns
+
+- `result` (string): The value stored at the specified key
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -153,17 +179,26 @@ local nauthilus_redis = require("nauthilus_redis")
 local result, error = nauthilus_redis.redis_get(handle, "key")
 ```
 
-If anything went fine, the returned value is stored in **result**. In cases of errors, the **result** equals nil and a string is returned to **error*.
-
 ## nauthilus\_redis.redis\_expire
 
-A Redis key can have an expiration time in seconds. Use the following function to achieve this goal:
+Sets an expiration time (in seconds) for a Redis key.
 
 ### Syntax
 
+```lua
+local result, error = nauthilus_redis.redis_expire(handle, key, seconds)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key to set expiration for
+- `seconds` (number): The expiration time in seconds
+
 ### Returns
+
+- `result` (string): "OK" if the operation was successful
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -171,20 +206,28 @@ A Redis key can have an expiration time in seconds. Use the following function t
 dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
-local result, error = nauthilus_redis.redis_expire(handle, "key")
+local result, error = nauthilus_redis.redis_expire(handle, "key", 3600)
 ```
-
-If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
 
 ## nauthilus\_redis.redis\_del
 
-To delete a Redis key, use the following function:
+Deletes a key from Redis.
 
 ### Syntax
 
+```lua
+local result, error = nauthilus_redis.redis_del(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key to delete
+
 ### Returns
+
+- `result` (string): "OK" if the operation was successful
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -194,17 +237,27 @@ local nauthilus_redis = require("nauthilus_redis")
 
 local result, error = nauthilus_redis.redis_del(handle, "key")
 ```
-If anything went fine, "OK" is returned as **result**. In cases of errors, the **result** equals nil and a string is returned as **error**.
 
 ## nauthilus\_redis.redis\_rename
 
-Rename a Redis key
+Renames a Redis key to a new name.
 
 ### Syntax
 
+```lua
+local result, err = nauthilus_redis.redis_rename(handle, oldkey, newkey)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `oldkey` (string): The current name of the Redis key
+- `newkey` (string): The new name for the Redis key
+
 ### Returns
+
+- `result` (string): "OK" if the operation was successful
+- `err` (string): An error message if the operation fails
 
 ### Example
 
@@ -220,13 +273,24 @@ local result, err = nauthilus_redis.redis_rename(handle, oldkey, newkey)
 
 ## nauthilus\_redis.redis\_hget
 
-Get a value from a Redis hash map
+Retrieves a value for a specific field from a Redis hash map.
 
 ### Syntax
 
+```lua
+local value, error = nauthilus_redis.redis_hget(handle, key, field)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+- `field` (string): The field name within the hash map
+
 ### Returns
+
+- `value` (string): The value of the specified field
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -235,18 +299,30 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
-local already_sent_mail, err_redis_hget2 = nauthilus_redis.redis_hget(handle, redis_key, "send_mail")
+local already_sent_mail, err_redis_hget = nauthilus_redis.redis_hget(handle, redis_key, "send_mail")
 ```
 
 ## nauthilus\_redis.redis\_hset
 
-Set a value in a Redis hash map
+Sets a field value in a Redis hash map.
 
 ### Syntax
 
+```lua
+local result, error = nauthilus_redis.redis_hset(handle, key, field, value)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+- `field` (string): The field name within the hash map
+- `value` (string/number): The value to set for the field
+
 ### Returns
+
+- `result` (number): 1 if field is a new field in the hash and value was set, 0 if field already exists and the value was updated
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -255,18 +331,29 @@ dynamic_loader("nauthilus_redis")
 local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
-local _, err_redis_hset = nauthilus_redis.redis_hset(handle, redis_key, "send_mail", 1)
+local result, err_redis_hset = nauthilus_redis.redis_hset(handle, redis_key, "send_mail", 1)
 ```
 
 ## nauthilus\_redis.redis\_hdel
 
-Delete a key from a Redis hash map
+Deletes a field from a Redis hash map.
 
 ### Syntax
 
+```lua
+local deleted, error = nauthilus_redis.redis_hdel(handle, key, field)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+- `field` (string): The field name to delete from the hash map
+
 ### Returns
+
+- `deleted` (number): The number of fields that were removed (1 if successful, 0 if field did not exist)
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -283,13 +370,23 @@ local deleted, err_redis_hdel = nauthilus_redis.redis_hdel(handle, redis_key, re
 
 ## nauthilus\_redis.redis\_hlen
 
-Get the number of entries in a hash map
+Gets the number of fields in a Redis hash map.
 
 ### Syntax
 
+```lua
+local length, error = nauthilus_redis.redis_hlen(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+
 ### Returns
+
+- `length` (number): The number of fields in the hash map
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -303,13 +400,23 @@ local length, err_redis_hlen = nauthilus_redis.redis_hlen(handle, redis_key)
 
 ## nauthilus\_redis.redis\_hgetall
 
-Get all values from a Redis hash map
+Retrieves all fields and values from a Redis hash map.
 
 ### Syntax
 
+```lua
+local hash_table, error = nauthilus_redis.redis_hgetall(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+
 ### Returns
+
+- `hash_table` (table): A Lua table containing all field-value pairs from the hash map
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -323,13 +430,25 @@ local all_sessions, err_redis_hgetall = nauthilus_redis.redis_hgetall(handle, re
 
 ## nauthilus\_redis.redis\_hincrby
 
-Increament the value (integer) of a Redis hash map key
+Increments the integer value of a field in a Redis hash map by a specified amount.
 
 ### Syntax
 
+```lua
+local new_value, error = nauthilus_redis.redis_hincrby(handle, key, field, increment)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+- `field` (string): The field name within the hash map
+- `increment` (number): The integer value to increment by
+
 ### Returns
+
+- `new_value` (number): The new value of the field after the increment operation
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -341,18 +460,30 @@ local key = "some_key"
 local field = "some_field"
 local increment = 1
 
-local result, err = nauthilus_redis.redis_hincrby(handle, key, field, increment)
+local new_value, err = nauthilus_redis.redis_hincrby(handle, key, field, increment)
 ```
 
 ## nauthilus\_redis.redis\_hincrbyfloat
 
-Increament the value (float) of a Redis hash map key
+Increments the floating-point value of a field in a Redis hash map by a specified amount.
 
 ### Syntax
 
+```lua
+local new_value, error = nauthilus_redis.redis_hincrbyfloat(handle, key, field, increment)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+- `field` (string): The field name within the hash map
+- `increment` (number): The floating-point value to increment by
+
 ### Returns
+
+- `new_value` (string): The new value of the field after the increment operation (as a string representation of the float)
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -364,16 +495,29 @@ local key = "some_key"
 local field = "some_field"
 local increment = 1.3
 
-local result, err = nauthilus_redis.redis_hincrbyfloat(handle, key, field, increment)
+local new_value, err = nauthilus_redis.redis_hincrbyfloat(handle, key, field, increment)
 ```
 
 ## nauthilus\_redis.redis\_hexists
 
+Checks if a field exists in a Redis hash map.
+
 ### Syntax
+
+```lua
+local exists, error = nauthilus_redis.redis_hexists(handle, key, field)
+```
 
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the hash map
+- `field` (string): The field name to check for existence
+
 ### Returns
+
+- `exists` (number): 1 if the field exists in the hash, 0 if it does not exist
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -384,18 +528,29 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local field = "some_field"
 
-local result, err = nauthilus_redis.redis_hexists(handle, key, field)
+local exists, err = nauthilus_redis.redis_hexists(handle, key, field)
 ```
 
 ## nauthilus\_redis.redis\_sadd
 
-Add a value to a Redis set
+Adds a member to a Redis set.
 
 ### Syntax
 
+```lua
+local added, error = nauthilus_redis.redis_sadd(handle, key, value)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the set
+- `value` (string): The value to add to the set
+
 ### Returns
+
+- `added` (number): 1 if the member was added to the set, 0 if it was already a member
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -406,18 +561,29 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local value = "some_value"
 
-local result, err = nauthilus_redis.redis_sadd(handle, key, value)
+local added, err = nauthilus_redis.redis_sadd(handle, key, value)
 ```
 
 ## nauthilus\_redis.redis\_sismember
 
-Check, if a value is a mamber of a Redis set
+Checks if a value is a member of a Redis set.
 
 ### Syntax
 
+```lua
+local is_member, error = nauthilus_redis.redis_sismember(handle, key, value)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the set
+- `value` (string): The value to check for membership
+
 ### Returns
+
+- `is_member` (number): 1 if the value is a member of the set, 0 if it is not
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -428,17 +594,27 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local value = "some_value"
 
-local result, err = nauthilus_redis.redis_sismember(handle, key, value)
+local is_member, err = nauthilus_redis.redis_sismember(handle, key, value)
 ```
 ## nauthilus\_redis.redis\_smembers
 
-Get all members from a Redis set
+Retrieves all members from a Redis set.
 
 ### Syntax
 
+```lua
+local members, error = nauthilus_redis.redis_smembers(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the set
+
 ### Returns
+
+- `members` (table): A Lua table containing all members of the set
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -448,18 +624,29 @@ local nauthilus_redis = require("nauthilus_redis")
 
 local key = "some_key"
 
-local result, err = nauthilus_redis.redis_smembers(handle, key)
+local members, err = nauthilus_redis.redis_smembers(handle, key)
 ```
 
 ## nauthilus\_redis.redis\_srem
 
-Remove a value from a Redis set
+Removes a member from a Redis set.
 
 ### Syntax
 
+```lua
+local removed, error = nauthilus_redis.redis_srem(handle, key, value)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the set
+- `value` (string): The value to remove from the set
+
 ### Returns
+
+- `removed` (number): 1 if the member was removed from the set, 0 if it was not a member
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -470,18 +657,28 @@ local nauthilus_redis = require("nauthilus_redis")
 local key = "some_key"
 local value = "some_value"
 
-local result, err = nauthilus_redis.redis_srem(handle, key, value)
+local removed, err = nauthilus_redis.redis_srem(handle, key, value)
 ```
 
 ## nauthilus\_redis.redis\_scard
 
-Return the number of values inside a Redis set
+Returns the number of members in a Redis set.
 
 ### Syntax
 
+```lua
+local count, error = nauthilus_redis.redis_scard(handle, key)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the set
+
 ### Returns
+
+- `count` (number): The number of members in the set
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -491,18 +688,29 @@ local nauthilus_redis = require("nauthilus_redis")
 
 local key = "some_key"
 
-local result, err = nauthilus_redis.redis_scard(handle, key)
+local count, err = nauthilus_redis.redis_scard(handle, key)
 ```
 
-## nauthilus\_redis.redis\_upload\script
+## nauthilus\_redis.redis\_upload\_script
 
-Upload a Redis script onto a Redis server. If successful an sha1 hash is returned, nil on failure with an error returned as second result.
+Uploads a Lua script to a Redis server for later execution.
 
 ### Syntax
 
+```lua
+local sha1, error = nauthilus_redis.redis_upload_script(handle, script, script_name)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `script` (string): The Lua script to upload to the Redis server
+- `script_name` (string): A name to identify the script for later execution
+
 ### Returns
+
+- `sha1` (string): The SHA1 hash of the script, used to identify it when executing
+- `error` (string): An error message if the operation fails
 
 ### Example
 
@@ -533,14 +741,26 @@ Use an init script to upload scripts at startup
 
 ## nauthilus\_redis.redis\_run\_script
 
-With this command, you can either upload a script and run it once, or you can run an already uploaded script by
-giving the upload-script-name (defined by an upload call earlier. See above).
+Executes a Lua script on a Redis server, either by providing the script directly or by referencing a previously uploaded script.
 
 ### Syntax
 
+```lua
+local result, error = nauthilus_redis.redis_run_script(handle, script, script_name, keys, args)
+```
+
 ### Parameters
 
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `script` (string): The Lua script to execute (leave empty if using script_name)
+- `script_name` (string): The name of a previously uploaded script (leave empty if providing script directly)
+- `keys` (table): A Lua table containing the Redis keys that will be accessed by the script
+- `args` (table): A Lua table containing additional arguments for the script
+
 ### Returns
+
+- `result` (any): The result returned by the executed script
+- `error` (string): An error message if the operation fails
 
 ### Example
 

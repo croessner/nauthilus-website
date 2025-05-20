@@ -347,14 +347,18 @@ additional log modules. This is the list of all available debug modules:
 | statistics   | Prometheus related debugging                                                           |
 | whitelist    | Show whitelist related debugging                                                       |
 | ldap         | Show LDAP command and filter related debugging                                         |
-| ldap\_pool   | Show LDAP-pool related debugging such as free/busy/closed connections and housekeeping |
+| ldappool     | Show LDAP-pool related debugging such as free/busy/closed connections and housekeeping |
 | cache        | Turn on cache backend related debugging                                                |
-| brute\_force | Turn on brute-force releated debugging                                                 |
+| brute\_force | Turn on brute-force related debugging                                                  |
 | rbl          | Turn on RBL (realtime-blackhole-list) related debugging                                |
 | action       | Turn on Lua post-action related debugging                                              |
 | feature      | Turn on feature related debugging                                                      |
-| lua          | Turn on Lua releated debugging                                                         |
+| lua          | Turn on Lua related debugging                                                          |
 | filter       | Turn on filter related debugging                                                       |
+| tolerate     | Turn on debugging for operations related to tolerance or error allowances              |
+| neural       | Turn on debugging for neural network-related operations                                |
+| jwt          | Turn on debugging for JWT-related operations                                           |
+| http         | Turn on debugging for HTTP-related operations                                          |
 
 ```yaml
 server:

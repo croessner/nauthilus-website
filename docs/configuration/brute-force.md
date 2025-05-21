@@ -42,6 +42,7 @@ This section lists chains of buckets. Here is the definition of a bucket:
 | ipv4             | Boolean that enables the bucket for IPv4 support                                               |
 | ipv6             | Boolean that enables the bucket for IPv6 support                                               |
 | failed_requests  | Threshold value unitl a client will be blocked directly without asking authentication backends |
+| only_protocols   | Optional list of protocols for which this bucket should be used (available from version 1.7.5) |
 
 ### brute_force::ip_whitelist
 _Default: empty list_
@@ -270,4 +271,14 @@ brute_force:
       cidr: 64
       ipv6: true
       failed_requests: 40
+
+    # Example of a protocol-specific bucket (available from version 1.7.5)
+    - name: b_1h_imap_ipv4_24
+      period: 3600
+      cidr: 24
+      ipv4: true
+      failed_requests: 5
+      only_protocols:
+        - imap
+        - imaps
 ```

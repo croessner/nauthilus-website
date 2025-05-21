@@ -122,6 +122,7 @@ server:
   insights:
     enable_pprof: true                  # Default: false
     enable_block_profile: true          # Default: false
+    monitor_connections: true           # Default: false
 
   # Redis configuration
   redis:
@@ -219,7 +220,6 @@ server:
     timeout: 60s                        # Default: 30s
     max_idle_connections: 200           # Default: 100
     max_idle_connections_per_host: 20   # Default: 10
-    monitor_connections: true           # Default: false
 
   # Default HTTP request header
   default_http_request_header:

@@ -551,6 +551,17 @@ server:
       enable_block_profile: true
 ```
 
+#### server::insights::monitor_connections
+_Default: false_
+
+This flag turns on (true) connection monitoring.
+
+```yaml
+server:
+  insights:
+    monitor_connections: true
+```
+
 ## Redis Configuration
 
 ### server::redis
@@ -1082,13 +1093,3 @@ server:
     max_idle_connections_per_host: 20
 ```
 
-#### server::keep_alive::monitor_connections
-_Default: false_
-
-This flag turns on (true) connection monitoring.
-
-```yaml
-server:
-  keep_alive:
-    monitor_connections: true
-```

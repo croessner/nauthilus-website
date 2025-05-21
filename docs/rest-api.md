@@ -372,7 +372,7 @@ Authenticate a user using HTTP Basic Authentication.
 
 Flush a user from the Redis cache.
 
-**Description:** Removes a user's data from the cache, forcing a fresh authentication on the next request.
+**Description:** Removes a user's data from the cache, forcing a fresh authentication on the next request. This endpoint also flushes all brute force rules associated with the user's IP addresses, regardless of protocol.
 
 **Request:**
 ```json
@@ -392,6 +392,7 @@ Flush a user from the Redis cache.
   "operation": "flush",
   "result": {
     "user": "testuser",
+    "removed_keys": ["nauthilus:ucp:__default__:testuser", "nauthilus:bf:3600:24:5:4:192.168.1.0/24:imap"],
     "status": "flushed"
   }
 }
@@ -418,13 +419,15 @@ Flush an IP address from a brute force bucket.
 ```json
 {
   "ip_address": "x.x.x.x",
-  "rule_name": "testrule"
+  "rule_name": "testrule",
+  "protocol": "imap"
 }
 ```
 
 **Parameters:**
 - `ip_address`: IP address to flush
 - `rule_name`: Rule name to flush. Use "*" to flush all rules for the IP.
+- `protocol` (optional): Protocol to flush. If specified, only rules with this protocol will be flushed.
 
 **Response:**
 ```json
@@ -435,6 +438,8 @@ Flush an IP address from a brute force bucket.
   "result": {
     "ip_address": "x.x.x.x",
     "rule_name": "testrule",
+    "protocol": "imap",
+    "removed_keys": ["nauthilus:bf:3600:24:5:4:192.168.1.0/24:imap"],
     "status": "flushed"
   }
 }
@@ -447,13 +452,21 @@ Flush an IP address from a brute force bucket.
 - `403 Forbidden`: Access denied
 - `500 Internal Server Error`: Server error
 
+**Protocol-Specific Brute Force Rules:**
+
+Nauthilus supports protocol-specific brute force rules, which allow you to define different brute force protection rules for different protocols (e.g., IMAP, SMTP, POP3). When a rule is configured with specific protocols, it will only be triggered by authentication attempts using those protocols.
+
+When flushing brute force rules, you can specify the protocol to flush only rules associated with that protocol. This is useful when you have different rules for different protocols and want to flush only specific ones.
+
+The Redis keys for protocol-specific rules include the protocol name as part of the key, separated by a colon. For example: `nauthilus:bf:3600:24:5:4:192.168.1.0/24:imap`.
+
 ---
 
 #### `POST /api/v1/bruteforce/list`
 
 Get a list of all known IP addresses and accounts that have been blocked.
 
-**Description:** Returns a list of all IP addresses and accounts currently blocked by the brute force protection system. Optionally accepts filters to narrow down the results.
+**Description:** Returns a list of all IP addresses and accounts currently blocked by the brute force protection system. Optionally accepts filters to narrow down the results. Note that this endpoint does not display protocol information for protocol-specific brute force rules.
 
 **Request:**
 ```json

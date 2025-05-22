@@ -454,7 +454,7 @@ Flush an IP address from a brute force bucket.
 
 **Protocol-Specific Brute Force Rules:**
 
-Nauthilus supports protocol-specific brute force rules (available from version 1.7.5), which allow you to define different brute force protection rules for different protocols (e.g., IMAP, SMTP, POP3). When a rule is configured with specific protocols using the `only_protocols` option, it will only be triggered by authentication attempts using those protocols.
+Nauthilus supports protocol-specific brute force rules (available from version 1.7.5), which allow you to define different brute force protection rules for different protocols (e.g., IMAP, SMTP, POP3). When a rule is configured with specific protocols using the `filter_by_protocol` option, it will only be triggered by authentication attempts using those protocols.
 
 When flushing brute force rules, you can specify the protocol to flush only rules associated with that protocol. This is useful when you have different rules for different protocols and want to flush only specific ones.
 

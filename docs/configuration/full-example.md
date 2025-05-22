@@ -387,6 +387,16 @@ brute_force:
       ipv6: true
       failed_requests: 40
 
+    # Example of a protocol-specific bucket (available from version 1.7.5)
+    - name: b_1h_imap_ipv4_24
+      period: 3600
+      cidr: 24
+      ipv4: true
+      failed_requests: 5
+      filter_by_protocol:
+        - imap
+        - imaps
+
 oauth2:
   # Custom scopes configuration
   custom_scopes:                        # Default: empty list

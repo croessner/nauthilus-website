@@ -43,6 +43,7 @@ This section lists chains of buckets. Here is the definition of a bucket:
 | ipv6               | Boolean that enables the bucket for IPv6 support                                               |
 | failed_requests    | Threshold value unitl a client will be blocked directly without asking authentication backends |
 | filter_by_protocol | Optional list of protocols for which this bucket should be used (available from version 1.7.5) |
+| filter_by_oidc_cid | Optional list of OIDC Client IDs for which this bucket should be used (available from version 1.7.5) |
 
 ### brute_force::ip_whitelist
 _Default: empty list_
@@ -281,4 +282,14 @@ brute_force:
       filter_by_protocol:
         - imap
         - imaps
+
+    # Example of an OIDC Client ID-specific bucket (available from version 1.7.5)
+    - name: b_1h_oidc_client_ipv4_24
+      period: 3600
+      cidr: 24
+      ipv4: true
+      failed_requests: 3
+      filter_by_oidc_cid:
+        - my-oidc-client-id
+        - another-client-id
 ```

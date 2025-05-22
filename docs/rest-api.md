@@ -68,7 +68,8 @@ Authenticate a user using JSON format.
   "ssl_protocol": "TLSv1.2",
   "ssl_cipher": "ECDHE-RSA-AES256-GCM-SHA384",
   "ssl_serial": "0123456789ABCDEF",
-  "ssl_fingerprint": "AA:BB:CC:DD:EE:FF"
+  "ssl_fingerprint": "AA:BB:CC:DD:EE:FF",
+  "oidc_cid": "my-oidc-client-id"
 }
 ```
 
@@ -88,6 +89,7 @@ Authenticate a user using JSON format.
 - `auth_login_attempt`: A flag indicating if the request is an authentication attempt
 - `ssl`: Identifier if TLS is used (any non-empty value activates TLS)
 - Various SSL/TLS related fields for certificate information
+- `oidc_cid`: OIDC Client ID used for authentication (available from version 1.7.5)
 
 **Query Parameters:**
 - `mode` (optional): Special operation mode
@@ -175,6 +177,7 @@ All fields that are available in the JSON request are also supported as HTTP hea
 - `Auth-SSL-Protocol`: SSL protocol
 - `Auth-SSL-Serial`: SSL serial number
 - `Auth-SSL-Fingerprint`: SSL fingerprint
+- `X-OIDC-CID`: OIDC Client ID (available from version 1.7.5)
 
 Note: The header names can be customized in the server configuration. The names shown above are the default values from the `default_http_request_header` configuration.
 
@@ -264,6 +267,7 @@ The nginx endpoint accepts the same headers as the header endpoint. All fields t
 - `Auth-SSL-Protocol`: SSL protocol
 - `Auth-SSL-Serial`: SSL serial number
 - `Auth-SSL-Fingerprint`: SSL fingerprint
+- `X-OIDC-CID`: OIDC Client ID (available from version 1.7.5)
 
 Note: The header names can be customized in the server configuration. The names shown above are the default values from the `default_http_request_header` configuration.
 
@@ -420,7 +424,8 @@ Flush an IP address from a brute force bucket.
 {
   "ip_address": "x.x.x.x",
   "rule_name": "testrule",
-  "protocol": "imap"
+  "protocol": "imap",
+  "oidc_cid": "my-oidc-client-id"
 }
 ```
 
@@ -428,6 +433,7 @@ Flush an IP address from a brute force bucket.
 - `ip_address`: IP address to flush
 - `rule_name`: Rule name to flush. Use "*" to flush all rules for the IP.
 - `protocol` (optional): Protocol to flush. If specified, only rules with this protocol will be flushed.
+- `oidc_cid` (optional): OIDC Client ID to flush. If specified, only rules with this OIDC Client ID will be flushed.
 
 **Response:**
 ```json
@@ -439,6 +445,7 @@ Flush an IP address from a brute force bucket.
     "ip_address": "x.x.x.x",
     "rule_name": "testrule",
     "protocol": "imap",
+    "oidc_cid": "my-oidc-client-id",
     "removed_keys": ["nauthilus:bf:3600:24:5:4:192.168.1.0/24:imap"],
     "status": "flushed"
   }
@@ -452,13 +459,20 @@ Flush an IP address from a brute force bucket.
 - `403 Forbidden`: Access denied
 - `500 Internal Server Error`: Server error
 
-**Protocol-Specific Brute Force Rules:**
+**Protocol-Specific and OIDC Client ID-Specific Brute Force Rules:**
 
-Nauthilus supports protocol-specific brute force rules (available from version 1.7.5), which allow you to define different brute force protection rules for different protocols (e.g., IMAP, SMTP, POP3). When a rule is configured with specific protocols using the `filter_by_protocol` option, it will only be triggered by authentication attempts using those protocols.
+Nauthilus supports protocol-specific and OIDC Client ID-specific brute force rules (available from version 1.7.5), which allow you to define different brute force protection rules for:
+
+1. Different protocols (e.g., IMAP, SMTP, POP3) using the `filter_by_protocol` option
+2. Different OIDC Client IDs using the `filter_by_oidc_cid` option
+
+When a rule is configured with specific protocols or OIDC Client IDs, it will only be triggered by authentication attempts using those protocols or Client IDs.
 
 When flushing brute force rules, you can specify the protocol to flush only rules associated with that protocol. This is useful when you have different rules for different protocols and want to flush only specific ones.
 
 The Redis keys for protocol-specific rules include the protocol name as part of the key, separated by a colon. For example: `nauthilus:bf:3600:24:5:4:192.168.1.0/24:imap`.
+
+For OIDC Client ID-specific rules, the Redis keys include both the `:oidc:` marker and the Client ID. For example: `nauthilus:bf:3600:24:5:4:192.168.1.0/24:oidc:my-client-id`.
 
 ---
 

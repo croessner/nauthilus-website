@@ -251,6 +251,7 @@ server:
     ssl_protocol: "X-Auth-SSL-Protocol"
     ssl_serial: "X-Auth-SSL-Serial"
     ssl_fingerprint: "X-Auth-SSL-Fingerprint"
+    oidc_cid: "X-OIDC-CID"
 
 realtime_blackhole_lists:
   # Threshold for RBL checks
@@ -396,6 +397,16 @@ brute_force:
       filter_by_protocol:
         - imap
         - imaps
+
+    # Example of an OIDC Client ID-specific bucket (available from version 1.7.5)
+    - name: b_1h_oidc_client_ipv4_24
+      period: 3600
+      cidr: 24
+      ipv4: true
+      failed_requests: 3
+      filter_by_oidc_cid:
+        - my-oidc-client-id
+        - another-client-id
 
 oauth2:
   # Custom scopes configuration

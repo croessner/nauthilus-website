@@ -20,6 +20,48 @@ The brute force protection system works as follows:
 3. Blocked IP addresses are stored in Redis with information about which brute force rule triggered the block.
 4. User accounts that have been affected by brute force attempts are also tracked in Redis.
 
+## Adaptive Toleration (v1.7.7)
+
+Starting with version 1.7.7, Nauthilus introduces an adaptive toleration mechanism that dynamically adjusts the tolerance threshold for failed authentication attempts based on the volume of successful authentications.
+
+### How Adaptive Toleration Works
+
+Unlike static toleration, which uses a fixed percentage, adaptive toleration scales the tolerance threshold according to the authentication patterns observed from a specific IP address:
+
+- IP addresses with few successful authentications are allowed only a small number of failures
+- IP addresses with many successful authentications (like corporate proxies) are allowed a higher number of failures
+
+This approach is particularly beneficial for:
+- Corporate environments where multiple users share the same IP address
+- Situations where some users might have incorrect passwords among many legitimate users
+- Reducing false positives while maintaining security
+
+### Configuration
+
+Adaptive toleration can be enabled globally in the configuration file:
+
+```yaml
+brute_force:
+  adaptive_toleration: true
+  min_tolerate_percent: 10  # Default: 10%
+  max_tolerate_percent: 50  # Default: 50%
+  scale_factor: 1.0         # Default: 1.0
+```
+
+You can also configure adaptive toleration for specific IP addresses or networks:
+
+```yaml
+brute_force:
+  custom_tolerations:
+    - ip_address: "192.168.1.0/24"
+      tolerate_percent: 20
+      tolerate_ttl: 24h
+      adaptive_toleration: true
+      min_tolerate_percent: 15
+      max_tolerate_percent: 60
+      scale_factor: 1.5
+```
+
 ## Freeing Users from Brute Force Protection
 
 There are two main ways to free users from brute force protection:

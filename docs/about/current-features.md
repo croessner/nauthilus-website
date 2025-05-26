@@ -34,6 +34,7 @@ This document provides a comprehensive overview of all features currently suppor
   - Configurable brute force buckets to detect password attacks
   - Multiple bucket types based on time periods and network ranges
   - Customizable thresholds and actions
+  - Adaptive toleration mechanism that dynamically adjusts tolerance thresholds (v1.7.7)
 
 - **Realtime Blackhole Lists (RBL)**
   - Integration with multiple RBL services

@@ -319,14 +319,27 @@ brute_force:
   tolerate_percent: 20                  # Default: 0
   tolerate_ttl: 48h                     # Default: 24h
 
+  # Adaptive toleration settings (v1.7.7)
+  adaptive_toleration: true             # Default: false
+  min_tolerate_percent: 10              # Default: 10
+  max_tolerate_percent: 50              # Default: 50
+  scale_factor: 1.0                     # Default: 1.0
+
   # Custom tolerations
   custom_tolerations:                   # Default: empty list
     - ip_address: 192.168.1.0/24
       tolerate_percent: 30
       tolerate_ttl: 72h
+      # Per-IP adaptive toleration settings (v1.7.7)
+      adaptive_toleration: true
+      min_tolerate_percent: 15
+      max_tolerate_percent: 60
+      scale_factor: 1.2
     - ip_address: 10.0.0.5
       tolerate_percent: 50
       tolerate_ttl: 24h
+      # Explicitly disable adaptive toleration for this IP
+      adaptive_toleration: false
 
   # Neural network configuration
   neural_network:

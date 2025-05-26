@@ -57,6 +57,54 @@ nauthilus_neural.add_additional_features({
 }, "embedding")
 ```
 
+## set_learning_mode
+
+Toggles the neural network learning mode on or off. When learning mode is enabled, the system collects data but does not use the neural network for predictions. When disabled, the system uses the trained neural network for predictions.
+
+### Syntax
+
+```lua
+local learning_mode_state, error_message = nauthilus_neural.set_learning_mode(enabled)
+```
+
+### Parameters
+
+- `enabled` (boolean): Whether to enable learning mode (true) or disable it (false)
+
+### Returns
+
+- `learning_mode_state` (boolean): The new learning mode state (true if in learning mode, false otherwise)
+- `error_message` (string or nil): Error message if the operation failed, nil otherwise
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_neural")
+local nauthilus_neural = require("nauthilus_neural")
+
+-- Enable learning mode
+local is_learning, error = nauthilus_neural.set_learning_mode(true)
+if error then
+  print("Failed to enable learning mode: " .. error)
+else
+  print("Learning mode is now: " .. (is_learning and "enabled" or "disabled"))
+end
+
+-- Disable learning mode
+local is_learning, error = nauthilus_neural.set_learning_mode(false)
+if not error then
+  print("Learning mode is now: " .. (is_learning and "enabled" or "disabled"))
+end
+```
+
+### Notes
+
+- This function is available from Nauthilus version 1.7.7
+- The experimental_ml feature must be enabled for this function to work
+- Learning mode affects how the system handles authentication attempts:
+  - In learning mode: The system collects data for training but does not use the neural network for predictions
+  - When not in learning mode: The system uses the trained neural network for predictions
+
 ## train_neural_network
 
 Manually trains the neural network model used for brute force detection.
@@ -163,5 +211,73 @@ Or in case of an error:
   "error": "Error message details",
   "epochs": 100,
   "samples": 10000
+}
+```
+
+## Custom Hook for Learning Mode
+
+A custom hook is available to toggle the neural network learning mode via HTTP. This allows you to switch between learning and prediction modes remotely without direct server access.
+
+### Configuration
+
+Add the following to your Nauthilus configuration in the `lua.custom_hooks` section:
+
+```yaml
+lua:
+  custom_hooks:
+    - http_location: "learning-mode"
+      http_method: "GET"
+      script_path: "/etc/nauthilus/lua-plugins.d/hooks/learning-mode.lua"
+      roles: ["admin"]  # Restrict access to admin users when JWT auth is enabled
+```
+
+### Usage
+
+Once configured, you can toggle the learning mode by making a GET request to:
+
+```
+/api/v1/custom/learning-mode
+```
+
+#### Query Parameters
+
+- `enabled` (required): Whether to enable learning mode. Valid values are:
+  - `true` or `1`: Enable learning mode
+  - `false` or `0`: Disable learning mode
+
+#### Example
+
+```
+GET /api/v1/custom/learning-mode?enabled=true
+```
+
+This will enable learning mode, causing the system to collect data but not use the neural network for predictions.
+
+```
+GET /api/v1/custom/learning-mode?enabled=false
+```
+
+This will disable learning mode, causing the system to use the trained neural network for predictions.
+
+### Response
+
+The hook returns a JSON response with the result:
+
+```json
+{
+  "status": "success",
+  "message": "Learning mode set successfully",
+  "learning_mode": true
+}
+```
+
+Or in case of an error:
+
+```json
+{
+  "status": "error",
+  "message": "Failed to set learning mode",
+  "error": "Error message details",
+  "learning_mode": false
 }
 ```

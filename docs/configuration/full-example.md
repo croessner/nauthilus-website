@@ -678,7 +678,10 @@ lua:
   # Lua backend configuration
   config:
     script_path: ./server/lua-plugins.d/backend/backend.lua  # Required
-    init_script_path: ./server/lua-plugins.d/init/init.lua  # Optional
+    init_script_path: ./server/lua-plugins.d/init/init.lua  # Optional, single init script
+    init_script_paths:  # Optional, list of init scripts (v1.7.7)
+      - ./server/lua-plugins.d/init/init.lua
+      - ./server/lua-plugins.d/init/init_neural.lua
     package_path: /usr/local/etc/nauthilus/lualib/?.lua  # Optional
     number_of_workers: 10               # Default: 10
 

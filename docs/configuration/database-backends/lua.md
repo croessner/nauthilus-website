@@ -104,6 +104,7 @@ If no roles are specified for a hook, any authenticated user can access it when 
 |------------------------|:--------:|----------------------------------------------|-----------------------------------------------|
 | backend\_script\_path  |   yes    | Full path to the Lua backend script          | ./server/lua-plugins.d/backend/backend.lua    |
 | init\_script\_path     |    no    | Full path to the Lua initialization script   | ./server/lua-plugins.d/init/init.lua          |
+| init\_script\_paths    |    no    | List of Lua initialization scripts (v1.7.7)  | [./init.lua, ./init_neural.lua]               |
 | package_path           |    no    | Set a Lua module path for custom Lua modules | /usr/local/etc/nauthilus/lualib/?.lua         |
 | number\_of\_workers    |    no    | Number of Lua workers to use                 | 10                                            |
 
@@ -179,6 +180,11 @@ lua:
 
   config:
     script_path: ./server/lua-plugins.d/backend/backend.lua
+    init_script_path: ./server/lua-plugins.d/init/init.lua
+    # Example of multiple init scripts (v1.7.7)
+    init_script_paths:
+      - ./server/lua-plugins.d/init/init.lua
+      - ./server/lua-plugins.d/init/init_neural.lua
 
   search:
     - protocol:

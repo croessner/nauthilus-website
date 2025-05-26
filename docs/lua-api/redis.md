@@ -1054,3 +1054,82 @@ else
     print("Removed elements:", removed)
 end
 ```
+
+---
+
+## nauthilus\_redis.redis\_zcount
+
+_New in version 1.7.7_
+
+Counts the number of members in a Redis Sorted Set with scores between min and max.
+
+### Syntax
+
+```lua
+local count, err = nauthilus_redis.redis_zcount(handle, key, min, max)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The name of the Redis Sorted Set
+- `min` (string): The minimum score (can be a number or "-inf")
+- `max` (string): The maximum score (can be a number or "+inf")
+
+### Returns
+
+- `count` (number): The number of members in the specified score range
+- `err` (string): An error message, if an error occurs
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local count, err = nauthilus_redis.redis_zcount("default", "my_sorted_set", "10", "20")
+if err then
+    print("Error:", err)
+else
+    print("Number of members in range:", count)
+end
+```
+
+---
+
+## nauthilus\_redis.redis\_zscore
+
+_New in version 1.7.7_
+
+Retrieves the score of a member in a Redis Sorted Set.
+
+### Syntax
+
+```lua
+local score, err = nauthilus_redis.redis_zscore(handle, key, member)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The name of the Redis Sorted Set
+- `member` (string): The member whose score you want to retrieve
+
+### Returns
+
+- `score` (number): The score of the member in the sorted set
+- `err` (string): An error message if the operation fails or if the member does not exist
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local score, err = nauthilus_redis.redis_zscore("default", "my_sorted_set", "member1")
+if err then
+    print("Error:", err)
+else
+    print("Score of member:", score)
+end
+```

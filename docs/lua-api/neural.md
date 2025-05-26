@@ -11,6 +11,52 @@ dynamic_loader("nauthilus_neural")
 local nauthilus_neural = require("nauthilus_neural")
 ```
 
+## add_additional_features
+
+Adds custom features to the authentication state for neural network processing. These features can be used by the neural network for more accurate brute force detection.
+
+### Syntax
+
+```lua
+nauthilus_neural.add_additional_features(features_table, encoding_type)
+```
+
+### Parameters
+
+- `features_table` (table): A table containing key-value pairs of features to add
+- `encoding_type` (string, optional): The encoding type to use for string features. Valid values are:
+  - `"one-hot"` (default): Uses one-hot encoding for string features
+  - `"embedding"`: Uses embedding encoding for string features
+
+### Notes
+
+- The function does not return any values
+- Features with keys "ClientIP", "client_ip", "Username", or "username" are automatically skipped
+- If called multiple times, new features are merged with existing ones
+- This function is available from Nauthilus version 1.7.7
+- The experimental_ml feature must be enabled for these features to be used
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_neural")
+local nauthilus_neural = require("nauthilus_neural")
+
+-- Add custom features with default one-hot encoding
+nauthilus_neural.add_additional_features({
+  user_agent = request.headers["User-Agent"],
+  login_time = os.time(),
+  device_type = "mobile",
+  location = "office"
+})
+
+-- Add features with embedding encoding for string values
+nauthilus_neural.add_additional_features({
+  browser_info = request.headers["User-Agent"],
+  referrer = request.headers["Referer"]
+}, "embedding")
+```
+
 ## train_neural_network
 
 Manually trains the neural network model used for brute force detection.

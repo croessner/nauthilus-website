@@ -281,3 +281,229 @@ Or in case of an error:
   "learning_mode": false
 }
 ```
+
+## Custom Hook for Distributed Brute Force Testing
+
+A custom hook is available to test the distributed brute force detection system via HTTP. This allows you to simulate attacks and verify that they are properly detected.
+
+### Configuration
+
+Add the following to your Nauthilus configuration in the `lua.custom_hooks` section:
+
+```yaml
+lua:
+  custom_hooks:
+    - http_location: "distributed-brute-force-test"
+      http_method: "GET"
+      script_path: "/etc/nauthilus/lua-plugins.d/hooks/distributed-brute-force-test.lua"
+      roles: ["admin"]  # Restrict access to admin users when JWT auth is enabled
+```
+
+### Usage
+
+Once configured, you can use the hook with one of the following actions:
+
+#### Simulate Attack
+
+Simulates a distributed brute force attack by generating multiple IPs attempting to access the same account.
+
+```
+GET /api/v1/custom/distributed-brute-force-test?action=simulate_attack&username=testuser&num_ips=20&country_code=DE
+```
+
+##### Query Parameters
+
+- `action` (required): Must be "simulate_attack"
+- `username` (required): The username to target in the simulated attack
+- `num_ips` (optional): Number of unique IP addresses to generate. Default: 20
+- `country_code` (optional): Country code to associate with the attack (e.g., "DE", "US")
+
+##### Response
+
+```json
+{
+  "status": "success",
+  "message": "Distributed brute force attack simulated successfully",
+  "username": "testuser",
+  "num_ips": 20,
+  "country_code": "DE"
+}
+```
+
+#### Check Detection
+
+Checks if an attack was detected for a specific account.
+
+```
+GET /api/v1/custom/distributed-brute-force-test?action=check_detection&username=testuser
+```
+
+##### Query Parameters
+
+- `action` (required): Must be "check_detection"
+- `username` (required): The username to check
+
+##### Response
+
+```json
+{
+  "status": "success",
+  "message": "Detection check completed",
+  "username": "testuser",
+  "detection_result": {
+    "threat_level": 0.8,
+    "account_under_attack": true,
+    "attack_score": 20,
+    "captcha_enabled": true,
+    "rate_limit_enabled": true,
+    "monitoring_mode": true,
+    "is_captcha_account": false,
+    "attack_detected": true
+  }
+}
+```
+
+#### Run Test
+
+Runs a complete test by resetting protection measures, simulating an attack, and checking if it was detected.
+
+```
+GET /api/v1/custom/distributed-brute-force-test?action=run_test&username=testuser&num_ips=20&country_code=DE
+```
+
+##### Query Parameters
+
+- `action` (required): Must be "run_test"
+- `username` (required): The username to target in the simulated attack
+- `num_ips` (optional): Number of unique IP addresses to generate. Default: 20
+- `country_code` (optional): Country code to associate with the attack (e.g., "DE", "US")
+
+##### Response
+
+```json
+{
+  "status": "success",
+  "message": "Test completed",
+  "username": "testuser",
+  "num_ips": 20,
+  "country_code": "DE",
+  "detection_result": {
+    "threat_level": 0.8,
+    "account_under_attack": true,
+    "attack_score": 20,
+    "captcha_enabled": false,
+    "rate_limit_enabled": false,
+    "monitoring_mode": true,
+    "is_captcha_account": false,
+    "attack_detected": true
+  },
+  "test_result": "PASS",
+  "test_message": "Distributed brute force attack was successfully detected"
+}
+```
+
+## Custom Hook for Distributed Brute Force Administration
+
+A custom hook is available to administer the distributed brute force detection system via HTTP. This allows you to view metrics and reset protection measures.
+
+### Configuration
+
+Add the following to your Nauthilus configuration in the `lua.custom_hooks` section:
+
+```yaml
+lua:
+  custom_hooks:
+    - http_location: "distributed-brute-force-admin"
+      http_method: "GET"
+      script_path: "/etc/nauthilus/lua-plugins.d/hooks/distributed-brute-force-admin.lua"
+      roles: ["admin"]  # Restrict access to admin users when JWT auth is enabled
+```
+
+### Usage
+
+Once configured, you can use the hook with one of the following actions:
+
+#### Get Metrics
+
+Retrieves metrics about the current state of distributed brute force protection.
+
+```
+GET /api/v1/custom/distributed-brute-force-admin?action=get_metrics
+```
+
+##### Query Parameters
+
+- `action` (optional): If not provided or set to "get_metrics", retrieves metrics
+
+##### Response
+
+```json
+{
+  "status": "success",
+  "message": "Metrics retrieved successfully",
+  "metrics": {
+    "threat_level": 0.8,
+    "attempts": 1250,
+    "unique_ips": 500,
+    "unique_users": 25,
+    "ips_per_user": 20,
+    "attacked_accounts": {
+      "user1": 20,
+      "user2": 15
+    },
+    "blocked_regions": ["CN", "RU"],
+    "rate_limited_ips": ["192.168.1.1", "10.0.0.1"],
+    "captcha_accounts": ["user1", "user3"],
+    "settings": {
+      "captcha_enabled": "true",
+      "rate_limit_enabled": "true",
+      "monitoring_mode": "true",
+      "ml_threshold": "0.5"
+    }
+  }
+}
+```
+
+#### Reset Protection
+
+Resets all protection measures.
+
+```
+GET /api/v1/custom/distributed-brute-force-admin?action=reset_protection
+```
+
+##### Query Parameters
+
+- `action` (required): Must be "reset_protection"
+
+##### Response
+
+```json
+{
+  "status": "success",
+  "message": "Protection measures reset successfully"
+}
+```
+
+#### Reset Account
+
+Resets protection measures for a specific account.
+
+```
+GET /api/v1/custom/distributed-brute-force-admin?action=reset_account&username=testuser
+```
+
+##### Query Parameters
+
+- `action` (required): Must be "reset_account"
+- `username` (required): The username to reset
+
+##### Response
+
+```json
+{
+  "status": "success",
+  "message": "Account reset successfully",
+  "username": "testuser"
+}
+```

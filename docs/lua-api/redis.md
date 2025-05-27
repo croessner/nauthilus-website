@@ -1133,3 +1133,397 @@ else
     print("Score of member:", score)
 end
 ```
+
+---
+
+## nauthilus\_redis.redis\_lpush
+
+_New in version 1.7.7_
+
+Adds one or more values to the beginning of a Redis list and returns the length of the list after the push operation.
+
+### Syntax
+
+```lua
+local length, error = nauthilus_redis.redis_lpush(handle, key, value1, value2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the list
+- `value1` (string/number): The first value to add to the beginning of the list
+- `value2, ...` (string/number, optional): Additional values to add to the beginning of the list
+
+### Returns
+
+- `length` (number): The length of the list after the push operation
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local length, err = nauthilus_redis.redis_lpush("default", "my_list", "value1", "value2")
+if err then
+    print("Error:", err)
+else
+    print("List length after push:", length)
+end
+```
+
+## nauthilus\_redis.redis\_rpush
+
+_New in version 1.7.7_
+
+Adds one or more values to the end of a Redis list and returns the length of the list after the push operation.
+
+### Syntax
+
+```lua
+local length, error = nauthilus_redis.redis_rpush(handle, key, value1, value2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the list
+- `value1` (string/number): The first value to add to the end of the list
+- `value2, ...` (string/number, optional): Additional values to add to the end of the list
+
+### Returns
+
+- `length` (number): The length of the list after the push operation
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local length, err = nauthilus_redis.redis_rpush("default", "my_list", "value1", "value2")
+if err then
+    print("Error:", err)
+else
+    print("List length after push:", length)
+end
+```
+
+## nauthilus\_redis.redis\_lpop
+
+_New in version 1.7.7_
+
+Removes and returns the first element of a Redis list.
+
+### Syntax
+
+```lua
+local value, error = nauthilus_redis.redis_lpop(handle, key)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the list
+
+### Returns
+
+- `value` (string): The value of the first element of the list
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local value, err = nauthilus_redis.redis_lpop("default", "my_list")
+if err then
+    print("Error:", err)
+else
+    print("Popped value:", value)
+end
+```
+
+## nauthilus\_redis.redis\_rpop
+
+_New in version 1.7.7_
+
+Removes and returns the last element of a Redis list.
+
+### Syntax
+
+```lua
+local value, error = nauthilus_redis.redis_rpop(handle, key)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the list
+
+### Returns
+
+- `value` (string): The value of the last element of the list
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local value, err = nauthilus_redis.redis_rpop("default", "my_list")
+if err then
+    print("Error:", err)
+else
+    print("Popped value:", value)
+end
+```
+
+## nauthilus\_redis.redis\_lrange
+
+_New in version 1.7.7_
+
+Returns a range of elements from a Redis list.
+
+### Syntax
+
+```lua
+local elements, error = nauthilus_redis.redis_lrange(handle, key, start, stop)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the list
+- `start` (number): The starting index of the range (0-based)
+- `stop` (number): The ending index of the range (inclusive, can be negative to count from the end)
+
+### Returns
+
+- `elements` (table): A Lua table containing the elements in the specified range
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local elements, err = nauthilus_redis.redis_lrange("default", "my_list", 0, -1)
+if err then
+    print("Error:", err)
+else
+    for i, value in ipairs(elements) do
+        print(i, value)
+    end
+end
+```
+
+## nauthilus\_redis.redis\_llen
+
+_New in version 1.7.7_
+
+Returns the length of a Redis list.
+
+### Syntax
+
+```lua
+local length, error = nauthilus_redis.redis_llen(handle, key)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The Redis key of the list
+
+### Returns
+
+- `length` (number): The length of the list
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local length, err = nauthilus_redis.redis_llen("default", "my_list")
+if err then
+    print("Error:", err)
+else
+    print("List length:", length)
+end
+```
+
+## nauthilus\_redis.redis\_mget
+
+_New in version 1.7.7_
+
+Retrieves the values of multiple keys from Redis.
+
+### Syntax
+
+```lua
+local values, error = nauthilus_redis.redis_mget(handle, key1, key2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key1, key2, ...` (string): One or more Redis keys to retrieve values for
+
+### Returns
+
+- `values` (table): A Lua table where keys are the Redis keys and values are the corresponding values
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local values, err = nauthilus_redis.redis_mget("default", "key1", "key2", "key3")
+if err then
+    print("Error:", err)
+else
+    for key, value in pairs(values) do
+        print(key, value)
+    end
+end
+```
+
+## nauthilus\_redis.redis\_mset
+
+_New in version 1.7.7_
+
+Sets multiple key-value pairs in Redis.
+
+### Syntax
+
+```lua
+local result, error = nauthilus_redis.redis_mset(handle, key1, value1, key2, value2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key1, value1, key2, value2, ...` (string/number): Key-value pairs to set in Redis
+
+### Returns
+
+- `result` (string): "OK" if the operation was successful
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local result, err = nauthilus_redis.redis_mset("default", "key1", "value1", "key2", "value2")
+if err then
+    print("Error:", err)
+else
+    print("Result:", result)
+end
+```
+
+## nauthilus\_redis.redis\_keys
+
+_New in version 1.7.7_
+
+Returns all keys matching a pattern.
+
+### Syntax
+
+```lua
+local keys, error = nauthilus_redis.redis_keys(handle, pattern)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `pattern` (string): The pattern to match keys against (e.g., "user:*")
+
+### Returns
+
+- `keys` (table): A Lua table containing all keys matching the pattern
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local keys, err = nauthilus_redis.redis_keys("default", "user:*")
+if err then
+    print("Error:", err)
+else
+    for i, key in ipairs(keys) do
+        print(i, key)
+    end
+end
+```
+
+::::warning
+The KEYS command should be used with caution in production environments as it may impact performance when executed against large databases.
+::::
+
+## nauthilus\_redis.redis\_scan
+
+_New in version 1.7.7_
+
+Incrementally iterates over keys in Redis.
+
+### Syntax
+
+```lua
+local result, error = nauthilus_redis.redis_scan(handle, cursor, match, count)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `cursor` (number): The cursor to start the scan from (use 0 for the first call)
+- `match` (string, optional): The pattern to match keys against (default: "*")
+- `count` (number, optional): The number of keys to return per call (default: 10)
+
+### Returns
+
+- `result` (table): A Lua table with two fields:
+  - `cursor` (number): The cursor to use for the next scan (0 when the scan is complete)
+  - `keys` (table): A Lua table containing the keys found in this scan
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local cursor = 0
+repeat
+    local result, err = nauthilus_redis.redis_scan("default", cursor, "user:*", 10)
+    if err then
+        print("Error:", err)
+        break
+    end
+
+    cursor = result.cursor
+
+    for i, key in ipairs(result.keys) do
+        print(i, key)
+    end
+until cursor == 0
+```
+
+::::tip
+The SCAN command is the recommended way to iterate over keys in a production environment as it has minimal impact on performance.
+::::

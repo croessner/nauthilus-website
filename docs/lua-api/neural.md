@@ -151,6 +151,155 @@ local success, error = nauthilus_neural.train_neural_network(10000, 100)
 - Training is a resource-intensive operation and may take some time to complete
 - The function uses data collected from previous authentication attempts
 
+## provide_feedback
+
+Provides feedback on neural network predictions to improve detection accuracy. This function allows administrators or security systems to correct false positives or false negatives, creating a feedback loop that continuously improves the neural network's performance.
+
+### Syntax
+
+```lua
+local success, error_message = nauthilus_neural.provide_feedback(is_brute_force, request_id, client_ip, username)
+```
+
+### Parameters
+
+- `is_brute_force` (boolean): Whether the login attempt was actually part of a brute force attack (true) or not (false)
+- `request_id` (string): The request ID of the login attempt to provide feedback for
+- `client_ip` (string): The client IP address of the login attempt
+- `username` (string): The username of the login attempt
+
+### Returns
+
+- `success` (boolean): True if feedback was recorded successfully, false otherwise
+- `error_message` (string or nil): Error message if recording feedback failed, nil otherwise
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_neural")
+local nauthilus_neural = require("nauthilus_neural")
+
+-- Provide feedback that a login attempt was NOT a brute force attack (false positive correction)
+local success, error = nauthilus_neural.provide_feedback(false, "req-12345", "192.168.1.100", "john.doe")
+
+if not success then
+  print("Failed to record feedback: " .. error)
+else
+  print("Feedback recorded successfully")
+end
+
+-- Provide feedback that a login attempt WAS a brute force attack (false negative correction)
+local success, error = nauthilus_neural.provide_feedback(true, "req-67890", "10.0.0.5", "admin")
+```
+
+### Notes
+
+- This function is available from Nauthilus version 1.7.7
+- The experimental_ml feature must be enabled for this function to work
+- Feedback is prioritized in training to improve detection accuracy
+- When sufficient feedback samples (10 or more) are collected, the system automatically retrains the neural network
+- Feedback helps the system learn from its mistakes and continuously improve detection accuracy
+
+## Custom Hook for Feedback
+
+A custom hook is available to provide feedback on neural network predictions via HTTP. This allows you to correct false positives or false negatives remotely without direct server access.
+
+### Configuration
+
+Add the following to your Nauthilus configuration in the `lua.custom_hooks` section:
+
+```yaml
+lua:
+  custom_hooks:
+    - http_location: "neural-feedback"
+      http_method: "GET"
+      script_path: "/etc/nauthilus/lua-plugins.d/hooks/neural-feedback.lua"
+      roles: ["admin"]  # Restrict access to admin users when JWT auth is enabled
+```
+
+### Usage
+
+Once configured, you can provide feedback by making a GET request to:
+
+```
+/api/v1/custom/neural-feedback
+```
+
+#### Query Parameters
+
+- `is_brute_force` (required): Whether the login attempt was actually part of a brute force attack. Valid values are:
+  - `true` or `1` or `yes`: It was a brute force attack
+  - `false` or `0` or `no`: It was not a brute force attack
+- `request_id` (required): The request ID of the login attempt to provide feedback for
+- `client_ip` (required): The client IP address of the login attempt
+- `username` (required): The username of the login attempt
+
+#### Example
+
+```
+GET /api/v1/custom/neural-feedback?is_brute_force=true&request_id=req-12345&client_ip=192.168.1.100&username=john.doe
+```
+
+This will provide feedback that the login attempt with request ID "req-12345" from IP "192.168.1.100" for username "john.doe" was actually part of a brute force attack.
+
+### Response
+
+The hook returns a JSON response with the result:
+
+```json
+{
+  "status": "success",
+  "message": "Feedback recorded successfully",
+  "is_brute_force": true,
+  "request_id": "req-12345",
+  "client_ip": "192.168.1.100",
+  "username": "john.doe"
+}
+```
+
+Or in case of an error:
+
+```json
+{
+  "status": "error",
+  "message": "Failed to record feedback",
+  "error": "Error message details",
+  "is_brute_force": true,
+  "request_id": "req-12345",
+  "client_ip": "192.168.1.100",
+  "username": "john.doe"
+}
+```
+
+## How the Feedback System Works
+
+The neural network feedback system creates a continuous improvement loop for brute force detection accuracy:
+
+1. **Feedback Collection**: Administrators or security systems provide feedback on predictions through the Lua API or HTTP hook
+2. **Prioritized Training**: Feedback samples are marked in the training data and prioritized during model retraining
+3. **Automatic Retraining**: When 10 or more feedback samples are collected, the system automatically retrains the neural network
+4. **Improved Accuracy**: The retrained model incorporates the feedback, reducing false positives and false negatives
+5. **Learning Mode Transition**: If the system was in learning mode, collecting enough feedback can automatically transition it to prediction mode
+
+### Benefits of the Feedback System
+
+- **Continuous Improvement**: The system gets better over time as it learns from its mistakes
+- **Reduced False Positives**: Fewer legitimate users are incorrectly flagged as attackers
+- **Reduced False Negatives**: More actual attacks are correctly identified
+- **Adaptive Learning**: The system adapts to your specific environment and threat patterns
+- **Faster Training**: Feedback-triggered training uses more epochs (100 vs. 50) for better learning
+- **Automatic Operation**: No manual intervention required once feedback is provided
+
+### Implementation Details
+
+The feedback system is implemented with the following components:
+
+- **Feedback Storage**: Feedback samples are stored in Redis with a special flag
+- **Prioritized Training**: The training algorithm gives special attention to feedback samples
+- **Automatic Retraining**: A background process checks for feedback samples and triggers retraining
+- **Model Persistence**: The improved model is saved to Redis for use by all Nauthilus instances
+- **Learning Mode Management**: The system can automatically transition from learning to prediction mode
+
 ## Custom Hook for Training
 
 A custom hook is available to trigger neural network training via HTTP. This allows you to train the model remotely without direct server access.

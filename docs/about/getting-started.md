@@ -157,10 +157,21 @@ Some settings can be configured using environment variables. These are typically
 
 By default, Nauthilus looks for its configuration file in these locations:
 
-- `/usr/local/etc/nauthilus/nauthilus.yml`
-- `/etc/nauthilus/nauthilus.yml`
-- `$HOME/.nauthilus/nauthilus.yml`
 - `./nauthilus.yml` (current directory)
+- `$HOME/.nauthilus/nauthilus.yml`
+- `/etc/nauthilus/nauthilus.yml`
+- `/usr/local/etc/nauthilus/nauthilus.yml`
+
+_Search order changed in version 1.7.9_
+
+### Command-Line Options
+
+Nauthilus supports the following command-line options:
+
+- `-config <path>`: Specify a custom path to the configuration file. This overrides the default search locations.
+- `-version`: Print the version information and exit.
+
+_New in version 1.7.9_
 
 ## Understanding Backends and Protocols
 

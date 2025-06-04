@@ -17,12 +17,23 @@ The configuration file is written in YAML format. YAML is a human-readable data 
 
 By default, Nauthilus looks for its configuration file named `nauthilus.yml` in the following locations:
 
-- `/usr/local/etc/nauthilus/`
-- `/etc/nauthilus/`
-- `$HOME/.nauthilus`
 - Current directory
+- `$HOME/.nauthilus`
+- `/etc/nauthilus/`
+- `/usr/local/etc/nauthilus/`
 
 The first file found in these locations will be used.
+
+_Search order changed in version 1.7.9_
+
+## Command-Line Options
+
+Nauthilus supports the following command-line options:
+
+- `-config <path>`: Specify a custom path to the configuration file. This overrides the default search locations.
+- `-version`: Print the version information and exit.
+
+_New in version 1.7.9_
 
 ## Environment Variables
 

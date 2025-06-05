@@ -32,12 +32,20 @@ local result, error = nauthilus_ldap.ldap_search(search_params)
   - `filter` (string): The LDAP search filter
   - `attributes` (table): A Lua table listing the attributes to retrieve
   - `scope` (string): The search scope (e.g., "sub", "base", "one")
+  - `raw_result` (boolean, optional): When set to `true`, returns the raw LDAP entries instead of the processed result (available since version 1.7.10)
 
 ### Returns
 
+When `raw_result` is `false` or not specified:
 - `result` (table): A Lua table where:
   - **Keys** are the LDAP attribute names
   - **Values** are tables containing all values for that attribute (multi-value support)
+- `error` (string): An error message if the search fails
+
+When `raw_result` is `true`:
+- `result` (table): A Lua table containing the raw LDAP entries, where each entry is a table with:
+  - `dn` (string): The distinguished name of the entry
+  - `attributes` (table): A table where keys are attribute names and values are tables containing all values for that attribute
 - `error` (string): An error message if the search fails
 
 ### Example
@@ -71,6 +79,41 @@ end
 
 If anything went fine, the **result** contains a Lua table, where the key represents the LDAP attribute name and the values
 are Lua tables with all values (multi value).
+
+### Example with raw_result
+
+```lua
+dynamic_loader("nauthilus_ldap")
+local nauthilus_ldap = require("nauthilus_ldap")
+
+local user = "bob"
+
+local result, error = nauthilus_ldap.ldap_search({
+  session = request.session, -- request: from the calling function
+  basedn = "dc=acme,dc=com",
+  filter = "(|(uniqueIdentifier=" .. user .. ")(uid=" .. user .. "))",
+  attributes = {
+    [1] = "some_attr1",
+    [2] = "some_attr2",
+  },
+  scope = "sub",
+  raw_result = true
+})
+
+if result then
+  for i, entry in ipairs(result) do
+    print("DN: " .. entry.dn)
+    for attr_name, attr_values in pairs(entry.attributes) do
+      print("Attribute: " .. attr_name)
+      for j, value in ipairs(attr_values) do
+        print("  Value " .. j .. ": " .. value)
+      end
+    end
+  end
+end
+```
+
+When using `raw_result = true`, the result is a table of entries, where each entry contains the DN and all attributes with their values. This format preserves the structure of the LDAP entries and can be useful when you need to process multiple entries or need to know which attributes belong to which entry.
 
 ::::warning
 LDAP search requests are blocking operations!

@@ -169,6 +169,7 @@ _Search order changed in version 1.7.9_
 Nauthilus supports the following command-line options:
 
 - `-config <path>`: Specify a custom path to the configuration file. This overrides the default search locations.
+- `-config-format <format>`: Specify the configuration file format (yaml, json, toml, etc.). Default is "yaml".
 - `-version`: Print the version information and exit.
 
 _New in version 1.7.9_

@@ -7,11 +7,13 @@ sidebar_position: 1
 
 # Configuration File
 
-Nauthilus uses a YAML configuration file to define its behavior. This document explains the general structure and format of this file.
+Nauthilus uses a configuration file to define its behavior. By default, the configuration is in YAML format, but other formats like JSON, TOML, etc. are also supported. This document explains the general structure and format of this file.
 
 ## File Format
 
-The configuration file is written in YAML format. YAML is a human-readable data serialization standard that is commonly used for configuration files. The file should have a `.yml` extension.
+By default, the configuration file is written in YAML format. YAML is a human-readable data serialization standard that is commonly used for configuration files. The file should have a `.yml` extension.
+
+Nauthilus also supports other configuration formats such as JSON, TOML, HCL, and INI. You can specify the format using the `-config-format` command-line flag.
 
 ## File Location
 
@@ -31,6 +33,7 @@ _Search order changed in version 1.7.9_
 Nauthilus supports the following command-line options:
 
 - `-config <path>`: Specify a custom path to the configuration file. This overrides the default search locations.
+- `-config-format <format>`: Specify the configuration file format (yaml, json, toml, etc.). Default is "yaml".
 - `-version`: Print the version information and exit.
 
 _New in version 1.7.9_

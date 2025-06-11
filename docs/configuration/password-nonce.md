@@ -14,7 +14,7 @@ _Default: ""_<br/>
 _required_
 
 This is a random string used to concatenate it with the password. The result will be hashed and truncated and
-is used in Redis.
+is used in Redis. The password nonce must be at least 16 characters long and can contain alphanumeric characters and symbols, but no spaces.
 
 ```mermaid
 flowchart LR

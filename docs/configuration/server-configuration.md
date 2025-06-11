@@ -185,7 +185,7 @@ This flag turns on (true) **Basic Auth support** in the server.
 #### server::basic_auth::username and server::basic_auth::password
 _Default: ""_
 
-These settings define a username and its password that is required by HTTP(s) clients to communicate with Nauthilus.
+These settings define a username and its password that is required by HTTP(s) clients to communicate with Nauthilus. The password must be at least 16 characters long and can contain alphanumeric characters and symbols, but no spaces.
 
 ### server::jwt_auth
 
@@ -219,7 +219,7 @@ server:
 #### server::jwt_auth::secret_key
 _Default: ""_
 
-This setting defines the secret key used for JWT signing. It should be at least 32 characters long.
+This setting defines the secret key used for JWT signing. It should be at least 32 characters long and can contain alphanumeric characters and symbols, but no spaces.
 
 ```yaml
 server:
@@ -603,7 +603,7 @@ _Default: ""_<br/>
 _required_
 
 This is a random string used to concatenate it with the password. The result will be hashed and truncated and
-is used in Redis. This helps secure password storage in Redis.
+is used in Redis. This helps secure password storage in Redis. The password nonce must be at least 16 characters long and can contain alphanumeric characters and symbols, but no spaces.
 
 ```yaml
 server:
@@ -951,7 +951,7 @@ This key is required whenever CSRF (cross-site-request-forgery) attacks must be 
 Nauthilus is configured to communicate with Ory Hydra. The login, consent and logout pages are protected with a CSRF
 token. This value defines the secret used for that token.
 
-This value **MUST** be 32 bytes long.
+This value **MUST** be 32 bytes long and can contain alphanumeric characters and symbols, but no spaces.
 
 #### server::frontend::cookie_store_auth_key and server::frontend::cookie_store_encryption_key
 _Default: ""_<br/>
@@ -959,7 +959,9 @@ _required_
 
 These keys are used to encrypt and decrypt session cookies.
 
-Both values **MUST** be 32 bytes long.
+The cookie_store_auth_key **MUST** be 32 bytes long and can contain alphanumeric characters and symbols, but no spaces.
+
+The cookie_store_encryption_key **MUST** be 16, 24, or 32 bytes long and can contain alphanumeric characters and symbols, but no spaces.
 
 ## Prometheus Timer Configuration
 

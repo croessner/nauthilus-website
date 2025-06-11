@@ -378,6 +378,10 @@ Flush a user from the Redis cache.
 
 **Description:** Removes a user's data from the cache, forcing a fresh authentication on the next request. This endpoint also flushes all brute force rules associated with the user's IP addresses, regardless of protocol.
 
+**Authentication:** 
+- When JWT authentication is enabled, this endpoint requires a user with either the "security" or "admin" role (available from version 1.7.11)
+- When Basic Authentication is enabled, the configured username and password must be provided
+
 **Request:**
 ```json
 {
@@ -418,6 +422,10 @@ Flush a user from the Redis cache.
 Flush an IP address from a brute force bucket.
 
 **Description:** Removes an IP address from the brute force protection system, allowing authentication attempts to resume.
+
+**Authentication:** 
+- When JWT authentication is enabled, this endpoint requires a user with either the "security" or "admin" role (available from version 1.7.11)
+- When Basic Authentication is enabled, the configured username and password must be provided
 
 **Request:**
 ```json
@@ -481,6 +489,10 @@ For OIDC Client ID-specific rules, the Redis keys include both the `:oidc:` mark
 Get a list of all known IP addresses and accounts that have been blocked.
 
 **Description:** Returns a list of all IP addresses and accounts currently blocked by the brute force protection system. Optionally accepts filters to narrow down the results. Note that this endpoint does not display protocol information for protocol-specific brute force rules.
+
+**Authentication:** 
+- When JWT authentication is enabled, this endpoint requires a user with either the "security" or "admin" role (available from version 1.7.11)
+- When Basic Authentication is enabled, the configured username and password must be provided
 
 **Request:**
 ```json

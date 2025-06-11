@@ -173,7 +173,8 @@ server:
       password: cluster_password        # Default: ""
       route_by_latency: true            # Default: false
       route_randomly: true              # Default: false
-      read_only: true                   # Default: false
+      route_reads_to_replicas: true     # Default: false (New in v1.7.11)
+      # read_only: true                 # Deprecated: Use route_reads_to_replicas instead
       max_redirects: 5                  # Default: 3
       read_timeout: 3s                  # Default: 0 (no timeout)
       write_timeout: 3s                 # Default: 0 (no timeout)

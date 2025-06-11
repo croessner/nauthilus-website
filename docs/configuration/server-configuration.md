@@ -835,16 +835,30 @@ server:
       route_randomly: true
 ```
 
-#### server::redis::cluster::read_only
+#### server::redis::cluster::route_reads_to_replicas
+_New in version 1.7.11_  
 _Default: false_
 
-When enabled, read-only commands are allowed to be processed by Redis replica nodes.
+When enabled, read commands are routed to Redis replica nodes, which can improve performance by distributing the read load across the cluster.
 
 ```yaml
 server:
   redis:
     cluster:
-      read_only: true
+      route_reads_to_replicas: true
+```
+
+#### server::redis::cluster::read_only
+_Default: false_  
+_Deprecated: Use route_reads_to_replicas instead_
+
+When enabled, read commands are routed to Redis replica nodes. This parameter has been renamed to `route_reads_to_replicas` to better reflect its actual functionality.
+
+```yaml
+server:
+  redis:
+    cluster:
+      read_only: true  # Deprecated
 ```
 
 #### server::redis::cluster::max_redirects
@@ -1092,4 +1106,3 @@ server:
   keep_alive:
     max_idle_connections_per_host: 20
 ```
-

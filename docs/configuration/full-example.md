@@ -28,6 +28,7 @@ server:
     auth_saslauthd: false               # Default: false
     auth_jwt: false                     # Default: false
     custom_hooks: false                 # Default: false
+    configuration: false                # Default: false (New in v1.7.11) 
 
   # TLS configuration
   tls:

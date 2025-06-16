@@ -73,6 +73,7 @@ server:
     auth_saslauthd: false
     auth_jwt: false
     custom_hooks: false
+    configuration: false    # Available from version 1.7.11
 ```
 
 :::tip
@@ -90,6 +91,7 @@ Disableing unused endpoints may enhance overall security!
 | auth\_saslauthd | /api/v1/auth/saslauthd | Turn off saslauthd requests used with cyrus-sasl               |
 | auth\_jwt       | /api/v1/jwt/*          | Turn off JWT authentication endpoints                          |
 | custom\_hooks   | /api/v1/custom/*       | Turn off all Lua based custom hooks                            |
+| configuration   | /api/v1/config/*       | Turn off all configuration related endpoints                   |
 
 ## HTTP Client Configuration
 

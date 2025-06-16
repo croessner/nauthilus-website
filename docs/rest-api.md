@@ -630,6 +630,26 @@ Execute a custom Lua hook.
 
 ---
 
+### Configurtion endpoints
+_Available from version 1.7.11_
+
+#### `GET /api/v1/config/load`
+
+Retrieve the current configuration in JSON format.
+
+**Description** Returns the current configuration in JSON format to the caller.
+
+**Response:**
+- Depends on the current configuration
+
+**Status Codes:**
+- `200 OK`: Hook executed successfully
+- `400 Bad Request`: Invalid request
+- `401 Unauthorized`: Authentication required
+- `403 Forbidden`: Insufficient permissions
+- `404 Not Found`: Hook not found
+- `500 Internal Server Error`: Server error
+
 ### Frontend Channel Endpoints
 
 #### OAuth 2.0 / OpenID Connect Endpoints

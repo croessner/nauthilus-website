@@ -210,6 +210,18 @@ brute_force:
     learning_rate: 0.005
 ```
 
+#### brute_force::neural_network::dry_run
+_Default: false_  
+_New in version 1.7.11_
+
+When enabled, the neural network will make predictions but won't block any authentication attempts based on those predictions. This is useful for testing and evaluating the neural network's performance before fully enabling it.
+
+```yaml
+brute_force:
+  neural_network:
+    dry_run: true
+```
+
 ## Example Configuration
 
 ```yaml

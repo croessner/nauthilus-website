@@ -35,7 +35,14 @@ server:
     enabled: true                       # Default: false
     cert: /usr/local/etc/nauthilus/localhost.localdomain.pem
     key: /usr/local/etc/nauthilus/localhost.localdomain.key.pem
-    http_client_skip_verify: true       # Default: false
+    ca_file: /usr/local/etc/nauthilus/ca.pem  # Default: "" (New in v1.7.11)
+    min_tls_version: "TLS1.3"           # Default: "TLS1.2" (New in v1.7.11)
+    skip_verify: false                  # Default: false (New in v1.7.11)
+    http_client_skip_verify: true       # Default: false (Deprecated, use skip_verify instead)
+    cipher_suites:                      # Default: [] (New in v1.7.11)
+      - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
 
   # HTTP client configuration
   http_client:
@@ -43,7 +50,10 @@ server:
     max_idle_connections: 5             # Default: 0 (no limit)
     max_idle_connections_per_host: 1    # Default: 0 (no limit)
     idle_connection_timeout: 60s        # Default: 0 (no timeout)
-    proxy: "http://proxy.example.com:8080" # Default: ""
+    proxy: "http://proxy.example.com:8080" # Default: "" (New in v1.7.11)
+    # TLS configuration for HTTP client
+    tls:                                # New in v1.7.11
+      skip_verify: false                # Default: false
 
   # Basic authentication
   basic_auth:
@@ -136,11 +146,11 @@ server:
     negative_cache_ttl: 7200s           # Default: 3600s
 
     # TLS configuration for Redis
-    tls:
+    tls:                                # New in v1.7.11
       enabled: true                     # Default: false
       cert: /path/to/redis/cert.pem
       key: /path/to/redis/key.pem
-      http_client_skip_verify: true     # Default: false
+      skip_verify: false                # Default: false
 
     # Master configuration
     master:

@@ -117,6 +117,8 @@ Settings are shared with all HTTP clients!
 | max\_idle\_connections            | Controls the maximum number of idle (keep-alive) connections across all hosts.                                                                        | 0, no limits |
 | max\_idle\_connections\_per\_host | Controls the maximum idle (keep-alive) connections to keep per-host.                                                                                  | 0, no limits |
 | idle\_connection\_timeout         | Is the maximum amount of time an idle (keep-alive) connection will remain idle before closing itself.                                                 | 0, no limits |
+| proxy                             | HTTP proxy URL to use for client connections. _New in version 1.7.11_                                                                                 | "", no proxy |
+| tls                               | TLS configuration for the HTTP client. _New in version 1.7.11_                                                                                        | See below    |
 
 Units for the timeout option should add a time unit like
 
@@ -131,6 +133,9 @@ server:
       max_idle_connections: 5
       max_idle_connections_per_host: 1
       idle_connection_timeout: 60s
+      proxy: "http://proxy.example.com:8080"
+      tls:
+        skip_verify: false
 ```
 
 ## TLS Configuration
@@ -162,8 +167,21 @@ server:
     key: /usr/local/etc/nauthilus/localhost.localdomain.key.pem
 ```
 
+#### server::tls::skip_verify
+_Default: false_  
+_New in version 1.7.11_
+
+This flag turns on (true) insecure TLS connections by skipping client certificate verification.
+
+```yaml
+server:
+  tls:
+    skip_verify: true
+```
+
 #### server::tls::http_client_skip_verify
-_Default: false_
+_Default: false_  
+_Deprecated: Use server::http_client::tls::skip_verify instead_
 
 This flag turns on (true) insecure TLS connections for HTTP(s) requests that are originating from Nauthilus to some remote.
 
@@ -171,6 +189,45 @@ This flag turns on (true) insecure TLS connections for HTTP(s) requests that are
 server:
   tls:
     http_client_skip_verify: true
+```
+
+#### server::tls::min_tls_version
+_Default: "TLS1.2"_  
+_New in version 1.7.11_
+
+This setting defines the minimum TLS version that the server will accept. Valid values are "TLS1.2" and "TLS1.3".
+
+```yaml
+server:
+  tls:
+    min_tls_version: "TLS1.3"
+```
+
+#### server::tls::ca_file
+_Default: ""_  
+_New in version 1.7.11_
+
+This setting defines the path to a CA certificate file in PEM format. This is used to verify client certificates when mutual TLS authentication is enabled.
+
+```yaml
+server:
+  tls:
+    ca_file: /usr/local/etc/nauthilus/ca.pem
+```
+
+#### server::tls::cipher_suites
+_Default: []_  
+_New in version 1.7.11_
+
+This setting defines a list of cipher suites that the server will use for TLS connections. If not specified, the default Go cipher suites will be used.
+
+```yaml
+server:
+  tls:
+    cipher_suites:
+      - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
 ```
 
 ## Authentication Configuration
@@ -636,6 +693,18 @@ This is a Redis idle pool size. The pool is managed by the underlying redis libr
 server:
   redis:
     idle_pool_size: 2
+```
+
+#### server::redis::tls
+_New in version 1.7.11_
+
+This section configures TLS for Redis connections.
+
+```yaml
+server:
+  redis:
+    tls:
+      skip_verify: false
 ```
 
 #### server::redis::positive_cache_ttl and server::redis::negative_cache_ttl

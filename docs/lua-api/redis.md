@@ -1136,6 +1136,46 @@ end
 
 ---
 
+## nauthilus\_redis.redis\_zincrby
+
+_New in version 1.7.18_
+
+Increments the score of a member in a Redis Sorted Set by the specified increment value.
+
+### Syntax
+
+```lua
+local new_score, err = nauthilus_redis.redis_zincrby(handle, key, increment, member)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The name of the Redis Sorted Set
+- `increment` (number): The value to increment the score by (can be negative to decrement)
+- `member` (string): The member whose score you want to increment
+
+### Returns
+
+- `new_score` (number): The new score of the member after the increment
+- `err` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local new_score, err = nauthilus_redis.redis_zincrby("default", "top_failed_logins", 1, "username")
+if err then
+    print("Error:", err)
+else
+    print("New score after increment:", new_score)
+end
+```
+
+---
+
 ## nauthilus\_redis.redis\_lpush
 
 _New in version 1.7.7_

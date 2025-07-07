@@ -104,6 +104,51 @@ end
 - Learning mode affects how the system handles authentication attempts:
   - In learning mode: The system collects data for training but does not use the neural network for predictions
   - When not in learning mode: The system uses the trained neural network for predictions
+- Cannot change learning mode when Dry-Run is activated in configuration
+
+## get_learning_mode
+
+Retrieves the current state of the neural network learning mode.
+
+### Syntax
+
+```lua
+local learning_mode_state = nauthilus_neural.get_learning_mode()
+```
+
+### Parameters
+
+None
+
+### Returns
+
+- `learning_mode_state` (boolean): The current learning mode state (true if in learning mode, false otherwise)
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_neural")
+local nauthilus_neural = require("nauthilus_neural")
+
+-- Check current learning mode
+local is_learning = nauthilus_neural.get_learning_mode()
+print("Learning mode is currently: " .. (is_learning and "enabled" or "disabled"))
+
+-- Use the learning mode state in conditional logic
+if is_learning then
+  print("System is collecting training data but not using neural network for predictions")
+else
+  print("System is using the trained neural network for predictions")
+end
+```
+
+### Notes
+
+- This function is available from Nauthilus version 1.7.19
+- The experimental_ml feature must be enabled for this function to work
+- Learning mode affects how the system handles authentication attempts:
+  - In learning mode: The system collects data for training but does not use the neural network for predictions
+  - When not in learning mode: The system uses the trained neural network for predictions
 
 ## train_neural_network
 

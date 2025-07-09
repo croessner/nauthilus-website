@@ -196,6 +196,93 @@ local success, error = nauthilus_neural.train_neural_network(10000, 100)
 - Training is a resource-intensive operation and may take some time to complete
 - The function uses data collected from previous authentication attempts
 
+## reset_neural_network
+
+Resets the neural network model to use only the canonical features from Redis. This is useful for fixing issues where the model's input size has grown too large or when you want to ensure all instances use a consistent set of features.
+
+### Syntax
+
+```lua
+local success, error_message = nauthilus_neural.reset_neural_network()
+```
+
+### Parameters
+
+None
+
+### Returns
+
+- `success` (boolean): True if the reset was successful, false otherwise
+- `error_message` (string or nil): Error message if the reset failed, nil otherwise
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_neural")
+local nauthilus_neural = require("nauthilus_neural")
+
+-- Reset the neural network model to canonical features
+local success, error = nauthilus_neural.reset_neural_network()
+
+if not success then
+  print("Reset failed: " .. error)
+else
+  print("Neural network model reset successfully")
+end
+```
+
+### Notes
+
+- This function is available from Nauthilus version 1.7.20
+- The experimental_ml feature must be enabled for this function to work
+- This function resets the model to use only the canonical features stored in Redis
+- All instances of Nauthilus will be notified of the reset via Redis pub/sub
+- The reset operation is logged for auditing purposes
+
+## remove_features_from_redis
+
+Removes specified features from the canonical list in Redis for the neural network model. This is useful for removing features that are no longer needed or were added by mistake.
+
+### Syntax
+
+```lua
+local success, error_message = nauthilus_neural.remove_features_from_redis(features_table)
+```
+
+### Parameters
+
+- `features_table` (table): A table containing the names of features to remove
+
+### Returns
+
+- `success` (boolean): True if the features were removed successfully, false otherwise
+- `error_message` (string or nil): Error message if the operation failed, nil otherwise
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_neural")
+local nauthilus_neural = require("nauthilus_neural")
+
+-- Remove specific features from the canonical list
+local features_to_remove = {"unused_feature", "noisy_feature", "redundant_feature"}
+local success, error = nauthilus_neural.remove_features_from_redis(features_to_remove)
+
+if not success then
+  print("Failed to remove features: " .. error)
+else
+  print("Features removed successfully")
+end
+```
+
+### Notes
+
+- This function is available from Nauthilus version 1.7.20
+- The experimental_ml feature must be enabled for this function to work
+- After removing features, the model is automatically reset to use the updated canonical features
+- All instances of Nauthilus will be notified of the changes via Redis pub/sub
+- The operation is logged for auditing purposes
+
 ## provide_feedback
 
 Provides feedback on neural network predictions to improve detection accuracy. This function allows administrators or security systems to correct false positives or false negatives, creating a feedback loop that continuously improves the neural network's performance.

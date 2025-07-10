@@ -1018,6 +1018,45 @@ end
 
 ---
 
+## nauthilus\_redis.redis\_zrevrank
+
+_New in version 1.7.20_
+
+Gets the rank of a member in a Redis Sorted Set, with scores sorted in descending order (highest score has rank 0).
+
+### Syntax
+
+```lua
+local rank, err = nauthilus_redis.redis_zrevrank(handle, key, member)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The name of the Redis Sorted Set
+- `member` (string): The member whose rank you want to retrieve
+
+### Returns
+
+- `rank` (number): The rank of the member (0-based index, with 0 being the highest score)
+- `err` (string): An error message if the operation fails or if the member does not exist
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local rank, err = nauthilus_redis.redis_zrevrank("default", "my_sorted_set", "member1")
+if err then
+    print("Error:", err)
+else
+    print("Reverse rank of member:", rank)
+end
+```
+
+---
+
 ## nauthilus\_redis.redis\_zremrangebyscore
 
 _New in version 1.4.10_

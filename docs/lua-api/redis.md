@@ -1096,6 +1096,55 @@ end
 
 ---
 
+## nauthilus\_redis.redis\_zremrangebyrank
+
+_New in version 1.7.20_
+
+Removes all members within a given rank range from a Redis Sorted Set.
+
+### Syntax
+
+```lua
+local result, err = nauthilus_redis.redis_zremrangebyrank(handle, key, start, stop)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): The name of the Redis Sorted Set.
+- `start` (number): The start position (0-based, inclusive). Can be negative, where -1 is the last element.
+- `stop` (number): The stop position (0-based, inclusive). Can be negative, where -1 is the last element.
+
+### Returns
+
+- `result` (number): The number of members removed.
+- `err` (string): An error message, if an error occurs.
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+-- Remove the first three elements (ranks 0, 1, 2)
+local removed, err = nauthilus_redis.redis_zremrangebyrank("default", "my_sorted_set", 0, 2)
+if err then
+    print("Error:", err)
+else
+    print("Removed elements:", removed)
+end
+
+-- Remove the last three elements
+local removed, err = nauthilus_redis.redis_zremrangebyrank("default", "my_sorted_set", -3, -1)
+if err then
+    print("Error:", err)
+else
+    print("Removed elements:", removed)
+end
+```
+
+---
+
 ## nauthilus\_redis.redis\_zcount
 
 _New in version 1.7.7_

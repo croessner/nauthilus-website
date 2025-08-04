@@ -59,7 +59,7 @@ The configuration file contains several main sections, where each is responsible
 
 Nauthilus includes several experimental features that are under active development:
 
-* **Machine Learning Enhanced Brute Force Detection**: A neural network approach to enhance the rule-based brute force detection system. This feature is configured in the `brute_force::neural_network` section.
+* **Machine Learning Enhanced Brute Force Detection**: A neural network approach to enhance the rule-based brute force detection system. This feature is configured in the `brute_force::neural_network` section. **Deprecated Feature**: This functionality has been dropped in version 1.8.0 and is no longer available.
 
 To enable experimental machine learning features, set the `NAUTHILUS_EXPERIMENTAL_ML` environment variable to `true`.
 

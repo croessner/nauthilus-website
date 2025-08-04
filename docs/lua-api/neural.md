@@ -6,6 +6,10 @@ sidebar_position: 12
 ---
 # Neural Network
 
+:::danger Deprecated Feature
+This functionality has been dropped in version 1.8.0 and is no longer available.
+:::
+
 ```lua
 dynamic_loader("nauthilus_neural")
 local nauthilus_neural = require("nauthilus_neural")

@@ -115,6 +115,10 @@ brute_force:
 
 ## Neural Network Configuration
 
+:::danger Deprecated Feature
+This functionality has been dropped in version 1.8.0 and is no longer available.
+:::
+
 ### brute_force::neural_network
 
 This section configures the neural network machine learning system for brute force detection.

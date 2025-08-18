@@ -60,6 +60,7 @@ This document provides a comprehensive overview of all features currently suppor
     - Redis Cluster
   - Configurable connection pooling
   - Custom namespaces for protocol-dependent data
+  - Lua HyperLogLog API support (PFADD, PFCOUNT, PFMERGE) (v1.8.4)
 
 - **Connection Handling**
   - HTTP/2 and HTTP/3 support

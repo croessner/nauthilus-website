@@ -1655,3 +1655,121 @@ until cursor == 0
 ::::tip
 The SCAN command is the recommended way to iterate over keys in a production environment as it has minimal impact on performance.
 ::::
+
+
+
+---
+
+# HyperLogLog (HLL)
+
+_New in version 1.8.4_
+
+The following functions provide access to the Redis HyperLogLog data structure. Use cases include approximate distinct counts with minimal memory usage. When using Redis Cluster, note that PFMERGE requires all keys to hash to the same slot; see the note under redis_pfmerge.
+
+## nauthilus_redis.redis_pfadd
+
+Adds the specified elements to the specified HyperLogLog (HLL) key.
+
+### Syntax
+
+```lua
+local result, error = nauthilus_redis.redis_pfadd(handle, key, element1, element2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key` (string): HyperLogLog key
+- `element1, element2, ...` (string/number): One or more elements to add
+
+### Returns
+
+- `result` (number): 1 if at least one internal HLL register was modified, 0 otherwise
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local added, err = nauthilus_redis.redis_pfadd("default", "hll:unique-users", "alice", "bob", "alice")
+if err then
+    print("Error:", err)
+else
+    print("Registers changed:", added)
+end
+```
+
+## nauthilus_redis.redis_pfcount
+
+Returns the approximated cardinality of the HyperLogLog(s). With multiple keys, returns the approximated cardinality of their union.
+
+### Syntax
+
+```lua
+local count, error = nauthilus_redis.redis_pfcount(handle, key1, key2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `key1, key2, ...` (string): One or more HLL keys
+
+### Returns
+
+- `count` (number): The approximated cardinality
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local count, err = nauthilus_redis.redis_pfcount("default", "hll:unique-users")
+if err then
+    print("Error:", err)
+else
+    print("Approx. unique users:", count)
+end
+```
+
+## nauthilus_redis.redis_pfmerge
+
+Merges multiple HyperLogLogs into a destination key.
+
+### Syntax
+
+```lua
+local result, error = nauthilus_redis.redis_pfmerge(handle, dest_key, source_key1, source_key2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata/string): Redis connection handle or "default" for the default connection
+- `dest_key` (string): Destination HLL key
+- `source_key1, source_key2, ...` (string): One or more source HLL keys to merge into the destination
+
+### Returns
+
+- `result` (string): "OK" on success
+- `error` (string): An error message if the operation fails
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_redis")
+local nauthilus_redis = require("nauthilus_redis")
+
+local ok, err = nauthilus_redis.redis_pfmerge("default", "hll:dst", "hll:src1", "hll:src2")
+if err then
+    print("Error:", err)
+else
+    print("Merge:", ok)
+end
+```
+
+:::::note
+Redis Cluster users: PFMERGE requires all keys (dest and sources) to hash to the same slot. Use a common hash tag in your keys (e.g., {mytag}:hll:dst and {mytag}:hll:src1) to avoid CROSSSLOT errors.
+:::::

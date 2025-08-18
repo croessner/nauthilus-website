@@ -94,3 +94,41 @@ else
     print("Password does not meet policy requirements")
 end
 ```
+
+
+## nauthilus_password.generate_password_hash
+
+Generates a short, Redis-compatible password hash identical to the one Nauthilus computes server-side. This is useful when Lua code needs to correlate with server password history or include the hash in notifications.
+
+Since v1.8.2
+
+Description
+- Internally equivalent to util.GetHash(util.PreparePassword(password)).
+- PreparePassword prefixes the configured server nonce and a NUL separator to the clear password.
+- GetHash computes a SHA-256 and returns the first 8 lowercase hex characters.
+- The function uses the server’s configured nonce; it does not expose or require it in Lua.
+
+Syntax
+```lua
+local hash = nauthilus_password.generate_password_hash(password)
+```
+
+Parameters
+- password (string): The clear text password to hash.
+
+Returns
+- hash (string): An 8-character lowercase hex string.
+
+Example
+```lua
+dynamic_loader("nauthilus_password")
+local nauthilus_password = require("nauthilus_password")
+
+local pw = "s3cr3t!"
+local hash = nauthilus_password.generate_password_hash(pw)
+print("Password hash:", hash) -- e.g., "a1b2c3d4"
+```
+
+Notes
+- Intended for correlation and logging in controlled environments. Do not confuse this with full password hashing for storage; use compare_passwords or backend hashing for credential verification.
+- Available in Nauthilus v1.8.2 and later.

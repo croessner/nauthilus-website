@@ -35,6 +35,7 @@ This document provides a comprehensive overview of all features currently suppor
   - Multiple bucket types based on time periods and network ranges
   - Customizable thresholds and actions
   - Adaptive toleration mechanism that dynamically adjusts tolerance thresholds (v1.7.7)
+  - Dynamic response with cold-start warm-up gating to avoid global impact on first deployment (v1.8.x)
 
 - **Realtime Blackhole Lists (RBL)**
   - Integration with multiple RBL services

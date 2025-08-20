@@ -1,0 +1,128 @@
+---
+title: HTTP response
+description: HTTP response functions for setting headers from Lua
+keywords: [Lua]
+sidebar_position: 6
+---
+# HTTP response
+
+The `nauthilus_http_response` module allows Lua code to set or modify HTTP response headers
+for requests handled through Nauthilus HTTP contexts. This is useful, for example, to
+signal frontends (like Keycloak) to apply additional protection measures (e.g., CAPTCHA).
+
+Availability: since Nauthilus 1.8.5.
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local nauthilus_http_response = require("nauthilus_http_response")
+```
+
+Notes
+- This module is only available in HTTP-capable contexts (hooks, filters, features) where a Gin writer is present. It is not available in pure backend workers without an HTTP response.
+- If you write generic Lua code that may also run in non-HTTP contexts, guard calls with `pcall(...)`.
+- Header names are case-insensitive on the wire; use canonical forms for readability.
+
+## nauthilus_http_response.set_http_response_header
+
+Replaces the value of an HTTP response header. If the header already exists, its values are overwritten with the provided one.
+
+### Syntax
+
+```lua
+nauthilus_http_response.set_http_response_header(name, value)
+```
+
+### Parameters
+
+- `name` (string): Header name
+- `value` (string): Header value to set
+
+### Returns
+
+None
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local nauthilus_http_response = require("nauthilus_http_response")
+
+-- Force JSON response type
+nauthilus_http_response.set_http_response_header("Content-Type", "application/json")
+```
+
+## nauthilus_http_response.add_http_response_header
+
+Appends a value to an HTTP response header without removing existing values.
+
+### Syntax
+
+```lua
+nauthilus_http_response.add_http_response_header(name, value)
+```
+
+### Parameters
+
+- `name` (string): Header name
+- `value` (string): Header value to add
+
+### Returns
+
+None
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local nauthilus_http_response = require("nauthilus_http_response")
+
+-- Add an additional Vary entry while keeping others intact
+nauthilus_http_response.add_http_response_header("Vary", "Accept-Encoding")
+```
+
+## nauthilus_http_response.remove_http_response_header
+
+Removes an HTTP response header from the response.
+
+### Syntax
+
+```lua
+nauthilus_http_response.remove_http_response_header(name)
+```
+
+### Parameters
+
+- `name` (string): Header name
+
+### Returns
+
+None
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local nauthilus_http_response = require("nauthilus_http_response")
+
+-- Remove an accidental header
+nauthilus_http_response.remove_http_response_header("X-Debug")
+```
+
+## Practical example: signaling protection mode
+
+In an account-protection filter you may want to hint a frontend to require a CAPTCHA
+or other step-up challenge for a specific account. Combine your detection logic with
+response headers as follows:
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local nauthilus_http_response = require("nauthilus_http_response")
+
+-- within your filter logic after detecting protection mode
+pcall(function()
+  nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection", "stepup")
+  nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection-Reason", "uniq24,fail24")
+end)
+```
+
+This pattern is safe in mixed environments because `pcall` prevents failures in non-HTTP contexts.

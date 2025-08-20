@@ -1,16 +1,17 @@
 ---
 title: HTTP response
-description: HTTP response functions for setting headers from Lua
+description: HTTP response functions for setting headers, status and body from Lua
 keywords: [Lua]
 sidebar_position: 6
 ---
 # HTTP response
 
-The `nauthilus_http_response` module allows Lua code to set or modify HTTP response headers
-for requests handled through Nauthilus HTTP contexts. This is useful, for example, to
-signal frontends (like Keycloak) to apply additional protection measures (e.g., CAPTCHA).
+The `nauthilus_http_response` module allows Lua code to set or modify HTTP response headers,
+set the HTTP status code, and write the raw response body. This is useful, for example, to
+signal frontends (like Keycloak) to apply additional protection measures (e.g., CAPTCHA),
+return specific HTTP statuses from custom hooks, or serve non-JSON content directly from Lua.
 
-Availability: since Nauthilus 1.8.5.
+Availability: since Nauthilus 1.8.5. Status and body writing support added in 1.9.0.
 
 ```lua
 dynamic_loader("nauthilus_http_response")
@@ -107,6 +108,75 @@ local nauthilus_http_response = require("nauthilus_http_response")
 -- Remove an accidental header
 nauthilus_http_response.remove_http_response_header("X-Debug")
 ```
+
+## nauthilus_http_response.set_http_status
+
+Sets the HTTP status code for the current response. This works in hooks, filters and features.
+
+### Syntax
+
+```lua
+nauthilus_http_response.set_http_status(code)
+```
+
+### Parameters
+
+- `code` (number): HTTP status code (e.g., 200, 403, 429)
+
+### Returns
+
+None
+
+### Example
+```lua
+dynamic_loader("nauthilus_http_response")
+local rsp = require("nauthilus_http_response")
+
+-- signal rate limiting
+rsp.set_http_status(429)
+```
+
+## nauthilus_http_response.write_http_response_body
+
+Writes raw data to the HTTP response body. When you write the body in Lua, Nauthilus will not
+override it with a JSON payload. Be sure to set an appropriate `Content-Type` header and
+status code yourself when returning custom content.
+
+### Syntax
+
+```lua
+nauthilus_http_response.write_http_response_body(data)
+```
+
+### Parameters
+
+- `data` (string): The raw content to write to the response body
+
+### Returns
+
+None
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local rsp = require("nauthilus_http_response")
+
+-- Return plain text content directly from a custom hook
+rsp.set_http_response_header("Content-Type", "text/plain; charset=utf-8")
+rsp.set_http_status(200)
+rsp.write_http_response_body("Hello from Lua!\n")
+
+-- Note: When the response body has been written, the server will not emit JSON from any returned Lua table.
+```
+
+### Interaction with custom hooks' JSON behavior
+
+- If your Lua hook returns a Lua table and does NOT write to the response body, Nauthilus
+  will serialize that table as JSON and use the current response status (default 200 if unset).
+- If your Lua hook writes to the response body (using `write_http_response_body`) or otherwise
+  has already written headers/body, the server will not override it with JSON.
+- This allows you to return arbitrary content types (HTML, text, binary) from Lua hooks.
 
 ## Practical example: signaling protection mode
 

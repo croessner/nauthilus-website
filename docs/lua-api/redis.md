@@ -1773,3 +1773,97 @@ end
 :::::note
 Redis Cluster users: PFMERGE requires all keys (dest and sources) to hash to the same slot. Use a common hash tag in your keys (e.g., {mytag}:hll:dst and {mytag}:hll:src1) to avoid CROSSSLOT errors.
 :::::
+
+
+---
+
+## nauthilus_redis.redis_pipeline (since 1.8.8)
+
+Execute multiple Redis commands in a single network round-trip using pipelining. This significantly reduces latency for
+Lua hooks/filters that otherwise would perform many individual Redis operations.
+
+### Syntax
+
+```lua
+local results, err = nauthilus_redis.redis_pipeline(handle_or_"default", mode, commands)
+```
+
+### Parameters
+
+- `handle_or_"default"` (userdata|string): A Redis connection handle returned by `get_redis_connection(name)`, or the
+  string `"default"` to use the server's default pool. The pipeline will respect the given handle (including specific pool
+  and deployment type: standalone, sentinel, cluster).
+- `mode` (string): Either `"write"` or `"read"`. This affects which default client is chosen when `"default"` is passed and
+  helps picking suitable connections (e.g., read replicas vs. primary) if the handle is not a concrete client.
+- `commands` (array table): An array of command-tuples. Each entry is a table where the first element is the command name
+  (lowercase string), followed by arguments. Example: `{ {"set", "k", "v", 60}, {"hget", "hash", "field"} }`.
+
+### Supported commands in pipelines
+
+- Connection and strings: `ping`, `get`, `set`, `incr`, `del`, `expire`, `exists`, `mget`, `mset`, `keys`, `scan`
+- Hashes: `hget`, `hset`, `hdel`, `hlen`, `hgetall`, `hincrby`, `hincrbyfloat`, `hexists`
+- Sets: `sadd`, `sismember`, `smembers`, `srem`, `scard`
+- Sorted sets: `zadd`, `zrem`, `zrank`, `zrange`, `zrevrange`, `zrangebyscore`, `zremrangebyscore`, `zremrangebyrank`, `zcount`,
+  `zscore`, `zrevrank`, `zincrby`
+- Lists: `lpush`, `rpush`, `lpop`, `rpop`, `lrange`, `llen`
+- HyperLogLog: `pfadd`, `pfcount`, `pfmerge`
+- Scripts: `run_script` (alias: `evalsha`) — use an uploaded script name (see `redis_upload_script`) and pass keys/args tables
+
+Notes
+- For `zrangebyscore` you can pass an optional options table as 5th argument: `{offset = N, count = M}`.
+- For `run_script`/`evalsha` the tuple is: `{ "run_script", uploadName, {keys...}, {args...} }`. The `uploadName` must
+  have been previously registered via `redis_upload_script(handle, scriptStr, uploadName)`.
+- For `mget` and `mset` you may pass keys/kv either as varargs or a table; both are supported.
+- When using Redis Cluster, the implementation transparently ensures keys for script calls use the same hash slot where needed.
+
+### Returns
+
+- `results` (table): An array-like table with one entry per pipelined command, in the same order. Each entry contains the
+  native result converted to a Lua value (string, number, boolean, table) when possible. For collection-returning commands
+  (like `smembers`, `lrange`, `hgetall`, `zrange`, `mget`, etc.) you will receive a Lua table.
+- `err` (string|nil): `nil` on success; otherwise an error message. If any command in the batch is not supported or
+  building/execution fails, `err` is returned and `results` will be `nil`.
+
+### Examples
+
+Minimal example with strings and hashes:
+```lua
+dynamic_loader("nauthilus_redis")
+local R = require("nauthilus_redis")
+
+local h = R.get_redis_connection("default")
+local res, err = R.redis_pipeline(h, "write", {
+  {"set", "my:key", "value", 60},       -- EX 60
+  {"hset", "my:hash", "field", "v"},
+  {"get", "my:key"},                   -- will return later in results[3]
+  {"hexists", "my:hash", "field"},    -- results[4] is true/false
+})
+assert(not err, err)
+-- res[1] => OK, res[2] => number of fields set, res[3] => "value", res[4] => true/false
+```
+
+Running a batched write with a Lua script:
+```lua
+dynamic_loader("nauthilus_redis")
+local R = require("nauthilus_redis")
+
+-- Upload or ensure the script is uploaded elsewhere in initialization code:
+-- R.redis_upload_script(h, [[ return redis.call('PING') ]], 'PingScript')
+
+local t = os.time()
+local res, err = R.redis_pipeline("default", "write", {
+  {"run_script", "ZAddRemExpire", {"app:zset"}, {t, "member", 0, t-60, 120}},
+  {"expire", "another:key", 3600},
+})
+if err then error(err) end
+```
+
+### Behavior and performance considerations
+
+- The pipeline executes against the specific client associated with the provided handle. If you pass the string `"default"`,
+  the implementation chooses a client based on `mode` (`read` uses read handle when available; `write` uses the primary/write handle).
+- All commands are queued and then executed with a single `EXEC`-like pipeline round-trip. This reduces latency and server load.
+- Metrics: internal Prometheus counters for Redis reads/writes are incremented per queued command.
+- Error handling: If building the batch fails (e.g., unsupported command name, missing uploaded script) an error is returned
+  without executing the pipeline. If execution returns an error (e.g., network issue), it is propagated as `err`.
+

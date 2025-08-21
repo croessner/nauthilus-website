@@ -62,6 +62,17 @@ This document provides a comprehensive overview of all features currently suppor
   - Configurable connection pooling
   - Custom namespaces for protocol-dependent data
   - Lua HyperLogLog API support (PFADD, PFCOUNT, PFMERGE) (v1.8.4)
+  - Lua Redis pipelining API to batch commands in one round-trip: nauthilus_redis.redis_pipeline (v1.8.8)
+    - Supported commands in pipelines include: PING, GET, SET, INCR, DEL, EXPIRE, EXISTS, HGET, HSET, HDEL, HLEN, HGETALL, HINCRBY, HINCRBYFLOAT, HEXISTS,
+      RENAME, SADD, SISMEMBER, SMEMBERS, SREM, SCARD, ZADD, ZREM, ZRANK, ZRANGE, ZREVRANGE, ZRANGEBYSCORE, ZREMRANGEBYSCORE, ZREMRANGEBYRANK, ZCOUNT, ZSCORE,
+      ZREVRANK, ZINCRBY, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LLEN, MGET, MSET, KEYS, SCAN, PFADD, PFCOUNT, PFMERGE, and EVALSHA via uploaded script names (run_script).
+    - Example usage:
+      nauthilus_redis.redis_pipeline(handle, "write", {
+        {"set", "key", "value", 60},
+        {"hset", "hash", "field", "val"},
+        {"zadd", "myz", 1.23, "member"},
+        {"run_script", "ZAddRemExpire", {"some:key"}, {os.time(), "m", 0, os.time()-60, 120}},
+      })
 
 - **Connection Handling**
   - HTTP/2 and HTTP/3 support

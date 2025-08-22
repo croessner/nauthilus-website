@@ -1770,9 +1770,9 @@ else
 end
 ```
 
-:::::note
-Redis Cluster users: PFMERGE requires all keys (dest and sources) to hash to the same slot. Use a common hash tag in your keys (e.g., {mytag}:hll:dst and {mytag}:hll:src1) to avoid CROSSSLOT errors.
-:::::
+:::note
+Redis Cluster users: PFMERGE requires all keys (dest and sources) to hash to the same slot. Use a common hash tag in your keys (e.g., `{mytag}:hll:dst` and `{mytag}:hll:src1`) to avoid CROSSSLOT errors.
+:::
 
 
 ---

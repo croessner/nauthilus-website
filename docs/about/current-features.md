@@ -67,12 +67,14 @@ This document provides a comprehensive overview of all features currently suppor
       RENAME, SADD, SISMEMBER, SMEMBERS, SREM, SCARD, ZADD, ZREM, ZRANK, ZRANGE, ZREVRANGE, ZRANGEBYSCORE, ZREMRANGEBYSCORE, ZREMRANGEBYRANK, ZCOUNT, ZSCORE,
       ZREVRANK, ZINCRBY, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LLEN, MGET, MSET, KEYS, SCAN, PFADD, PFCOUNT, PFMERGE, and EVALSHA via uploaded script names (run_script).
     - Example usage:
+      ```lua
       nauthilus_redis.redis_pipeline(handle, "write", {
         {"set", "key", "value", 60},
         {"hset", "hash", "field", "val"},
         {"zadd", "myz", 1.23, "member"},
         {"run_script", "ZAddRemExpire", {"some:key"}, {os.time(), "m", 0, os.time()-60, 120}},
       })
+      ```
 
 - **Connection Handling**
   - HTTP/2 and HTTP/3 support

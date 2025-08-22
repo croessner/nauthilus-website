@@ -1818,11 +1818,14 @@ Notes
 
 ### Returns
 
-- `results` (table): An array-like table with one entry per pipelined command, in the same order. Each entry contains the
-  native result converted to a Lua value (string, number, boolean, table) when possible. For collection-returning commands
-  (like `smembers`, `lrange`, `hgetall`, `zrange`, `mget`, etc.) you will receive a Lua table.
-- `err` (string|nil): `nil` on success; otherwise an error message. If any command in the batch is not supported or
-  building/execution fails, `err` is returned and `results` will be `nil`.
+- `results` (table): Array-like table with one entry per pipelined command, in the same order. Each entry is a structured
+  table: `{ ok = boolean, value = <Lua value>|nil, err = <string>|nil }`.
+  - `ok = true` and `value = nil` encodes Redis NIL (e.g., GET missing key), not an error.
+  - `ok = false` and `err` set encodes a per-command error (e.g., WRONGTYPE). In this case `value` may be absent or nil.
+  - For collection-returning commands (`smembers`, `lrange`, `hgetall`, `zrange`, `mget`, etc.), `value` is a Lua table.
+  - Special case `scan`: `value` is a table `{ keys = { ... }, cursor = <number> }` when `ok = true`.
+- `err` (string|nil): `nil` on success; otherwise a pipeline-wide error message. If any command is unsupported or building/
+  execution fails, `err` is returned and `results` will be `nil`.
 
 ### Examples
 
@@ -1839,7 +1842,11 @@ local res, err = R.redis_pipeline(h, "write", {
   {"hexists", "my:hash", "field"},    -- results[4] is true/false
 })
 assert(not err, err)
--- res[1] => OK, res[2] => number of fields set, res[3] => "value", res[4] => true/false
+-- Structured results:
+-- res[1] = { ok=true, value="OK" }
+-- res[2] = { ok=true, value=1 }
+-- res[3] = { ok=true, value="value" }
+-- res[4] = { ok=true, value=true }
 ```
 
 Running a batched write with a Lua script:

@@ -52,7 +52,7 @@ sequenceDiagram
     end
     activate Features
     loop Features pipeline
-    Features->>Features:Run all features one after another
+    Features->>Features:Run all features in parallel (since v1.8.9)
     end
     alt Some featured was triggered
     activate Actions
@@ -211,7 +211,14 @@ process.
 
 Besides the well known features geoip, rbl, tls\_encryption and relay\_domains, a new feature has been integrated: lua. This
 feature is processed before all other features (in fact, you might replace all these features with pure Lua...). Lua-features
-are run one after another. As soon as a feature has triggered, the request will reject the authentication process.
+are executed in parallel starting with v1.8.9. As soon as any feature has triggered, the request will reject the authentication process after all features have finished, and the results are aggregated.
+
+:::note Version change in 1.8.9
+Since version 1.8.9, Lua features and filters are executed in parallel. Nauthilus waits for all scripts to finish and then aggregates their results:
+- Features: triggered=true if any script reports FEATURE_TRIGGER_YES; abort flag is set if any script requests FEATURES_ABORT_YES; the first error aborts the whole operation; the first status_message set is used.
+- Filters: an action is taken if any filter requests it; backend_result attributes from multiple filters are merged (later keys overwrite earlier ones); remove-attributes are unioned; the first error aborts; the first status_message set is used.
+Each script runs with its own Lua state and per-script timeout. Do not rely on execution order between scripts.
+:::
 Furthermore, Lua features can set a flag to bypass all built-in features.
 
 ### Lua backend

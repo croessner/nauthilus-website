@@ -8,6 +8,10 @@ sidebar_position: 2
 
 ## nauthilus\_builtin.status\_message\_set
 
+:::note Since 1.8.9
+When multiple Lua features/filters run in parallel and set a status message, Nauthilus uses the first non-empty message encountered during aggregation. Do not rely on ordering between scripts.
+::: 
+
 Sets a custom status message to be returned when a client request is rejected.
 
 ### Syntax

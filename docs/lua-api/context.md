@@ -6,6 +6,10 @@ sidebar_position: 4
 ---
 # Context
 
+:::note Concurrency since 1.8.9
+Starting with Nauthilus v1.8.9, Lua features and filters execute in parallel. The shared request context remains available across scripts, but there is no deterministic order of reads/writes between scripts. Prefer idempotent updates or namespaced keys to avoid conflicts, and do not rely on one feature running before another.
+:::
+
 ```lua
 dynamic_loader("nauthilus_context")
 local nauthilus_context = require("nauthilus_context")

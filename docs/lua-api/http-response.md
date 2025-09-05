@@ -11,7 +11,7 @@ set the HTTP status code, and write the raw response body. This is useful, for e
 signal frontends (like Keycloak) to apply additional protection measures (e.g., CAPTCHA),
 return specific HTTP statuses from custom hooks, or serve non-JSON content directly from Lua.
 
-Availability: since Nauthilus 1.8.5. Status and body writing support added in 1.9.0.
+Availability: since Nauthilus 1.8.5. Status and body writing support added in 1.9.0. Content-Type helper added in 1.9.2.
 
 ```lua
 dynamic_loader("nauthilus_http_response")
@@ -135,6 +135,41 @@ local rsp = require("nauthilus_http_response")
 -- signal rate limiting
 rsp.set_http_status(429)
 ```
+
+## nauthilus_http_response.set_http_content_type
+
+Sets the Content-Type response header. This is a convenience wrapper around set_http_response_header specifically for Content-Type.
+
+Version: Introduced in Nauthilus 1.9.2.
+
+### Syntax
+
+```lua
+nauthilus_http_response.set_http_content_type(value)
+```
+
+### Parameters
+
+- `value` (string): The MIME type with optional charset, e.g., "text/html; charset=utf-8".
+
+### Returns
+
+None
+
+### Example
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local rsp = require("nauthilus_http_response")
+
+rsp.set_http_content_type("text/html; charset=utf-8")
+rsp.write_http_response_body("<html><body>Hello</body></html>")
+rsp.set_http_status(200)
+```
+
+Notes
+- Prefer this over manually setting the header when writing custom bodies.
+- Combine with write_http_response_body and set_http_status for full control.
 
 ## nauthilus_http_response.write_http_response_body
 

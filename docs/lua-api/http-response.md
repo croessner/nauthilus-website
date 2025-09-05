@@ -163,8 +163,8 @@ dynamic_loader("nauthilus_http_response")
 local rsp = require("nauthilus_http_response")
 
 rsp.set_http_content_type("text/html; charset=utf-8")
-rsp.write_http_response_body("<html><body>Hello</body></html>")
 rsp.set_http_status(200)
+rsp.write_http_response_body("<html><body>Hello</body></html>")
 ```
 
 Notes

@@ -143,6 +143,7 @@ This is the list of modules that are currently available:
 | nauthilus\_ldap             | LDAP related functions                             |
 | nauthilus\_backend          | Backend related functions                          |
 | nauthilus\_http_request     | HTTP request header functions                      |
+| nauthilus\_http_response    | HTTP response functions (headers, status, body)     |
 | nauthilus\_gluacrypto       | gluacrpyto project on Github                       |
 | nauthilus\_gll\_plugin      | gopher-lua-libs project on Github                  |
 | nauthilus\_gll\_argparse    | gopher-lua-libs project on Github                  |

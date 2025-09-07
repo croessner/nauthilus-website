@@ -11,7 +11,7 @@ set the HTTP status code, and write the raw response body. This is useful, for e
 signal frontends (like Keycloak) to apply additional protection measures (e.g., CAPTCHA),
 return specific HTTP statuses from custom hooks, or serve non-JSON content directly from Lua.
 
-Availability: since Nauthilus 1.8.5. Status and body writing support added in 1.9.0. Content-Type helper added in 1.9.2.
+Availability: since Nauthilus 1.8.5. Status and body writing support added in 1.9.0. Content-Type helper and Gin-mapped wrappers added in 1.9.2.
 
 ```lua
 dynamic_loader("nauthilus_http_response")
@@ -212,6 +212,49 @@ rsp.write_http_response_body("Hello from Lua!\n")
 - If your Lua hook writes to the response body (using `write_http_response_body`) or otherwise
   has already written headers/body, the server will not override it with JSON.
 - This allows you to return arbitrary content types (HTML, text, binary) from Lua hooks.
+
+## New in 1.9.2: Gin-mapped wrappers and status constants
+
+Version 1.9.2 introduces direct wrappers for common Gin response helpers. These wrappers always require an explicit status code and internally call the respective Gin methods. They also handle HEAD requests safely (no body is written for HEAD):
+
+- nauthilus_http_response.string(status, body): text/plain with Gin's ctx.String
+- nauthilus_http_response.data(status, content_type, data): arbitrary content with ctx.Data
+- nauthilus_http_response.html(status, html): convenience for text/html; charset=utf-8 using ctx.Data
+- nauthilus_http_response.redirect(status, location): send a redirect using ctx.Redirect
+
+In addition, the module now exposes UPPER_CASE status code constants for convenience:
+
+- STATUS_OK, STATUS_CREATED, STATUS_NO_CONTENT
+- STATUS_MOVED_PERMANENTLY, STATUS_FOUND, STATUS_SEE_OTHER, STATUS_NOT_MODIFIED
+- STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED, STATUS_FORBIDDEN, STATUS_NOT_FOUND, STATUS_METHOD_NOT_ALLOWED, STATUS_CONFLICT, STATUS_UNSUPPORTED_MEDIA_TYPE, STATUS_TOO_MANY_REQUESTS
+- STATUS_INTERNAL_SERVER_ERROR, STATUS_NOT_IMPLEMENTED, STATUS_BAD_GATEWAY, STATUS_SERVICE_UNAVAILABLE, STATUS_GATEWAY_TIMEOUT
+
+Example usage:
+
+```lua
+dynamic_loader("nauthilus_http_response")
+local rsp = require("nauthilus_http_response")
+
+-- Text response
+rsp.set_http_response_header("Cache-Control", "no-cache, no-transform")
+rsp.string(rsp.STATUS_OK, "Hello from Lua!\n")
+
+-- HTML response
+local html = "<html><body><h1>Hello</h1></body></html>"
+rsp.html(rsp.STATUS_OK, html)
+
+-- Binary or arbitrary content
+local csv = "a,b,c\n1,2,3\n"
+rsp.data(rsp.STATUS_OK, "text/csv; charset=utf-8", csv)
+
+-- Redirect
+rsp.redirect(rsp.STATUS_SEE_OTHER, "/login")
+```
+
+Notes
+- Always pass an explicit status code; there is no default.
+- For HEAD requests, string/html/data will set status and refrain from writing a body.
+- Prefer adding Cache-Control: no-cache, no-transform for dynamic responses.
 
 ## Practical example: signaling protection mode
 

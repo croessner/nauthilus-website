@@ -19,8 +19,8 @@ local nauthilus_http_response = require("nauthilus_http_response")
 ```
 
 Notes
-- This module is only available in HTTP-capable contexts (hooks, filters, features) where a Gin writer is present. It is not available in pure backend workers without an HTTP response.
-- If you write generic Lua code that may also run in non-HTTP contexts, guard calls with `pcall(...)`.
+- Availability: This module is available exclusively in Hooks. It is not available in Features or Filters anymore. It is also not available in non-HTTP contexts (e.g., pure backend workers without an HTTP response).
+- If you write generic Lua code that may also run in non-HTTP contexts, guard calls with `pcall(...)`. 
 - Header names are case-insensitive on the wire; use canonical forms for readability.
 
 ## nauthilus_http_response.set_http_response_header
@@ -111,7 +111,7 @@ nauthilus_http_response.remove_http_response_header("X-Debug")
 
 ## nauthilus_http_response.set_http_status
 
-Sets the HTTP status code for the current response. This works in hooks, filters and features.
+Sets the HTTP status code for the current response. Availability: Hooks only.
 
 ### Syntax
 

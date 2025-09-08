@@ -1086,6 +1086,7 @@ server:
 
 This object defines settings related to HTTP response compression.
 
+Note: As of version 1.9.2, MIME types for compression are deprecated and no longer used. Compression decisions are automatically based on negotiation and thresholds (see options below).
 #### server::compression::enabled
 _Default: false_
 
@@ -1109,16 +1110,21 @@ server:
 ```
 
 #### server::compression::content_types
-_Default: ["text/html", "text/css", "text/plain", "text/javascript", "application/javascript", "application/x-javascript", "application/json", "application/xml", "application/vnd.api+json"]_
+_Default: deprecated since v1.9.2_
 
-This setting defines the content types that should be compressed.
+Deprecated: As of version 1.9.2 MIME/content types are no longer used to decide compression and this option has no effect. The server now determines compression automatically based on request/response negotiation and size thresholds.
+
+If present in your configuration, this key will be ignored from v1.9.2 onwards and can be safely removed.
 
 ```yaml
-server:
-  compression:
-    content_types:
-      - text/html
-      - application/json
+# Prior to v1.9.2:
+# server:
+#   compression:
+#     content_types:
+#       - text/html
+#       - application/json
+
+# Since v1.9.2 this option is ignored and should be removed.
 ```
 
 #### server::compression::min_length

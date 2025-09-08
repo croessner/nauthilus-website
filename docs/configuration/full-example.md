@@ -221,9 +221,9 @@ server:
   compression:
     enabled: true                       # Default: false
     level: 7                            # Default: 5
-    content_types:                      # Default: ["text/html", "text/css", "text/plain", "text/javascript", "application/javascript", "application/x-javascript", "application/json", "application/xml", "application/vnd.api+json"]
-      - text/html
-      - application/json
+    # content_types:                    # Deprecated since v1.9.2: no longer used, safe to remove
+    #   - text/html
+    #   - application/json
     min_length: 2048                    # Default: 1024
 
   # Keep alive configuration

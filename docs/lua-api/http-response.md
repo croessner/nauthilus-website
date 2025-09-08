@@ -19,9 +19,10 @@ local nauthilus_http_response = require("nauthilus_http_response")
 ```
 
 Notes
-- Availability: This module is available exclusively in Hooks. It is not available in Features or Filters anymore. It is also not available in non-HTTP contexts (e.g., pure backend workers without an HTTP response).
+- Availability: This module is available in Hooks. It may also be used by Filters and Features, but with strict limitations (see below). It is not available in non-HTTP contexts (e.g., pure backend workers without an HTTP response).
 - If you write generic Lua code that may also run in non-HTTP contexts, guard calls with `pcall(...)`. 
 - Header names are case-insensitive on the wire; use canonical forms for readability.
+- Important: Filters and Features MUST NOT send a response body. They may set or add/remove HTTP response headers to signal state to the frontend, and they may set an HTTP status code if appropriate, but they must not write the response body or use helpers that emit a body (see Prohibited operations in Filters/Features).
 
 ## nauthilus_http_response.set_http_response_header
 
@@ -171,6 +172,17 @@ Notes
 - Prefer this over manually setting the header when writing custom bodies.
 - Combine with write_http_response_body and set_http_status for full control.
 
+## Prohibited operations in Filters/Features
+
+The following operations MUST NOT be used from Filters or Features because they send a response body. Using these from Filters/Features can break upstream expectations and clients:
+
+- nauthilus_http_response.write_http_response_body(...)
+- nauthilus_http_response.string(status, body)
+- nauthilus_http_response.html(status, html)
+- nauthilus_http_response.data(status, content_type, data)
+
+These APIs are only permitted from Hooks. Filters and Features are limited to manipulating headers and, if needed, setting an HTTP status code. See the examples below for allowed usage.
+
 ## nauthilus_http_response.write_http_response_body
 
 Writes raw data to the HTTP response body. When you write the body in Lua, Nauthilus will not
@@ -256,7 +268,7 @@ Notes
 - For HEAD requests, string/html/data will set status and refrain from writing a body.
 - Prefer adding Cache-Control: no-cache, no-transform for dynamic responses.
 
-## Practical example: signaling protection mode
+## Allowed usage in Filters/Features: signaling protection mode
 
 In an account-protection filter you may want to hint a frontend to require a CAPTCHA
 or other step-up challenge for a specific account. Combine your detection logic with

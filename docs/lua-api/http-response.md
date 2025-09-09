@@ -248,7 +248,7 @@ dynamic_loader("nauthilus_http_response")
 local rsp = require("nauthilus_http_response")
 
 -- Text response
-rsp.set_http_response_header("Cache-Control", "no-cache, no-transform")
+rsp.set_http_response_header("Cache-Control", "no-cache")
 rsp.string(rsp.STATUS_OK, "Hello from Lua!\n")
 
 -- HTML response
@@ -266,7 +266,7 @@ rsp.redirect(rsp.STATUS_SEE_OTHER, "/login")
 Notes
 - Always pass an explicit status code; there is no default.
 - For HEAD requests, string/html/data will set status and refrain from writing a body.
-- Prefer adding Cache-Control: no-cache, no-transform for dynamic responses.
+- Prefer adding Cache-Control: no-cache for dynamic responses.
 
 ## Allowed usage in Filters/Features: signaling protection mode
 

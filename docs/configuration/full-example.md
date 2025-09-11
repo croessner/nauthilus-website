@@ -353,10 +353,13 @@ brute_force:
       # Explicitly disable adaptive toleration for this IP
       adaptive_toleration: false
 
+  # Reduce PW_HIST writes for already‑blocked requests (v1.9.4)
+  pw_history_for_known_accounts: true   # Default: false
+
   # IPv6 ip_scoping for RWP and Tolerations (v1.9.4)
   ip_scoping:
-    rwp_ipv6_cidr: 64                    # Default: 0 (disabled)
-    tolerations_ipv6_cidr: 64            # Default: 0 (disabled)
+    rwp_ipv6_cidr: 64                   # Default: 0 (disabled)
+    tolerations_ipv6_cidr: 64           # Default: 0 (disabled)
 
   # Neural network configuration
   neural_network:

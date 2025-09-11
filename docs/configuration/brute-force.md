@@ -113,6 +113,28 @@ brute_force:
       tolerate_ttl: 24h
 ```
 
+### brute_force::pw_hist_known_cached (v1.9.4)
+_Default: false_
+
+Reduce PW_HIST write amplification for requests that are already blocked via the BRUTEFORCE cache ("cached result").
+When enabled, Nauthilus will only write account-scoped PW_HIST entries if a verified accountName is present; it will not
+fall back to the raw username. IP-wide PW_HIST continues to be written as before.
+
+Why this can be useful:
+- Lowers Redis key footprint and write load during credential‑stuffing with rotating or non‑existent usernames.
+- Keeps the immediate block behavior unchanged; the cached BRUTEFORCE hash remains the decision source.
+
+Minimal risk:
+- After an unlock or cache flush, per‑username PW_HIST will be missing for unknown usernames, which removes a small
+  quick‑skip signal for "repeating wrong password". Buckets may therefore increment a bit sooner until fresh context is learned.
+  Metrics/forensics for unknown usernames are less granular.
+
+Example:
+```yaml
+brute_force:
+  pw_history_for_known_accounts: true
+```
+
 ### brute_force::ip_scoping (IPv6)
 _Default: all disabled (0)_
 

@@ -353,6 +353,11 @@ brute_force:
       # Explicitly disable adaptive toleration for this IP
       adaptive_toleration: false
 
+  # IPv6 ip_scoping for RWP and Tolerations (v1.9.4)
+  ip_scoping:
+    rwp_ipv6_cidr: 64                    # Default: 0 (disabled)
+    tolerations_ipv6_cidr: 64            # Default: 0 (disabled)
+
   # Neural network configuration
   neural_network:
     max_training_records: 20000         # Default: 10000

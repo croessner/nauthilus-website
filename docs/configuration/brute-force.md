@@ -34,15 +34,15 @@ _Default: empty list_
 
 This section lists chains of buckets. Here is the definition of a bucket:
 
-| Field name         | Description                                                                                    |
-|--------------------|------------------------------------------------------------------------------------------------|
-| name               | A user friendly name for the bucket                                                            |
-| period             | The TTL after which an unused bucket is removed from Redis                                     |
-| cidr               | The network mask of an IP address                                                              |
-| ipv4               | Boolean that enables the bucket for IPv4 support                                               |
-| ipv6               | Boolean that enables the bucket for IPv6 support                                               |
-| failed_requests    | Threshold value unitl a client will be blocked directly without asking authentication backends |
-| filter_by_protocol | Optional list of protocols for which this bucket should be used (available from version 1.7.5) |
+| Field name         | Description                                                                                          |
+|--------------------|------------------------------------------------------------------------------------------------------|
+| name               | A user friendly name for the bucket                                                                  |
+| period             | The TTL after which an unused bucket is removed from Redis                                           |
+| cidr               | The network mask of an IP address                                                                    |
+| ipv4               | Boolean that enables the bucket for IPv4 support                                                     |
+| ipv6               | Boolean that enables the bucket for IPv6 support                                                     |
+| failed_requests    | Threshold value unitl a client will be blocked directly without asking authentication backends       |
+| filter_by_protocol | Optional list of protocols for which this bucket should be used (available from version 1.7.5)       |
 | filter_by_oidc_cid | Optional list of OIDC Client IDs for which this bucket should be used (available from version 1.7.5) |
 
 ### brute_force::ip_whitelist
@@ -111,6 +111,34 @@ brute_force:
     - ip_address: 10.0.0.5
       tolerate_percent: 50
       tolerate_ttl: 24h
+```
+
+### brute_force::ip_scoping (IPv6)
+_Default: all disabled (0)_
+
+Controls how IPv6 client addresses are normalized for certain subsystems so that addresses with privacy extensions are
+aggregated by network instead of by /128. This improves stability for households where multiple devices rotate IPv6
+interface identifiers frequently.
+
+Available options (introduced in v1.9.4):
+- `brute_force.ip_scoping.rwp_ipv6_cidr` — Apply the given IPv6 CIDR when evaluating and storing Repeating‑Wrong‑Password
+  (PW_HIST) data. Set to `0` to disable (default). Valid range: `1..128`.
+- `brute_force.ip_scoping.tolerations_ipv6_cidr` — Apply the given IPv6 CIDR when tracking Tolerations. Set to `0` to
+  disable (default). Valid range: `1..128`.
+
+Notes:
+- When enabled, IPv6 addresses are normalized to their network (e.g., `2001:db8::1` with `/64` is stored as
+  `2001:db8::/64`).
+- Cache flush is ip_scoping‑aware starting with v1.9.4: `/api/v1/cache/flush` removes both raw and scoped keys.
+- IPv4 behavior is unchanged.
+
+Example:
+```yaml
+brute_force:
+  ip_scoping:
+    # Group IPv6 password‑history and tolerations by /64 instead of /128
+    rwp_ipv6_cidr: 64
+    tolerations_ipv6_cidr: 64
 ```
 
 ## Neural Network Configuration

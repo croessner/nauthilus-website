@@ -48,9 +48,10 @@ Authenticate a user using JSON format.
   "client_port": "8080",
   "client_hostname": "client.example.com",
   "client_id": "client123",
+  "user_agent": "curl/8.2.1",
   "local_ip": "10.0.0.1",
   "local_port": "443",
-  "service": "loginService",
+  "protocol": "imap",
   "method": "LOGIN",
   "auth_login_attempt": 1,
   "ssl": "on",
@@ -75,7 +76,9 @@ Authenticate a user using JSON format.
 
 **Required Fields:**
 - `username`: The identifier of the client/user sending the request
-- `service`: The specific service that the client/user is trying to access
+- `protocol`: The application protocol to be used (e.g., "imap", "smtp", "pop3", "http"). Starting with 1.9.5, JSON clients must send `protocol` instead of `service`.
+
+> Breaking change in 1.9.5: The JSON field `service` no longer controls the protocol selection. Use the `protocol` field instead. The `service` field remains only as an endpoint/router identifier elsewhere and is ignored by the JSON auth endpoint.
 
 **Optional Fields:**
 - `password`: The authentication credential
@@ -83,6 +86,7 @@ Authenticate a user using JSON format.
 - `client_port`: The port number from which the client/user is sending the request
 - `client_hostname`: The hostname of the client
 - `client_id`: The unique identifier of the client/user
+- `user_agent`: User agent string; if omitted, the HTTP `User-Agent` header is used
 - `local_ip`: The IP address of the server receiving the request
 - `local_port`: The port number of the server receiving the request
 - `method`: The authentication method (e.g., PLAIN, LOGIN)
@@ -90,6 +94,8 @@ Authenticate a user using JSON format.
 - `ssl`: Identifier if TLS is used (any non-empty value activates TLS)
 - Various SSL/TLS related fields for certificate information
 - `oidc_cid`: OIDC Client ID used for authentication (available from version 1.7.5)
+
+Note: If `protocol` is omitted, Nauthilus will apply internal defaults depending on the endpoint. For the JSON endpoint, omitting `protocol` may lead to the default protocol being used, which might not match your intended workflow. It is recommended to always send `protocol`.
 
 **Query Parameters:**
 - `mode` (optional): Special operation mode
@@ -159,6 +165,7 @@ All fields that are available in the JSON request are also supported as HTTP hea
 - `X-Client-Port`: Client port
 - `X-Client-Host`: Client hostname
 - `X-Client-Id`: Client identifier
+- `User-Agent`: Standard HTTP user agent header
 - `X-Local-IP`: Local IP address
 - `X-Auth-Port`: Authentication port
 - `Auth-SSL`: SSL status (any non-empty value activates TLS)
@@ -249,6 +256,7 @@ The nginx endpoint accepts the same headers as the header endpoint. All fields t
 - `X-Client-Port`: Client port
 - `X-Client-Host`: Client hostname
 - `X-Client-Id`: Client identifier
+- `User-Agent`: Standard HTTP user agent header
 - `X-Local-IP`: Local IP address
 - `X-Auth-Port`: Authentication port
 - `Auth-SSL`: SSL status (any non-empty value activates TLS)

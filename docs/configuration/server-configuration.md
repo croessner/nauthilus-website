@@ -1101,12 +1101,24 @@ server:
 #### server::compression::level
 _Default: 5_
 
-This setting defines the compression level (1-9, where 1 is fastest and 9 is best compression).
+Deprecated: As of v1.9.9 use server::compression::level_gzip instead. The old key remains supported for backward compatibility and will be removed in a future release.
+
+```yaml
+# Deprecated — prefer level_gzip
+server:
+  compression:
+    level: 7
+```
+
+#### server::compression::level_gzip (since v1.9.9)
+_Default: 5_
+
+Defines the gzip compression level (1-9, where 1 is fastest and 9 is best compression). This replaces the old level key to mirror the style of level_zstd.
 
 ```yaml
 server:
   compression:
-    level: 7
+    level_gzip: 7
 ```
 
 #### server::compression::content_types
@@ -1137,6 +1149,50 @@ server:
   compression:
     min_length: 2048
 ```
+
+#### server::compression::algorithms (since v1.9.8)
+_Default: ["zstd", "gzip"]_
+
+Defines the enabled compression algorithms in order of preference. The router applies only one response compression middleware at a time based on this list. If the client supports Zstandard (zstd) and it is listed first, zstd will be used; otherwise it falls back to gzip when available.
+
+Valid values include: "zstd" (or aliases "zst", "zstandard") and "gzip".
+
+```yaml
+server:
+  compression:
+    enabled: true
+    algorithms: ["zstd", "gzip"]
+```
+
+Notes:
+- Only one algorithm is applied for a given response.
+- If the list is empty or no known algorithm is listed, zstd is used by default.
+
+#### server::compression::level_zstd (since v1.9.8)
+_Default: 0 (DefaultCompression)_
+
+Configures the Zstandard compression level mapping used by the built-in zstd middleware:
+- 0 = DefaultCompression
+- 1 = BestSpeed
+- 2 = BetterCompression
+- 3 = BestCompression
+
+```yaml
+server:
+  compression:
+    enabled: true
+    algorithms: ["zstd", "gzip"]
+    level_zstd: 2 # BetterCompression
+```
+
+Implementation details:
+- Zstandard is implemented via klauspost/compress v1.18.0.
+- For gzip, the existing "level" (1-9) option remains unchanged.
+- The /metrics endpoint keeps compression disabled to avoid double compression on Prometheus clients.
+
+Request decompression (since v1.9.8):
+- Incoming requests with Content-Encoding: gzip continue to be decompressed when compression is enabled.
+- Incoming requests with Content-Encoding: zstd/zst/zstandard are now automatically decompressed when compression is enabled.
 
 ## Keep Alive Configuration
 

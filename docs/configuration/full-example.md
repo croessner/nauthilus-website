@@ -220,7 +220,9 @@ server:
   # Compression configuration
   compression:
     enabled: true                       # Default: false
-    level: 7                            # Default: 5
+    level_gzip: 7                       # Default (gzip): 5; 'level' is deprecated since v1.9.9
+    algorithms: ["zstd", "gzip"]        # Default: ["zstd", "gzip"] (order = preference)
+    level_zstd: 2                       # Default: 0 (0=Default,1=BestSpeed,2=BetterCompression,3=BestCompression)
     # content_types:                    # Deprecated since v1.9.2: no longer used, safe to remove
     #   - text/html
     #   - application/json

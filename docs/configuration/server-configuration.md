@@ -1153,15 +1153,15 @@ server:
 #### server::compression::algorithms (since v1.9.8)
 _Default: ["zstd", "gzip"]_
 
-Defines the enabled compression algorithms in order of preference. The router applies only one response compression middleware at a time based on this list. If the client supports Zstandard (zstd) and it is listed first, zstd will be used; otherwise it falls back to gzip when available.
+Defines the enabled compression algorithms in order of preference. The router applies only one response compression middleware at a time based on this list. If the client supports Zstandard (zstd) and it is listed first, zstd will be used; otherwise it falls back to gzip when available. Since v1.9.9, Brotli (br) can also be selected and typically offers excellent ratios for text assets.
 
-Valid values include: "zstd" (or aliases "zst", "zstandard") and "gzip".
+Valid values include: "br" (Brotli), "zstd" (or aliases "zst", "zstandard") and "gzip".
 
 ```yaml
 server:
   compression:
     enabled: true
-    algorithms: ["zstd", "gzip"]
+    algorithms: ["br", "zstd", "gzip"]
 ```
 
 Notes:
@@ -1181,18 +1181,36 @@ Configures the Zstandard compression level mapping used by the built-in zstd mid
 server:
   compression:
     enabled: true
-    algorithms: ["zstd", "gzip"]
+    algorithms: ["br", "zstd", "gzip"]
     level_zstd: 2 # BetterCompression
 ```
 
-Implementation details:
-- Zstandard is implemented via klauspost/compress v1.18.0.
-- For gzip, the existing "level" (1-9) option remains unchanged.
-- The /metrics endpoint keeps compression disabled to avoid double compression on Prometheus clients.
+#### server::compression::level_brotli (since v1.9.9)
+_Default: 0 (DefaultCompression)_
 
-Request decompression (since v1.9.8):
-- Incoming requests with Content-Encoding: gzip continue to be decompressed when compression is enabled.
-- Incoming requests with Content-Encoding: zstd/zst/zstandard are now automatically decompressed when compression is enabled.
+Configures the Brotli compression level mapping used by the built-in Brotli middleware:
+- 0 = DefaultCompression
+- 1 = BestSpeed
+- 2 = BetterCompression
+- 3 = BestCompression
+
+```yaml
+server:
+  compression:
+    enabled: true
+    algorithms: ["br", "zstd", "gzip"]
+    level_brotli: 2 # BetterCompression
+```
+
+Implementation details:
+- Zstandard is implemented via klauspost/compress.
+- Brotli is implemented via andybalholm/brotli.
+- For gzip, the new level_gzip (1-9) supersedes the deprecated level key (still accepted for backward compatibility).
+
+Request decompression (since v1.9.8; extended in v1.9.9):
+- Incoming requests with Content-Encoding: gzip are decompressed when compression is enabled.
+- Incoming requests with Content-Encoding: zstd/zst/zstandard are decompressed when compression is enabled.
+- Incoming requests with Content-Encoding: br (Brotli) are decompressed when compression is enabled (since v1.9.9).
 
 ## Keep Alive Configuration
 

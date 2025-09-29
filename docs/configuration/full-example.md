@@ -364,6 +364,10 @@ brute_force:
     rwp_ipv6_cidr: 64                   # Default: 0 (disabled)
     tolerations_ipv6_cidr: 64           # Default: 0 (disabled)
 
+  # Cold-start grace for known accounts without negative PW history (v1.9.10)
+  cold_start_grace_enabled: true        # Default: false
+  cold_start_grace_ttl: 120s            # Default: 120s
+
   # Neural network configuration
   neural_network:
     max_training_records: 20000         # Default: 10000

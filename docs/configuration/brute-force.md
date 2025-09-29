@@ -163,6 +163,38 @@ brute_force:
     tolerations_ipv6_cidr: 64
 ```
 
+### brute_force::cold_start_grace_enabled (v1.9.10)
+_Default: false_
+
+Enables a one-time, per-IP cold-start grace for known accounts that currently have no negative password history (PW_HIST).
+This prevents immediate bucket inflation and self-lockouts right after a cache flush or password change when multiple
+clients might still send the old password in parallel.
+
+Behavior when enabled:
+- On the first failed attempt from an IP (scoped consistently with RWP and IPv6 ip_scoping), Nauthilus learns metadata
+  for password history but does not enforce brute-force bucket increments yet.
+- Concurrent first attempts are recognized via an atomic Redis seed to allow Repeating‑Wrong‑Password to short‑circuit
+  without inflating generic buckets.
+- From the next attempt within the grace TTL, brute-force computation is enforced again so complex rules can fill/trigger.
+
+See also: `brute_force::cold_start_grace_ttl`.
+
+```yaml
+brute_force:
+  cold_start_grace_enabled: true
+```
+
+### brute_force::cold_start_grace_ttl (v1.9.10)
+_Default: 120s_
+
+Time window in which the cold-start grace and the seed evidence apply. Use a short TTL (e.g., 60–180 seconds) to cover
+initial spikes right after password changes or cache flushes.
+
+```yaml
+brute_force:
+  cold_start_grace_ttl: 120s
+```
+
 ## Neural Network Configuration
 
 :::danger Deprecated Feature

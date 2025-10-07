@@ -368,6 +368,10 @@ brute_force:
   cold_start_grace_enabled: true        # Default: false
   cold_start_grace_ttl: 120s            # Default: 120s
 
+  # Repeating-wrong-password allowance (tolerate up to N unique wrong password hashes within a window) (v1.9.11)
+  rwp_allowed_unique_hashes: 5          # Default: 3
+  rwp_window: 30m                       # Default: 15m
+
   # Neural network configuration
   neural_network:
     max_training_records: 20000         # Default: 10000

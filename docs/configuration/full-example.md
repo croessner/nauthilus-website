@@ -202,6 +202,10 @@ server:
     cookie_store_auth_key: 32-byte-long-random-secret
     cookie_store_encryption_key: 16-24-or-32-byte-long-random-secret
 
+  # Deduplication configuration
+  dedup:
+    distributed_enabled: false         # Default: false. Enable Redis-based cross-instance dedup for backchannel auth (v1.9.12)
+
   # Prometheus timer configuration
   prometheus_timer:
     enabled: true                       # Default: false
@@ -368,7 +372,7 @@ brute_force:
   cold_start_grace_enabled: true        # Default: false
   cold_start_grace_ttl: 120s            # Default: 120s
 
-  # Repeating-wrong-password allowance (tolerate up to N unique wrong password hashes within a window) (v1.9.11)
+  # Repeating-wrong-password allowance (tolerate up to N unique wrong password hashes within a window) (v1.9.12)
   rwp_allowed_unique_hashes: 5          # Default: 3
   rwp_window: 30m                       # Default: 15m
 

@@ -9,6 +9,16 @@ sidebar_position: 11
 
 This page provides a complete example of a Nauthilus configuration file. You can use this as a reference when configuring your own Nauthilus instance.
 
+:::note Hydra/OIDC build tag (v1.9.12+)
+As of v1.9.12, OAuth2/OIDC (the `oauth2` section), the login/consent frontend, and 2FA/WebAuthn UI are compiled only when Nauthilus is built with the `hydra` build tag. The default builds (and official Docker images) do not include Hydra.
+
+- Without Hydra (default): `go build -mod=vendor ./server`
+- With Hydra enabled: `go build -mod=vendor -tags hydra ./server`
+- Docker with Hydra: `docker build --build-arg BUILD_TAGS=hydra -t nauthilus:hydra .`
+
+Configuration keys under `oauth2` and 2FA/WebAuthn-related settings only take effect in Hydra-enabled builds.
+:::
+
 ```yaml
 server:
   # Basic server settings
@@ -456,6 +466,7 @@ brute_force:
         - my-oidc-client-id
         - another-client-id
 
+# Requires hydra build tag (-tags hydra)
 oauth2:
   # Custom scopes configuration
   custom_scopes:                        # Default: empty list
@@ -583,7 +594,7 @@ ldap:
                 (rnsMSDovecotMaster=TRUE)
               )
             )
-        webauthn_credentials: |         # Optional
+        webauthn_credentials: |         # Optional (requires hydra build tag)
             (&
               (objectClass=rns2FAWebAuthn)
               (entryUUID=%{user_id})
@@ -593,7 +604,7 @@ ldap:
         totp_secret_field: rns2FATOTPSecret  # Optional
         totp_recovery_field: rns2FATOTPRecoveryCode  # Optional
         display_name_field: cn          # Optional
-        credential_object: rns2FAWebAuthn  # Optional
+        credential_object: rns2FAWebAuthn  # Optional (requires hydra build tag)
         credential_id_field: rns2FAWebAuthnCredID  # Optional
         public_key_field: rns2FAWebAuthnPubKey  # Optional
         unique_user_id_field: entryUUID  # Optional
@@ -638,7 +649,7 @@ ldap:
         - rnsMSDovecotUser
 
     - protocol:
-        - ory-hydra
+        - ory-hydra  # requires hydra build tag
       cache_name: oauth
       base_dn: ou=people,ou=it,dc=example,dc=com
       filter:

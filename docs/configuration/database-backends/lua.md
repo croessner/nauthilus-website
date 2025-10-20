@@ -100,13 +100,14 @@ If no roles are specified for a hook, any authenticated user can access it when 
 
 ### lua::config
 
-| Key                    | Required | Description                                  | Example                                       |
-|------------------------|:--------:|----------------------------------------------|-----------------------------------------------|
-| backend\_script\_path  |   yes    | Full path to the Lua backend script          | ./server/lua-plugins.d/backend/backend.lua    |
-| init\_script\_path     |    no    | Full path to the Lua initialization script   | ./server/lua-plugins.d/init/init.lua          |
-| init\_script\_paths    |    no    | List of Lua initialization scripts (v1.7.7)  | [./init.lua, ./init_neural.lua]               |
-| package_path           |    no    | Set a Lua module path for custom Lua modules | /usr/local/etc/nauthilus/lualib/?.lua         |
-| number\_of\_workers    |    no    | Number of Lua workers to use                 | 10                                            |
+| Key                   | Required | Description                                                                              | Example                                    |
+|-----------------------|:--------:|------------------------------------------------------------------------------------------|--------------------------------------------|
+| backend\_script\_path |   yes    | Full path to the Lua backend script                                                      | ./server/lua-plugins.d/backend/backend.lua |
+| init\_script\_path    |    no    | Full path to the Lua initialization script                                               | ./server/lua-plugins.d/init/init.lua       |
+| init\_script\_paths   |    no    | List of Lua initialization scripts (v1.7.7)                                              | [./init.lua, ./init_neural.lua]            |
+| package_path          |    no    | Set a Lua module path for custom Lua modules                                             | /usr/local/etc/nauthilus/lualib/?.lua      |
+| number\_of\_workers   |    no    | Number of Lua workers to use                                                             | 10                                         |
+| queue_length          |    no    | New in v1.10.0: Maximum number of pending Lua requests per backend queue. 0 = unlimited. | 100                                        |
 
 ### lua::optional_lua_backends
 
@@ -119,8 +120,10 @@ lua:
   optional_lua_backends:
     backend1:
       number_of_workers: 5
+      queue_length: 100
     backend2:
       number_of_workers: 3
+      queue_length: 50
 ```
 
 You can then reference these backends in your search configurations using the `backend_name` parameter:

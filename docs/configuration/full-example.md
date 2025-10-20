@@ -547,6 +547,10 @@ ldap:
     cb_cooldown: 30s                    # Default: 30s (New in v1.10.0)
     cb_half_open_max: 1                 # Default: 1 (New in v1.10.0)
 
+    # Health checks
+    health_check_interval: 10s          # Default: 10s (New in v1.10.0)
+    health_check_timeout: 1.5s          # Default: 1.5s (New in v1.10.0)
+
     # Request/result shaping & caches
     dn_cache_ttl: 60s                   # Default: 0s (disabled) (New in v1.10.0)
     membership_cache_ttl: 120s          # Default: 0s (disabled) (New in v1.10.0)
@@ -595,6 +599,9 @@ ldap:
       cb_failure_threshold: 5             # New in v1.10.0
       cb_cooldown: 30s                    # New in v1.10.0
       cb_half_open_max: 1                 # New in v1.10.0
+      # Health checks
+      health_check_interval: 10s          # New in v1.10.0
+      health_check_timeout: 1.5s          # New in v1.10.0
       # Cache settings (optional)
       negative_cache_ttl: 20s             # New in v1.10.0
       cache_impl: ttl                     # New in v1.10.0

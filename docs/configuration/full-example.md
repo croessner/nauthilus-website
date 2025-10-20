@@ -19,6 +19,10 @@ As of v1.9.12, OAuth2/OIDC (the `oauth2` section), the login/consent frontend, a
 Configuration keys under `oauth2` and 2FA/WebAuthn-related settings only take effect in Hydra-enabled builds.
 :::
 
+::::note New in v1.10.0
+This example includes new LDAP configuration parameters introduced in v1.10.0, annotated inline with “New in v1.10.0”. They cover queue limits, per-op timeouts, search guardrails, retry/backoff, circuit breaker, caching options, and optional per-pool auth rate limiting.
+:::
+
 ```yaml
 server:
   # Basic server settings
@@ -517,7 +521,43 @@ ldap:
     lookup_idle_pool_size: 2            # Default: 2
     auth_pool_size: 8                   # Default: 10
     auth_idle_pool_size: 2              # Default: 2
+    # Queue limits per pool (0 = unlimited)
+    lookup_queue_length: 0              # Default: 0 (New in v1.10.0)
+    auth_queue_length: 0                # Default: 0 (New in v1.10.0)
+
+    # Connection/token acquisition guard
     connect_abort_timeout: 10s          # Default: 10s
+
+    # Operation-specific timeouts
+    search_timeout: 0s                  # Default: 0 (lib default) (New in v1.10.0)
+    bind_timeout: 0s                    # Default: 0 (lib default) (New in v1.10.0)
+    modify_timeout: 0s                  # Default: 0 (lib default) (New in v1.10.0)
+
+    # Search guardrails
+    search_size_limit: 0                # Default: 0 (server default) (New in v1.10.0)
+    search_time_limit: 0s               # Default: 0 (server default) (New in v1.10.0)
+
+    # Retry/backoff on transient network errors
+    retry_max: 2                        # Default: 2 (New in v1.10.0)
+    retry_base: 200ms                   # Default: 200ms (New in v1.10.0)
+    retry_max_backoff: 2s               # Default: 2s (New in v1.10.0)
+
+    # Circuit breaker per target
+    cb_failure_threshold: 5             # Default: 5 (New in v1.10.0)
+    cb_cooldown: 30s                    # Default: 30s (New in v1.10.0)
+    cb_half_open_max: 1                 # Default: 1 (New in v1.10.0)
+
+    # Request/result shaping & caches
+    dn_cache_ttl: 60s                   # Default: 0s (disabled) (New in v1.10.0)
+    membership_cache_ttl: 120s          # Default: 0s (disabled) (New in v1.10.0)
+    negative_cache_ttl: 20s             # Default: 20s (New in v1.10.0)
+    cache_max_entries: 5000             # Default: 5000 (New in v1.10.0)
+    cache_impl: ttl                     # Default: ttl (ttl|lru) (New in v1.10.0)
+    include_raw_result: false           # Default: false (New in v1.10.0)
+
+    # Optional auth rate limiting per pool
+    auth_rate_limit_per_second: 0       # Default: 0 (disabled) (New in v1.10.0)
+    auth_rate_limit_burst: 0            # Default: 0 (disabled) (New in v1.10.0)
 
     server_uri: ldap://some.server:389/ # Required
     bind_dn: cn=admin,dc=example,dc=com # Optional
@@ -539,6 +579,29 @@ ldap:
       lookup_idle_pool_size: 1
       auth_pool_size: 5
       auth_idle_pool_size: 1
+      # Per-pool queue limits (0 = unlimited)
+      lookup_queue_length: 100            # New in v1.10.0
+      auth_queue_length: 100              # New in v1.10.0
+      # Per-pool timeouts and guardrails
+      search_timeout: 2s                  # New in v1.10.0
+      bind_timeout: 1s                    # New in v1.10.0
+      modify_timeout: 2s                  # New in v1.10.0
+      search_size_limit: 500              # New in v1.10.0
+      search_time_limit: 3s               # New in v1.10.0
+      # Retry/backoff & breaker
+      retry_max: 2                        # New in v1.10.0
+      retry_base: 200ms                   # New in v1.10.0
+      retry_max_backoff: 2s               # New in v1.10.0
+      cb_failure_threshold: 5             # New in v1.10.0
+      cb_cooldown: 30s                    # New in v1.10.0
+      cb_half_open_max: 1                 # New in v1.10.0
+      # Cache settings (optional)
+      negative_cache_ttl: 20s             # New in v1.10.0
+      cache_impl: ttl                     # New in v1.10.0
+      include_raw_result: false           # New in v1.10.0
+      # Per-pool auth rate limit (optional)
+      auth_rate_limit_per_second: 0       # New in v1.10.0
+      auth_rate_limit_burst: 0            # New in v1.10.0
       server_uri: ldap://ldap1.example.com:389/
       starttls: true
       tls_skip_verify: false
@@ -547,6 +610,8 @@ ldap:
       lookup_idle_pool_size: 1
       auth_pool_size: 3
       auth_idle_pool_size: 1
+      lookup_queue_length: 50             # New in v1.10.0
+      auth_queue_length: 50               # New in v1.10.0
       server_uri: ldap://ldap2.example.com:389/
       starttls: true
       tls_skip_verify: false

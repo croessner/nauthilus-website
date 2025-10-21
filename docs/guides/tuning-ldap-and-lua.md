@@ -35,9 +35,114 @@ The recommendations below apply to Nauthilus v1.10.0 and later.
 - Cache with guardrails: short TTLs, negative caches for frequent misses; measure hit rate.
 - Observe everything: queue depth/wait, errors, retries, circuit breaker state, target health.
 
+A quick high-level overview of how the knobs fit together:
+
+```mermaid
+flowchart LR
+  subgraph Client[Client]
+    R[Request]
+  end
+
+  R -->|Context/Deadline| LB[Server Limits\nmax_concurrent_requests]
+  LB --> BE{{Backends}}
+
+  subgraph LDAP[LDAP Backend]
+    LP[lookup_pool_size\nlookup_idle_pool_size]
+    AP[auth_pool_size\nauth_idle_pool_size]
+    LQL[lookup_queue_length]
+    AQL[auth_queue_length]
+    TO[search/bind/modify_timeouts]
+    RET[retry_backoff]
+    CB[circuit breaker]
+    HC[health checks]
+    CACH[caches negative/lru]
+  end
+
+  subgraph LUA[Lua]
+    subgraph LBACK[Lua Backend]
+      BNW[backend_number_of_workers]
+      BQ[queue_length]
+      BVM[VM-Pool per Backend\n= BNW]
+    end
+
+    subgraph LFEAT[Features]
+      FPOOL[feature_vm_pool_size]
+    end
+
+    subgraph LFILT[Filters]
+      FLPOOL[filter_vm_pool_size]
+    end
+
+    subgraph LHOOK[Hooks]
+      HPOOL[hook_vm_pool_size]
+    end
+
+    subgraph LACT[Actions]
+      ANW[action_number_of_workers]
+      AVM[Action VM-Pool\n= ANW]
+    end
+  end
+
+  BE -->|Auth path| LDAP
+  LDAP -->|Result + Attr| LUA
+
+  LBACK --> LFEAT --> LFILT --> LACT
+  LBACK -.-> LHOOK
+
+  LP -.feeds.-> LQL
+  AP -.feeds.-> AQL
+  LQL -->|bound backlog| LDAP
+  AQL -->|bound backlog| LDAP
+  TO --> LDAP
+  RET --> LDAP
+  CB --> LDAP
+  HC --> LDAP
+  CACH --> LDAP
+
+  BNW -->|sets| BVM
+  BQ --> LBACK
+  FPOOL --> LFEAT
+  FLPOOL --> LFILT
+  HPOOL --> LHOOK
+  ANW -->|sets| AVM
+
+  classDef cap fill:#e3f2fd,stroke:#1e88e5,color:#0d47a1
+  class LP,AP,LQL,AQL,TO,RET,CB,HC,CACH,BNW,BQ,FPOOL,FLPOOL,HPOOL,ANW cap
+```
+
+Legend: Blue nodes are configuration parameters.
+
 ---
 
 ## LDAP: what to tune and why
+
+A quick visual of LDAP pooling, queues, and resilience knobs:
+
+```mermaid
+flowchart LR
+  IN[Incoming auth/search] --> QL[lookup_queue_length]
+  IN --> QA[auth_queue_length]
+
+  QL --> LP[lookup_pool_size\nlookup_idle_pool_size]
+  QA --> AP[auth_pool_size\nauth_idle_pool_size]
+
+  LP --> OPS[search/modify]
+  AP --> BIND[bind]
+
+  TO[search/bind/modify_timeouts] --> OPS
+  TO --> BIND
+
+  RET[retry_max/base/max_backoff] --> OPS
+  RET --> BIND
+
+  CB[circuit breaker] --> OPS
+  HC[health checks] --> OPS
+
+  CACH[negative cache / LRU] --> OPS
+
+  classDef cap fill:#e3f2fd,stroke:#1e88e5,color:#0d47a1
+  class QL,QA,LP,AP,TO,RET,CB,HC,CACH cap
+```
 
 Important knobs (per pool unless stated otherwise):
 - Capacity & Backpressure
@@ -68,6 +173,42 @@ Observability (Prometheus excerpts)
 ---
 
 ## Lua: what to tune and why
+
+Lua worker/VM and pool sizing at a glance:
+
+```mermaid
+graph TB
+  subgraph Backend[Lua Backend]
+    BNW[backend_number_of_workers]
+    BQ[queue_length]
+    BVM[VM-Pool backend:*\nMaxVMs = BNW]
+  end
+
+  subgraph Actions[Lua Actions]
+    ANW[action_number_of_workers]
+    AVM[VM-Pool action:default\nMaxVMs = ANW]
+  end
+
+  subgraph Other[Feature/Filter/Hook]
+    F[feature_vm_pool_size\n-> feature:default]
+    FL[filter_vm_pool_size\n-> filter:default]
+    H[hook_vm_pool_size\n-> hook:default]
+  end
+
+  BNW -->|spawns| Workers[Backend workers]
+  Workers -->|Acquire| BVM
+  BQ -->|bounds backlog| Workers
+
+  ANW -->|spawns| AWorkers[Action workers]
+  AWorkers -->|Acquire| AVM
+
+  F --> FeatureVM[Feature VMs]
+  FL --> FilterVM[Filter VMs]
+  H --> HookVM[Hook VMs]
+
+  classDef cap fill:#e3f2fd,stroke:#1e88e5,color:#0d47a1
+  class BNW,BQ,ANW,F,FL,H cap
+```
 
 - Concurrency & Backpressure
   - backend_number_of_workers (per backend): matches VM pool size. (number_of_workers deprecated)
@@ -313,6 +454,29 @@ lua:
 - Lua workers: align with expected concurrency; start at 4–8; queue_length ~ workers to 2× workers.
 
 ---
+
+### Dependencies cheat sheet (compact)
+
+```mermaid
+graph TD
+  backend_number_of_workers --> backend_vm_pool_size
+  backend_number_of_workers -.1:1.-> backend_vm_pool_size
+  action_number_of_workers --> action_vm_pool_size
+  action_number_of_workers -.1:1.-> action_vm_pool_size
+  feature_vm_pool_size --> feature_parallelism
+  filter_vm_pool_size --> filter_parallelism
+  hook_vm_pool_size --> hook_parallelism
+  queue_length --> backend_backlog
+  lookup_pool_size --> lookup_parallelism
+  auth_pool_size --> auth_parallelism
+  lookup_queue_length --> lookup_backlog
+  auth_queue_length --> auth_backlog
+  search_timeout --> search_latency_bounds
+  bind_timeout --> bind_latency_bounds
+  retry_max --> potential_amplification
+  cb_failure_threshold --> breaker_sensitivity
+  cache_max_entries --> cache_memory
+```
 
 ## Troubleshooting checklist
 

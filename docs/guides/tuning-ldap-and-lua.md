@@ -72,6 +72,8 @@ Observability (Prometheus excerpts)
 - Concurrency & Backpressure
   - backend_number_of_workers (per backend): matches VM pool size. (number_of_workers deprecated)
   - queue_length (per backend): bound pending requests; 0 = unlimited.
+  - feature_vm_pool_size / filter_vm_pool_size / hook_vm_pool_size: control VM reuse capacity per category; if unset, they fall back to backend_number_of_workers.
+  - Actions: VM pool size is coupled 1:1 to action_number_of_workers (no separate pool size key).
 - VM lifecycle
   - VM reuse via pool; deep reset between runs prevents cross-request residue.
   - Replace VM on hard errors/timeouts; count via lua_vm_replaced_total.

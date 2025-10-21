@@ -804,6 +804,9 @@ lua:
     backend_number_of_workers: 10       # Default: 10 (Lua backend workers) — New in v1.10.0
     number_of_workers: 10               # Deprecated (use backend_number_of_workers); still supported for backward compatibility
     action_number_of_workers: 10        # Default: 10 (Lua Action workers)
+    feature_vm_pool_size: 10            # New in v1.10.0 (VM pool size for Lua features)
+    filter_vm_pool_size: 10             # New in v1.10.0 (VM pool size for Lua filters)
+    hook_vm_pool_size: 10               # New in v1.10.0 (VM pool size for Lua hooks)
 
   # Optional Lua backends
   optional_lua_backends:

@@ -102,12 +102,13 @@ If no roles are specified for a hook, any authenticated user can access it when 
 
 | Key                   | Required | Description                                                                              | Example                                    |
 |-----------------------|:--------:|------------------------------------------------------------------------------------------|--------------------------------------------|
-| backend\_script\_path |   yes    | Full path to the Lua backend script                                                      | ./server/lua-plugins.d/backend/backend.lua |
-| init\_script\_path    |    no    | Full path to the Lua initialization script                                               | ./server/lua-plugins.d/init/init.lua       |
-| init\_script\_paths   |    no    | List of Lua initialization scripts (v1.7.7)                                              | [./init.lua, ./init_neural.lua]            |
-| package_path          |    no    | Set a Lua module path for custom Lua modules                                             | /usr/local/etc/nauthilus/lualib/?.lua      |
-| number\_of\_workers   |    no    | Number of Lua workers to use                                                             | 10                                         |
-| queue_length          |    no    | New in v1.10.0: Maximum number of pending Lua requests per backend queue. 0 = unlimited. | 100                                        |
+| backend\_script\_path        |   yes    | Full path to the Lua backend script                                                      | ./server/lua-plugins.d/backend/backend.lua |
+| init\_script\_path         |    no    | Full path to the Lua initialization script                                               | ./server/lua-plugins.d/init/init.lua       |
+| init\_script\_paths        |    no    | List of Lua initialization scripts (v1.7.7)                                              | [./init.lua, ./init_neural.lua]            |
+| package_path               |    no    | Set a Lua module path for custom Lua modules                                             | /usr/local/etc/nauthilus/lualib/?.lua      |
+| backend_number_of_workers |    no    | Number of Lua backend workers to use (New in v1.10.0)                                   | 10                                         |
+| number_of_workers         |    no    | Deprecated: use backend_number_of_workers                                                | 10                                         |
+| queue_length              |    no    | New in v1.10.0: Maximum number of pending Lua requests per backend queue. 0 = unlimited. | 100                                        |
 
 ### lua::optional_lua_backends
 
@@ -119,10 +120,12 @@ This section allows you to define additional Lua backends with different configu
 lua:
   optional_lua_backends:
     backend1:
-      number_of_workers: 5
+      backend_number_of_workers: 5  # New in v1.10.0
+      # number_of_workers: 5        # Deprecated
       queue_length: 100
     backend2:
-      number_of_workers: 3
+      backend_number_of_workers: 3  # New in v1.10.0
+      # number_of_workers: 3        # Deprecated
       queue_length: 50
 ```
 

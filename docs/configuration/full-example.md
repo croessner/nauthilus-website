@@ -801,14 +801,18 @@ lua:
       - ./server/lua-plugins.d/init/init.lua
       - ./server/lua-plugins.d/init/init_neural.lua
     package_path: /usr/local/etc/nauthilus/lualib/?.lua  # Optional
-    number_of_workers: 10               # Default: 10
+    backend_number_of_workers: 10       # Default: 10 (Lua backend workers) — New in v1.10.0
+    number_of_workers: 10               # Deprecated (use backend_number_of_workers); still supported for backward compatibility
+    action_number_of_workers: 10        # Default: 10 (Lua Action workers)
 
   # Optional Lua backends
   optional_lua_backends:
     backend1:
-      number_of_workers: 5
+      backend_number_of_workers: 5  # New in v1.10.0
+      # number_of_workers: 5        # Deprecated (use backend_number_of_workers)
     backend2:
-      number_of_workers: 3
+      backend_number_of_workers: 3  # New in v1.10.0
+      # number_of_workers: 3        # Deprecated (use backend_number_of_workers)
 
   # Lua search configuration
   search:                               # Default: empty list

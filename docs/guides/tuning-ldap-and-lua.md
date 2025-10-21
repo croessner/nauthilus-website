@@ -41,7 +41,7 @@ The recommendations below apply to Nauthilus v1.10.0 and later.
 
 Important knobs (per pool unless stated otherwise):
 - Capacity & Backpressure
-  - number_of_workers: worker goroutines per pool.
+  - backend_number_of_workers: worker goroutines per Lua backend (New in v1.10.0); number_of_workers is deprecated.
   - lookup_pool_size / auth_pool_size: maximum concurrent LDAP connections per pool.
   - lookup_idle_pool_size / auth_idle_pool_size: warm connections to avoid cold starts.
   - lookup_queue_length / auth_queue_length: 0 = unlimited; use small limits to protect latencies.
@@ -70,7 +70,7 @@ Observability (Prometheus excerpts)
 ## Lua: what to tune and why
 
 - Concurrency & Backpressure
-  - number_of_workers (per backend): matches VM pool size.
+  - backend_number_of_workers (per backend): matches VM pool size. (number_of_workers deprecated)
   - queue_length (per backend): bound pending requests; 0 = unlimited.
 - VM lifecycle
   - VM reuse via pool; deep reset between runs prevents cross-request residue.
@@ -129,7 +129,7 @@ Lua (default backend)
 ```yaml
 lua:
   config:
-    number_of_workers: 4
+    backend_number_of_workers: 4  # New in v1.10.0
     queue_length: 16        # ~4x workers; absorb brief spikes
 ```
 
@@ -165,7 +165,7 @@ auth_rate_limit_burst: 20
 
 Lua per backend
 ```yaml
-number_of_workers: 8
+backend_number_of_workers: 8  # New in v1.10.0
 queue_length: 16           # small, predictable backlog
 ```
 

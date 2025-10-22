@@ -799,7 +799,6 @@ lua:
     init_script_path: ./server/lua-plugins.d/init/init.lua  # Optional, single init script
     init_script_paths:  # Optional, list of init scripts (v1.7.7)
       - ./server/lua-plugins.d/init/init.lua
-      - ./server/lua-plugins.d/init/init_neural.lua
     package_path: /usr/local/etc/nauthilus/lualib/?.lua  # Optional
     backend_number_of_workers: 10       # Default: 10 (Lua backend workers) — New in v1.10.0
     number_of_workers: 10               # Deprecated (use backend_number_of_workers); still supported for backward compatibility
@@ -807,6 +806,8 @@ lua:
     feature_vm_pool_size: 10            # New in v1.10.0 (VM pool size for Lua features)
     filter_vm_pool_size: 10             # New in v1.10.0 (VM pool size for Lua filters)
     hook_vm_pool_size: 10               # New in v1.10.0 (VM pool size for Lua hooks)
+    ip_scoping_v6_cidr: 64              # New in v1.10.0 (IPv6 scoping for Lua features; 0 disables)
+    ip_scoping_v4_cidr: 24              # New in v1.10.0 (IPv4 scoping for Lua features; 0 disables)
 
   # Optional Lua backends
   optional_lua_backends:

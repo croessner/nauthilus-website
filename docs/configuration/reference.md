@@ -82,6 +82,13 @@ Specify how long a page hit in seconds has to be cached locally for each Nauthil
 
 This parameter specifies how long in seconds a Lua script is allowed to run, until it is aborted by the interpreter.
 
+| Name    | **PROTECT_ENFORCE_REJECT** |
+|---------|----------------------------|
+| Default | false                      |
+| Value   | Boolean                    |
+
+Controls enforcement of the Account Protection filter. When false or unset (default), the filter runs in dry‑run mode: applies progressive delay and sets Step‑Up/CAPTCHA hints via headers/Redis but does not reject the request. When true, unauthenticated requests are temporarily rejected while protection is active. Related headers: `X-Nauthilus-Protection`, `X-Nauthilus-Protection-Reason`, `X-Nauthilus-Protection-Mode` (dry‑run).
+
 ## Nginx
 
 | Name    | **NGINX_WAIT_DELAY**     |
@@ -361,3 +368,106 @@ See LOGIN_PAGE_LOGO_IMAGE_ALT
 ### WebAuthn
 
 This is work in progress and under active development.
+
+
+## Lua Plugins (Features, Filters, Actions, Hooks)
+
+The following environment variables are read directly by bundled Lua scripts. They complement the main configuration and can be used to tune behavior without changing Lua code. Unless stated otherwise, variables are optional.
+
+### Common (used by many Lua scripts)
+
+| Name                   | Default   | Type   | Used by                           | Description                                                                                                      |
+|------------------------|-----------|--------|-----------------------------------|------------------------------------------------------------------------------------------------------------------|
+| CUSTOM_REDIS_POOL_NAME | — (unset) | String | features, filters, actions, hooks | Name of a non-default Redis connection pool to use for this Lua execution. When unset, the default pool is used. |
+
+### Account Protection filter (filters/account_protection_mode.lua)
+
+| Name                      | Default | Type              | Description                                                                                                                                                                                                                                    |
+|---------------------------|---------|-------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| PROTECT_THRESH_UNIQ24     | 12      | Integer           | Minimum unique scoped IPs in 24h window to consider an account under protection.                                                                                                                                                               |
+| PROTECT_THRESH_UNIQ7D     | 30      | Integer           | Minimum unique scoped IPs in 7d window to consider an account under protection.                                                                                                                                                                |
+| PROTECT_THRESH_FAIL24     | 7       | Integer           | Minimum failed attempts in 24h window to consider an account under protection.                                                                                                                                                                 |
+| PROTECT_THRESH_FAIL7D     | 15      | Integer           | Minimum failed attempts in 7d window to consider an account under protection.                                                                                                                                                                  |
+| PROTECT_BACKOFF_MIN_MS    | 150     | Integer (ms)      | Minimum backoff delay applied when protection is active.                                                                                                                                                                                       |
+| PROTECT_BACKOFF_MAX_MS    | 1000    | Integer (ms)      | Upper bound for applied backoff delay.                                                                                                                                                                                                         |
+| PROTECT_BACKOFF_MAX_LEVEL | 5       | Integer           | Maximum backoff escalation level.                                                                                                                                                                                                              |
+| PROTECT_MODE_TTL_SEC      | 3600    | Integer (seconds) | TTL for the protection state and step-up requirement hints.                                                                                                                                                                                    |
+| PROTECT_ENFORCE_REJECT    | false   | Boolean           | Enforcement switch. When false or unset (default), the filter runs in dry‑run mode (no blocking, only delay + step-up hints). When true, unauthenticated requests are rejected while protection is active. See also the dedicated entry above. |
+| CUSTOM_REDIS_POOL_NAME    | —       | String            | Redis pool override for this filter’s Redis operations.                                                                                                                                                                                        |
+
+Emits headers for HTTP/OIDC frontends: X-Nauthilus-Protection, X-Nauthilus-Protection-Reason; and in dry‑run mode: X-Nauthilus-Protection-Mode: dry-run.
+
+### Security metrics feature (features/security_metrics.lua)
+
+| Name                              | Default                      | Type            | Description                                                                                                                                           |
+|-----------------------------------|------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| SECURITY_METRICS_PER_USER_ENABLED | false                        | Boolean         | When true, emits per‑user security_* metrics (guarded by sampling). When false, per‑user emission is disabled except for protected users.             |
+| SECURITY_METRICS_SAMPLE_RATE      | 1.0 (effective when enabled) | Float (0.0–1.0) | Sampling rate for per‑user metrics; users currently in protection mode are always emitted. Unset is treated as 1.0 when per‑user metrics are enabled. |
+| CUSTOM_REDIS_POOL_NAME            | —                            | String          | Redis pool override for metrics reads.                                                                                                                |
+
+### Account long‑window metrics feature (features/account_longwindow_metrics.lua)
+
+| Name                   | Default | Type   | Description                                                                 |
+|------------------------|---------|--------|-----------------------------------------------------------------------------|
+| CUSTOM_REDIS_POOL_NAME | —       | String | Redis pool override. Used for HLL (PFADD/PFCOUNT) and failure ZSET updates. |
+
+This feature already uses scoped IPs when computing uniq_ips_24h and uniq_ips_7d (see Lua Backend config ip_scoping_v6_cidr / ip_scoping_v4_cidr).
+
+### Failed login hotspot feature (features/failed_login_hotspot.lua)
+
+| Name                       | Default | Type              | Description                                                          |
+|----------------------------|---------|-------------------|----------------------------------------------------------------------|
+| FAILED_LOGIN_HOT_THRESHOLD | 10      | Integer           | ZSET score threshold for a username to be considered “hot”.          |
+| FAILED_LOGIN_TOP_K         | 20      | Integer           | Consider users within Top‑K by rank as potential hotspots.           |
+| FAILED_LOGIN_SNAPSHOT_SEC  | 30      | Integer (seconds) | Rate‑limit for emitting a small Top‑N snapshot as Prometheus gauges. |
+| FAILED_LOGIN_SNAPSHOT_TOPN | 10      | Integer           | Size of the Top‑N snapshot to expose as gauges.                      |
+| CUSTOM_REDIS_POOL_NAME     | —       | String            | Redis pool override for ZSET reads.                                  |
+
+### Dynamic response action (actions/dynamic_response.lua)
+
+Administration alerting controls and warm‑up parameters for dynamic threat response.
+
+| Name                                 | Default | Type              | Description                                                                            |
+|--------------------------------------|---------|-------------------|----------------------------------------------------------------------------------------|
+| ADMIN_ALERTS_ENABLED                 | true    | Boolean           | Master toggle for sending administrator alert emails.                                  |
+| ADMIN_ALERT_MIN_UNIQUE_IPS           | 100     | Integer           | Baseline: minimum global unique IPs before alerts are considered.                      |
+| ADMIN_ALERT_MIN_IPS_PER_USER         | 2.5     | Float             | Baseline: minimum IPs per user before alerts are considered.                           |
+| ADMIN_ALERT_REQUIRE_EVIDENCE         | false   | Boolean           | If true, require additional evidence (e.g., suspicious regions/IPs) besides baselines. |
+| ADMIN_ALERT_COOLDOWN_SECONDS         | 900     | Integer (seconds) | Per‑subject cooldown to avoid alert storms.                                            |
+| DYNAMIC_RESPONSE_WARMUP_SECONDS      | 604800  | Integer (seconds) | Warm‑up period length before full automated responses are enabled.                     |
+| DYNAMIC_RESPONSE_WARMUP_MIN_ATTEMPTS | 1000    | Integer           | Minimum number of attempts observed before warm‑up can end.                            |
+| DYNAMIC_RESPONSE_WARMUP_MIN_USERS    | 10      | Integer           | Minimum number of distinct users observed before warm‑up can end.                      |
+| CUSTOM_REDIS_POOL_NAME               | —       | String            | Redis pool override for dynamic response data access and rate‑limits.                  |
+
+### ClickHouse post‑action (actions/clickhouse.lua)
+
+| Name                  | Default                   | Type         | Description                                                                                                               |
+|-----------------------|---------------------------|--------------|---------------------------------------------------------------------------------------------------------------------------|
+| CLICKHOUSE_INSERT_URL | —                         | String (URL) | Full HTTP endpoint including SQL, e.g. `http://host:8123/?query=INSERT%20INTO%20nauthilus.logins%20FORMAT%20JSONEachRow`. |
+| CLICKHOUSE_USER       | —                         | String       | Optional basic auth user (also sent via X‑ClickHouse-User).                                                               |
+| CLICKHOUSE_PASSWORD   | —                         | String       | Optional basic auth password (also sent via X‑ClickHouse-Key).                                                            |
+| CLICKHOUSE_BATCH_SIZE | 100                       | Integer      | Batch size for buffered inserts.                                                                                          |
+| CLICKHOUSE_CACHE_KEY  | "clickhouse:batch:logins" | String       | Cache key used for the in‑process batching queue.                                                                         |
+
+### ClickHouse query hook (hooks/clickhouse-query.lua)
+
+| Name                   | Default          | Type         | Description                                                    |
+|------------------------|------------------|--------------|----------------------------------------------------------------|
+| CLICKHOUSE_SELECT_BASE | —                | String (URL) | Base URL of ClickHouse HTTP endpoint, e.g. `http://host:8123`. |
+| CLICKHOUSE_TABLE       | nauthilus.logins | String       | Table to query for read‑only operations.                       |
+| CLICKHOUSE_USER        | —                | String       | Optional basic auth user (also sent via headers).              |
+| CLICKHOUSE_PASSWORD    | —                | String       | Optional basic auth password (also sent via headers).          |
+
+### Blocklist feature (features/blocklist.lua)
+
+| Name          | Default | Type         | Description                                      |
+|---------------|---------|--------------|--------------------------------------------------|
+| BLOCKLIST_URL | —       | String (URL) | Endpoint for retrieving external blocklist data. |
+
+---
+
+See also:
+- Release Notes → 1.10.x (Security and protection)
+- Configuration → Database Backends → Lua Backend (ip_scoping_v6_cidr, ip_scoping_v4_cidr)
+- Lua API → HTTP response (headers used by filters)
+- Filters → Account protection

@@ -113,6 +113,8 @@ If no roles are specified for a hook, any authenticated user can access it when 
 | feature\_vm\_pool\_size      |    no    | New in v1.10.0: Max VMs in the Feature VM pool (feature:default). Fallbacks to backend workers if unset. | 10                                         |
 | filter\_vm\_pool\_size       |    no    | New in v1.10.0: Max VMs in the Filter VM pool (filter:default). Fallbacks to backend workers if unset.   | 10                                         |
 | hook\_vm\_pool\_size         |    no    | New in v1.10.0: Max VMs in the Hook VM pool (hook:default). Fallbacks to backend workers if unset.       | 10                                         |
+| ip\_scoping\_v6\_cidr        |    no    | New in v1.10.0: IPv6 CIDR for scoping used by Lua-driven features (metrics/dedup). 0 = disabled.         | 64                                         |
+| ip\_scoping\_v4\_cidr        |    no    | New in v1.10.0: IPv4 CIDR for scoping used by Lua-driven features (metrics/dedup). 0 = disabled.         | 24                                         |
 
 ### lua::optional_lua_backends
 

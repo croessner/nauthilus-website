@@ -1,70 +1,70 @@
 ---
-title: Misc
-description: Miscellaneous functions
+title: Miscellaneous helpers
+description: nauthilus_misc Lua module providing utility functions
 keywords: [Lua]
-sidebar_position: 8
+sidebar_position: 9
 ---
-# Misc
+
+# nauthilus_misc
+
+The `nauthilus_misc` module exposes small helper functions for Lua scripts. In v1.10.0 a new function was added to provide IP scoping consistent with the Go backend.
 
 ```lua
 dynamic_loader("nauthilus_misc")
-local nauthilus_misc = require("nauthilus_misc")
+local misc = require("nauthilus_misc")
 ```
 
-## nauthilus\_misc.get\_country\_name
+## misc.scoped_ip
 
-Gets the human-friendly name of an ISO country code.
+Returns a normalized identifier for an IP address according to configured scoping rules. This ensures consistent behavior across features and with the built‑in brute‑force components.
 
 ### Syntax
 
 ```lua
-local country_name = nauthilus_misc.get_country_name(iso_code)
+local scoped = misc.scoped_ip(ctx, ip)
+-- or with default context:
+local scoped = misc.scoped_ip(ip)
 ```
 
 ### Parameters
 
-- `iso_code` (string): The ISO 3166-1 alpha-2 country code
+- `ctx` (string, optional): Scoping context. One of:
+  - `"lua_generic"` (default): For general feature/metrics use.
+  - `"rwp"`: Repeating‑Wrong‑Password context (matches brute‑force RWP scoping).
+  - `"tolerations"`: Tolerations context (matches brute‑force tolerations scoping).
+- `ip` (string, required): IPv4 or IPv6 address.
 
 ### Returns
 
-- `country_name` (string): The human-readable country name
+- A string identifier to use for deduplication (can be the original IP or a network like `2001:db8::/64` or `192.0.2.0/24`), depending on configuration.
 
-### Example
+### Configuration precedence
 
-```lua
-dynamic_loader("nauthilus_misc")
-local nauthilus_misc = require("nauthilus_misc")
+- For `ctx = "lua_generic"`:
+  - Uses `lua.config.ip_scoping_v6_cidr` and `lua.config.ip_scoping_v4_cidr`.
+- For `ctx = "rwp"` and `ctx = "tolerations"`:
+  - Uses the existing brute‑force `ip_scoping` settings.
+- If no CIDR is configured for the IP version/context, the function returns the original IP.
 
-local iso_code = "DE"
-
-local country_name = nauthilus_misc.get_country_name(iso_code)
--- Returns "Germany"
-```
-## nauthilus\_misc.wait\_random
-
-Waits for a random delay between a start and stop value in milliseconds.
-
-### Syntax
+### Examples
 
 ```lua
-nauthilus_misc.wait_random(start_ms, stop_ms)
+local misc = require("nauthilus_misc")
+
+-- Generic scoping for metrics/dedup
+local id = misc.scoped_ip("lua_generic", request.client_ip)
+nauthilus_redis.redis_pfadd(client, "ntc:hll:acct:" .. request.username .. ":ips:86400", id)
+
+-- RWP context (matches brute‑force)
+local id2 = misc.scoped_ip("rwp", request.client_ip)
 ```
 
-### Parameters
+### Version
 
-- `start_ms` (number): The minimum delay in milliseconds
-- `stop_ms` (number): The maximum delay in milliseconds
+- Added in v1.10.0.
 
-### Returns
+## Other helpers
 
-None
-
-### Example
-
-```lua
-dynamic_loader("nauthilus_misc")
-local nauthilus_misc = require("nauthilus_misc")
-
--- Wait between 500ms and 3000ms
-nauthilus_misc.wait_random(500, 3000)
-```
+- `get_country_name(code)` → Country name for ISO code (requires countries DB)
+- `wait_random(min_ms, max_ms)` → Sleep for a random amount of milliseconds
+- `generate_password_hash(password)` → Redis‑compatible short hash used by Nauthilus

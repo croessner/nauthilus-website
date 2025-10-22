@@ -503,3 +503,44 @@ graph TD
 ---
 
 Still unsure what to pick? Start with the Small single-node scenario, deploy, and use the playbook to iterate with your data. That approach leads to stable, explainable settings in a few rounds.
+
+
+## Scoped IP dedup for account metrics (v1.10.0)
+
+Many modern clients rotate IPv6 privacy addresses and large deployments sit behind NAT/CGNAT. Counting raw IPs can inflate per‑account "unique IPs" and trigger false positives in protection heuristics. Starting with v1.10.0, Lua features can normalize IPs using CIDR scoping via the Go scoper.
+
+### Recommended starting points
+- IPv6: `lua.config.ip_scoping_v6_cidr: 64`
+- IPv4: `lua.config.ip_scoping_v4_cidr: 24`
+
+These values reduce noise from privacy addresses and NAT pools while still differentiating typical households and offices.
+
+### Configuration example
+```yaml
+lua:
+  config:
+    # Normalize client IPs in Lua features (e.g., long-window metrics)
+    ip_scoping_v6_cidr: 64  # /64 for IPv6 privacy rotation
+    ip_scoping_v4_cidr: 24  # /24 for IPv4 NAT aggregation
+```
+
+### Using from Lua
+Use the Go‑backed helper to get a stable identifier:
+
+```lua
+local misc = require("nauthilus_misc")
+local scope = misc.scoped_ip("lua_generic", request.client_ip)
+-- Use `scope` for HyperLogLog/ZSET keys instead of the raw IP
+```
+
+The built‑in `account_longwindow_metrics.lua` feature already uses scoped IPs in 1.10.0.
+
+### Threshold tuning
+With scoping enabled, the metrics `uniq_ips_24h` and `uniq_ips_7d` typically decrease. Adjust Account Protection thresholds accordingly:
+- Start with the defaults, then increase/decrease in small steps based on observed baselines.
+- Consider environment characteristics (mobile user base, roaming clients, heavy NAT).
+
+### Enforcement strategy
+- New default (v1.10.0): protection runs in dry‑run by default (no block). Toggle enforcement via the `PROTECT_ENFORCE_REJECT` env var when you are confident in the thresholds.
+- Let the frontend (IdP/reverse proxy) render the challenge based on the headers:
+  - `X-Nauthilus-Protection`, `X-Nauthilus-Protection-Reason`, and optional `X-Nauthilus-Protection-Mode: dry-run`.

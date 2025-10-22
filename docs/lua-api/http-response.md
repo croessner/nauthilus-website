@@ -282,6 +282,8 @@ local nauthilus_http_response = require("nauthilus_http_response")
 pcall(function()
   nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection", "stepup")
   nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection-Reason", "uniq24,fail24")
+  -- Optional: indicate dry-run mode when enforcement is disabled
+  nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection-Mode", "dry-run")
 end)
 ```
 

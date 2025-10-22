@@ -165,7 +165,7 @@ Important knobs (per pool unless stated otherwise):
 
 Observability (Prometheus excerpts)
 - Queue: ldap_queue_depth, ldap_queue_wait_seconds, ldap_queue_dropped_total
-- Errors/Retry: ldap_errors_total{pool,op,code}, ldap_retries_total{pool,op}
+- Errors/Retry: `ldap_errors_total{pool,op,code}`, `ldap_retries_total{pool,op}`
 - Targets: ldap_breaker_state, ldap_target_health, ldap_target_inflight
 - Pool: ldap_pool_open_connections_total, ldap_pool_size, ldap_idle_pool_size
 - Caches: ldap_cache_hits_total, ldap_cache_misses_total, ldap_cache_entries, ldap_cache_evictions_total
@@ -495,7 +495,7 @@ graph TD
 |--------------------------|---------------------------------------------------------|-------------------------------------------|
 | High p95 queue wait      | ldap_queue_wait_seconds, ldap_queue_depth               | increase pool_size; reduce queue_length   |
 | Many queue drops         | ldap_queue_dropped_total                                | slightly raise queue_length; add workers  |
-| Repeated network errors  | ldap_errors_total{code="network"}, ldap_retries_total   | tune retry_*; check network/TLS           |
+| Repeated network errors  | `ldap_errors_total{code="network"}`, `ldap_retries_total`   | tune retry_*; check network/TLS           |
 | Single target overloaded | ldap_target_inflight, ldap_breaker_state, target_health | confirm health loop; add URIs; fix target |
 | Low cache efficiency     | ldap_cache_hits_total vs misses                         | increase TTL/entries; verify keys         |
 | Lua backlog              | lua_queue_depth/wait_seconds, lua_vm_in_use             | raise workers or lower queue_length       |

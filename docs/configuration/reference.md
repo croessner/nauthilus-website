@@ -89,6 +89,13 @@ This parameter specifies how long in seconds a Lua script is allowed to run, unt
 
 Controls enforcement of the Account Protection filter. When false or unset (default), the filter runs in dry‑run mode: applies progressive delay and sets Step‑Up/CAPTCHA hints via headers/Redis but does not reject the request. When true, unauthenticated requests are temporarily rejected while protection is active. Related headers: `X-Nauthilus-Protection`, `X-Nauthilus-Protection-Reason`, `X-Nauthilus-Protection-Mode` (dry‑run).
 
+| Name    | **TERM_THEME**            |
+|---------|---------------------------|
+| Default | "light"                   |
+| Value   | String: `light` or `dark` |
+
+Controls the intensity of ANSI foreground colors used for full-line colorized text logs. `dark` uses bright/high-intensity colors optimized for dark terminals; `light` (default) uses standard-intensity colors better suited for light backgrounds. This only affects text logs when color output is enabled (`server.log.color: true`) and JSON logs remain uncolored.
+
 ## Nginx
 
 | Name    | **NGINX_WAIT_DELAY**     |

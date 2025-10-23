@@ -393,6 +393,25 @@ server:
   log:
     level: debug
 ```
+
+#### server::log::add_source
+_New in version 1.10.0_
+_Default: false_
+
+Controls whether the logger attaches source code information (file:line) to each log record. This maps to Go's slog HandlerOptions.AddSource.
+
+Notes:
+- When enabled, the JSON formatter adds a "source" object (with file and line) to each entry.
+- The text formatter emits a compact source field near the message.
+- There is a small performance cost when enabled because caller information must be computed.
+
+Example:
+```yaml
+server:
+  log:
+    add_source: true
+```
+
 #### server::log::debug_modules
 _Default: empty list_
 

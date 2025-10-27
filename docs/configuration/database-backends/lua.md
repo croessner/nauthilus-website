@@ -42,6 +42,41 @@ the same result back to Nauthilus.
 | name         |   yes    | A unique name for the Lua feature   | geoip-policyd |
 | script\_path |   yes    | Full path to the Lua feature script | -             |
 
+#### Filter execution flags (New in v1.10.0)
+
+Each filter can declare in which authentication state it should run. This allows you to separate telemetry/slow‑down logic (often useful when authentication failed) from authorization/policy checks (typically only meaningful for authenticated requests).
+
+- when_authenticated (bool): run the filter when `request.authenticated == true`.
+- when_unauthenticated (bool): run the filter when `request.authenticated == false`.
+- when_no_auth (bool): run the filter when `request.no_auth == true` (passwordless flows, e.g., certain HTTP/OIDC endpoints).
+
+Defaults and selection logic:
+- If all three flags are omitted, or all are explicitly set to false, Nauthilus applies safe defaults: `when_authenticated=true`, `when_unauthenticated=true`, `when_no_auth=false`.
+- The selected mode for a request is logged as `filter_mode=authenticated|unauthenticated|no_auth` in the main auth log record.
+- When the default fallback is applied because all three flags were false, an informational log entry is emitted to make this explicit.
+- Local/in‑memory cache (aka local cache) sets `authenticated=true` on cache hits. Filters configured for authenticated requests will therefore run for cache hits as well.
+
+Example:
+```yaml
+lua:
+  filters:
+    - name: geoip
+      script_path: ./server/lua-plugins.d/filters/geoip.lua
+      when_authenticated: true
+      when_unauthenticated: false
+      when_no_auth: false
+
+    - name: account_centric_monitoring
+      script_path: ./server/lua-plugins.d/filters/account_centric_monitoring.lua
+      when_authenticated: true
+      when_unauthenticated: true
+      when_no_auth: false
+```
+
+See also:
+- Configuration → [Full Configuration Example](/docs/configuration/full-example)
+- Release Notes → [1.10.x](/docs/release-notes/1.10)
+
 ### lua::actions
 
 Actions have a type and script path element for each Lua script. An incoming request is waiting for all actions to be 

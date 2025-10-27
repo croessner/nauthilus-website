@@ -765,8 +765,43 @@ lua:
 
   # Lua filters configuration
   filters:                              # Default: empty list
-    - name: geoip-policyd              # Required
-      script_path: /some/path/to/lua/script.lua  # Required
+    # Lua Filter execution flags (New in v1.10.0)
+    # Each filter can declare in which auth state it should run:
+    # - when_authenticated: true|false   # run when request.authenticated == true
+    # - when_unauthenticated: true|false # run when request.authenticated == false
+    # - when_no_auth: true|false         # run when request.no_auth == true (passwordless flows)
+    # Defaults when all three are omitted or all set to false: when_authenticated=true, when_unauthenticated=true, when_no_auth=false.
+    # Note: Local/in-memory cache hits set authenticated=true; filters configured for authenticated will run for cache hits as well.
+
+    - name: geoip
+      script_path: ./server/lua-plugins.d/filters/geoip.lua
+      when_authenticated: true          # New in v1.10.0
+      when_unauthenticated: false       # New in v1.10.0
+      when_no_auth: false               # New in v1.10.0
+
+    - name: monitoring                  # Dovecot/Director routing
+      script_path: ./server/lua-plugins.d/filters/monitoring.lua
+      when_authenticated: true          # New in v1.10.0
+      when_unauthenticated: false       # New in v1.10.0
+      when_no_auth: false               # New in v1.10.0
+
+    - name: account_centric_monitoring  # Telemetry/metrics, should also run on failed logins
+      script_path: ./server/lua-plugins.d/filters/account_centric_monitoring.lua
+      when_authenticated: true          # New in v1.10.0
+      when_unauthenticated: true        # New in v1.10.0
+      when_no_auth: false               # New in v1.10.0
+
+    - name: soft_delay                  # Gentle per-account delay to slow down attacks
+      script_path: ./server/lua-plugins.d/filters/soft_delay.lua
+      when_authenticated: true          # New in v1.10.0
+      when_unauthenticated: true        # New in v1.10.0
+      when_no_auth: false               # New in v1.10.0
+
+    - name: account_protection_mode     # Progressive protection with optional enforcement
+      script_path: ./server/lua-plugins.d/filters/account_protection_mode.lua
+      when_authenticated: true          # New in v1.10.0
+      when_unauthenticated: true        # New in v1.10.0
+      when_no_auth: true                # New in v1.10.0
 
   # Lua actions configuration
   actions:                              # Default: empty list

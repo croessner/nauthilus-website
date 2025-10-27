@@ -63,6 +63,30 @@ local id2 = misc.scoped_ip("rwp", request.client_ip)
 
 - Added in v1.10.0.
 
+## Scoping variables (configuration)
+
+The behavior of misc.scoped_ip is controlled by configuration:
+
+- lua.config.ip_scoping_v6_cidr: IPv6 CIDR to aggregate privacy addresses (0 disables)
+- lua.config.ip_scoping_v4_cidr: IPv4 CIDR to aggregate NAT pools (0 disables)
+
+Example configuration (YAML):
+
+```yaml
+lua:
+  config:
+    ip_scoping_v6_cidr: 64
+    ip_scoping_v4_cidr: 24
+```
+
+Notes:
+- Contexts rwp and tolerations follow the brute-force module’s own scoping settings.
+- When a CIDR is 0 or unset for the IP version/context, misc.scoped_ip returns the original IP.
+
+See also:
+- Configuration → Database Backends → Lua Backend (ip_scoping_* options)
+- Configuration → Reference → Lua scoped IP controls
+
 ## Other helpers
 
 - `get_country_name(code)` → Country name for ISO code (requires countries DB)

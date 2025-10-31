@@ -138,6 +138,39 @@ server:
         skip_verify: false
 ```
 
+## Timeouts
+
+_New in version 1.10.0_
+
+Global, operation-specific timeouts for selected subsystems. Values use Go's duration format (e.g., 500ms, 2s, 1m30s).
+
+```yaml
+server:
+  timeouts:
+    redis_read: 1s          # Timeout for Redis read operations (GET, HGET, etc.). Default: 1s
+    redis_write: 2s         # Timeout for Redis write operations (SET, HSET, etc.). Default: 2s
+    ldap_search: 3s         # Timeout for LDAP search operations. Default: 3s
+    ldap_bind: 3s           # Timeout for LDAP bind/auth operations. Default: 3s
+    ldap_modify: 5s         # Timeout for LDAP modify operations. Default: 5s
+    singleflight_work: 3s   # Budget for the leader's work during in-process deduplication. Default: 3s
+    lua_backend: 5s         # Timeout for Lua backend operations. Default: 5s
+```
+
+Notes
+- These are client-side timeouts applied by Nauthilus when talking to external systems or running local subsystems.
+- All fields are optional; if omitted or set to a non-positive duration, the defaults shown above are used.
+- singleflight_work caps the time the leader performs a deduplicated operation before giving up; followers will see a cancellation/timeout if this budget is exceeded.
+
+### Keys and defaults
+
+- server::timeouts::redis_read — Default: 1s
+- server::timeouts::redis_write — Default: 2s
+- server::timeouts::ldap_search — Default: 3s
+- server::timeouts::ldap_bind — Default: 3s
+- server::timeouts::ldap_modify — Default: 5s
+- server::timeouts::singleflight_work — Default: 3s
+- server::timeouts::lua_backend — Default: 5s
+
 ## TLS Configuration
 
 ### server::tls

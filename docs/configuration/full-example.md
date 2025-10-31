@@ -95,6 +95,16 @@ server:
           - user
           - authenticated
 
+  # Timeouts (New in v1.10.0)
+  timeouts:
+    redis_read: 1s          # Timeout for Redis read operations (GET/HGET). Default: 1s
+    redis_write: 2s         # Timeout for Redis write operations (SET/HSET). Default: 2s
+    ldap_search: 3s         # Timeout for LDAP search operations. Default: 3s
+    ldap_bind: 3s           # Timeout for LDAP bind/auth operations. Default: 3s
+    ldap_modify: 5s         # Timeout for LDAP modify operations. Default: 5s
+    singleflight_work: 3s   # Budget for deduplicated leader work. Default: 3s
+    lua_backend: 5s         # Timeout for Lua backend operations. Default: 5s
+
   # Logging configuration
   log:
     json: false                         # Default: false

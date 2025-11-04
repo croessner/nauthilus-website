@@ -15,3 +15,9 @@ slorber:
   title: Docusaurus maintainer
   url: https://sebastienlorber.com
   image_url: https://github.com/slorber.png
+
+croessner:
+  name: Christian Roessner
+  title: Maintainer of Nauthilus
+  url: https://github.com/croessner
+  image_url: https://github.com/croessner.png

@@ -74,15 +74,10 @@ const config = {
             },
           },
         },
-        /*
         blog: {
           showReadingTime: true,
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/croessner/nauthilus-website/tree/main',
         },
-        */
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -165,7 +160,7 @@ const config = {
             href: `https://github.com/croessner/nauthilus/releases/tag/v${latestProductVersion}`,
             className: 'navbar__item--version-badge',
           },
-          // {to: '/blog', label: 'Blog', position: 'left'},
+          {to: '/blog', label: 'Blog', position: 'left'},
           {
             href: 'https://github.com/croessner/nauthilus',
             label: 'GitHub',

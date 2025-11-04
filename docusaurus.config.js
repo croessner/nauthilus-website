@@ -190,12 +190,20 @@ const config = {
             title: 'Legal information',
             items: [
               {
-                label: 'Legal notice',
-                to: '/legal-notice',
+                label: 'Imprint',
+                to: '/imprint',
+              },
+              {
+                label: 'Impressum',
+                to: '/de/impressum',
               },
               {
                 label: 'Privacy policy',
                 to: '/privacy-policy',
+              },
+              {
+                label: 'Datenschutzerklärung',
+                to: '/de/datenschutz',
               },
             ],
           },

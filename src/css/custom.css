@@ -115,3 +115,76 @@ a.navbar__link--active:hover {
     font-size: 1.2rem;
   }
 }
+
+/* Mermaid Lightbox Overlay/Background */
+.mermaid-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.mermaid-lightbox-overlay.is-open { opacity: 1; }
+
+/* Dialog/Stage */
+.mermaid-lightbox {
+  position: absolute;
+  inset: 3vh 3vw;
+  background: var(--ifm-background-color, #111);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.35);
+  display: flex;
+  flex-direction: column;
+}
+.mermaid-lightbox__stage {
+  position: relative;
+  flex: 1 1 auto;
+  overflow: hidden;
+  background: var(--ifm-background-color, #111);
+}
+.mermaid-lightbox__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Close Button */
+.mermaid-lightbox__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  border: none;
+  background: rgba(0,0,0,.5);
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mermaid-lightbox__close:hover { background: rgba(0,0,0,.7); }
+
+/* Controller bottom right */
+.mermaid-lightbox__controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+.mlb-btn {
+  border: none;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.mlb-btn:hover { background: rgba(0,0,0,.8); }
+
+/* Cursor hint in preview */
+.docusaurus-mermaid-container { cursor: zoom-in; }

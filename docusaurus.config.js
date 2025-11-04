@@ -209,7 +209,19 @@ const config = {
       onBrokenMarkdownLinks: 'warn',
     },
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  plugins: [],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        language: ['en'],
+        highlightSearchTermsOnTargetPage: true,
+        indexBlog: false,
+      },
+    ],
+  ],
 };
 
 export default config;

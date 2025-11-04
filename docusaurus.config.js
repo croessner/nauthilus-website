@@ -5,6 +5,22 @@
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import { createRequire } from 'module';
+
+// Determine latest product version including patch (e.g., 1.10.1)
+const require = createRequire(import.meta.url);
+const latestProductVersion =
+  process.env.NAUTHILUS_LATEST_VERSION ||
+  (() => {
+    try {
+      // optional JSON file maintained by CI
+      // { "version": "1.10.1" }
+      return require('./latest-version.json').version;
+    } catch (_) {
+      return undefined;
+    }
+  })() ||
+  '1.10.1';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -45,6 +61,13 @@ const config = {
           // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
+          // Make the default label in the versions dropdown the latest stable (minor) instead of "Next"
+          lastVersion: 'current',
+          versions: {
+            current: {
+              label: '1.10', // show latest stable minor as label instead of "Next"
+            },
+          },
         },
         /*
         blog: {
@@ -123,6 +146,19 @@ const config = {
             sidebarId: 'documentationSidebar',
             position: 'left',
             label: 'Documentation',
+          },
+          // Versions dropdown (docs versioning)
+          {
+            type: 'docsVersionDropdown',
+            position: 'right',
+            dropdownActiveClassDisabled: true
+          },
+          // Compact badge showing the latest product version incl. patch
+          {
+            label: `v${latestProductVersion}`,
+            position: 'right',
+            href: `https://github.com/croessner/nauthilus/releases/tag/v${latestProductVersion}`,
+            className: 'navbar__item--version-badge',
           },
           // {to: '/blog', label: 'Blog', position: 'left'},
           {

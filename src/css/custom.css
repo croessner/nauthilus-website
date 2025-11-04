@@ -188,3 +188,15 @@ a.navbar__link--active:hover {
 
 /* Cursor hint in preview */
 .docusaurus-mermaid-container { cursor: zoom-in; }
+
+/* Version badge in navbar */
+.navbar__item--version-badge {
+  background: #34c759;
+  color: #000;
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+:root .navbar__item--version-badge { color: #000; }
+[data-theme='dark'] .navbar__item--version-badge { color: #000; }

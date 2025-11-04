@@ -61,11 +61,16 @@ const config = {
           // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
-          // Make the default label in the versions dropdown the latest stable (minor) instead of "Next"
-          lastVersion: 'current',
+          // Treat 1.10 as the latest stable docs version; "current" is unreleased/next
+          lastVersion: '1.10',
           versions: {
             current: {
-              label: '1.10', // show latest stable minor as label instead of "Next"
+              label: 'Next',
+              banner: 'unreleased',
+            },
+            '1.10': {
+              label: '1.10',
+              banner: 'none',
             },
           },
         },

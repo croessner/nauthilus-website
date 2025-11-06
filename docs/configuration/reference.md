@@ -89,6 +89,51 @@ This parameter specifies how long in seconds a Lua script is allowed to run, unt
 
 Controls enforcement of the Account Protection filter. When false or unset (default), the filter runs in dry‑run mode: applies progressive delay and sets Step‑Up/CAPTCHA hints via headers/Redis but does not reject the request. When true, unauthenticated requests are temporarily rejected while protection is active. Related headers: `X-Nauthilus-Protection`, `X-Nauthilus-Protection-Reason`, `X-Nauthilus-Protection-Mode` (dry‑run).
 
+### Global Pattern Monitoring (GPM_*) — since v1.10.2
+These variables tune the account-centric distributed pattern detection to reduce false positives (Carrier-NAT, mobile IP churn, TOR). Defaults are conservative.
+
+| Name    | **GPM_THRESH_UNIQ_1H** |
+|---------|------------------------|
+| Default | 12                     |
+| Value   | Positive integer       |
+
+Minimum unique IPs within 1 hour required as a short-term signal. If this OR the 24h threshold is met, combined with the 7d threshold and other checks, an account is flagged as under distributed attack.
+
+| Name    | **GPM_THRESH_UNIQ_24H** |
+|---------|-------------------------|
+| Default | 25                      |
+| Value   | Positive integer        |
+
+Minimum unique IPs within 24 hours used as an alternative short-/mid-term signal to the 1h threshold.
+
+| Name    | **GPM_THRESH_UNIQ_7D** |
+|---------|------------------------|
+| Default | 60                     |
+| Value   | Positive integer       |
+
+Minimum unique IPs within 7 days (long-term signal). Must be met together with a short-term signal.
+
+| Name    | **GPM_MIN_FAILS_24H** |
+|---------|-----------------------|
+| Default | 8                     |
+| Value   | Positive integer      |
+
+Minimum number of failed attempts in 24 hours. Prevents flagging cases with many unique IPs but very few failures (typical for benign churn).
+
+| Name    | **GPM_THRESH_IP_TO_FAIL_RATIO** |
+|---------|---------------------------------|
+| Default | 1.2                             |
+| Value   | Float                           |
+
+Required ratio of unique IPs to failed attempts in 1h OR 24h. Higher values detect more broadly distributed failures.
+
+| Name    | **GPM_ATTACK_TTL_SEC** |
+|---------|------------------------|
+| Default | 43200 (12h)            |
+| Value   | Positive integer (sec) |
+
+Sliding window horizon for the ZSET that tracks accounts under distributed attack. Lower values reduce the persistence of older spikes.
+
 | Name    | **TERM_THEME**            |
 |---------|---------------------------|
 | Default | "light"                   |

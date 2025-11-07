@@ -20,7 +20,7 @@ const latestProductVersion =
       return undefined;
     }
   })() ||
-  '1.10.1';
+  '1.10.3';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {

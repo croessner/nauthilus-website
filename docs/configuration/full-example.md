@@ -228,8 +228,8 @@ server:
 
   # Deduplication configuration
   dedup:
-    distributed_enabled: false         # Default: false. Enable Redis-based cross-instance dedup for backchannel auth (v1.9.12)
-    in_process_enabled: true           # Default: true. Local in-process dedup within one instance (v1.10.0)
+    # distributed_enabled: false      # Deprecated since v1.10.3 and ignored (distributed dedup removed)
+    in_process_enabled: true           # Default: true. Local in-process dedup within one instance
 
   # Prometheus timer configuration
   prometheus_timer:

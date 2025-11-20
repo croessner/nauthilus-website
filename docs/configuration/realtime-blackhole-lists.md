@@ -18,15 +18,15 @@ _Default: empty list_
 
 This section defines one or more RBL lists. A RBL list requires the following fields:
 
-| Field name     | Description                                                                                             |
-|----------------|---------------------------------------------------------------------------------------------------------|
-| name           | Example RBL name                                                                                        |
-| rbl            | Domain part that is appended to the reversed IP address                                                 |
-| ipv4           | Boolean that enables the list for IPv4 support                                                          |
-| ipv6           | Boolean that enables the list for IPv6 support                                                          |
-| return_code    | Expected DNS return code, if an IP address was listed                                                   |
-| allow_failure  | Return a temporary failure, if a DNS lookup to the given list failed (not NXDOMAIN errors!)             |
-| weight         | This value defines the weight for the given RBL list. See the **threshold** description for the meaning |
+| Field name    | Description                                                                                                                                                            |
+|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name          | Example RBL name                                                                                                                                                       |
+| rbl           | Domain part that is appended to the reversed IP address. Since v1.10.7 a trailing dot is allowed (FQDN) to prevent search domains from being appended by the resolver. |
+| ipv4          | Boolean that enables the list for IPv4 support                                                                                                                         |
+| ipv6          | Boolean that enables the list for IPv6 support                                                                                                                         |
+| return_code   | Expected DNS return code, if an IP address was listed                                                                                                                  |
+| allow_failure | Return a temporary failure, if a DNS lookup to the given list failed (not NXDOMAIN errors!)                                                                            |
+| weight        | This value defines the weight for the given RBL list. See the **threshold** description for the meaning                                                                |
 
 The **weight** value may be negative.
 
@@ -67,14 +67,14 @@ realtime_blackhole_lists:
 
   lists:
     - name: SpamRats AuthBL
-      rbl: auth.spamrats.com
+      rbl: auth.spamrats.com.
       ipv4: true
       ipv6: true
       return_code: 127.0.0.43
       weight: 10
 
     - name: AbusiX AuthBL
-      rbl: YOUR-API-KEY.authbl.mail.abusix.zone
+      rbl: YOUR-API-KEY.authbl.mail.abusix.zone.
       ipv4: true
       ipv6: true
       return_code: 127.0.0.4
@@ -90,3 +90,7 @@ realtime_blackhole_lists:
     - 169.254.0.0/16
     - fe80::/10
 ```
+
+:::note
+New in v1.10.7: Hostnames in the RBL configuration may include a trailing dot (for example, "auth.spamrats.com."). This avoids automatic appending of search domains configured in /etc/resolv.conf.
+:::

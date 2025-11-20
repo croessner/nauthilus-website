@@ -44,13 +44,17 @@ If deep checks are enabled, Nauthilus talks the configured protocol with each ba
 be used to verify a successful connection to the backend. We recommend to have one test user for each backend to prevent
 technical problems with backend servers (for example index issues with Dovecot).
 
+:::note
+New in v1.10.7: Hostnames for backend servers may include a trailing dot (for example, "imap.example.org."). This prevents your system resolver from appending search domains from /etc/resolv.conf.
+:::
+
 ## Example Configuration
 
 ```yaml
 backend_server_monitoring:
   backend_servers:
     - protocol: imap
-      host: 192.168.0.2
+      host: imap.example.org.
       port: 993
       deep_check: true
       test_username: some_unique_test_user

@@ -304,7 +304,7 @@ realtime_blackhole_lists:
   # RBL lists configuration
   lists:
     - name: SpamRats AuthBL             # Required
-      rbl: auth.spamrats.com            # Required
+      rbl: auth.spamrats.com.           # Required (v1.10.7 allows trailing dot to avoid search domains)
       ipv4: true                        # Default: false
       ipv6: true                        # Default: false
       return_code: 127.0.0.43           # Required
@@ -312,7 +312,7 @@ realtime_blackhole_lists:
       allow_failure: false              # Default: false
 
     - name: AbusiX AuthBL
-      rbl: YOUR-API-KEY.authbl.mail.abusix.zone
+      rbl: YOUR-API-KEY.authbl.mail.abusix.zone.
       ipv4: true
       ipv6: true
       return_code: 127.0.0.4

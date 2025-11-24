@@ -413,19 +413,23 @@ _Default: "none"_
 
 This string defines the log level. It is one of:
 
-| **Level** | Comment                  |
-|-----------|--------------------------|
-| none      | Entirely turn of logging |
-| debug     | See debug modules below! |
-| info      |                          |
-| warn      |                          |
-| error     |                          |
+| **Level** | Comment                                |
+|-----------|----------------------------------------|
+| none      | Entirely turn of logging               |
+| debug     | See debug modules below!               |
+| info      |                                        |
+| notice    | New in v1.11.0 — essential events only |
+| warn      |                                        |
+| error     |                                        |
 
 ```yaml
 server:
   log:
-    level: debug
+    level: notice
 ```
+
+Notes:
+- notice is intended for production environments to log only essential, high‑signal events (service start/stop, configuration issues, degraded backends, protection mode changes, and authentication outcomes without verbose details). It reduces log volume while preserving operational visibility.
 
 #### server::log::add_source
 _New in version 1.10.0_
@@ -680,6 +684,113 @@ server:
 ### server::redis
 
 This object defines settings related to the Redis server.
+
+### Connection and timeout tuning (New in v1.11.0)
+
+- Nauthilus 1.11 optimizes Redis connection handling for higher throughput and lower tail latency. The defaults for connection reuse and timeouts have been tuned to better suit busy deployments.
+- Application‑level operation budgets continue to be governed by server.timeouts.redis_read and server.timeouts.redis_write.
+- Pool sizing and idling are controlled by existing keys server.redis.pool_size and server.redis.idle_pool_size. Sizing guidance:
+  - Start pool_size near the expected concurrent backend operations and scale based on saturation metrics.
+  - Keep idle_pool_size small unless you have bursty traffic with frequent warmups.
+- For clusters, prefer enabling route_reads_to_replicas for read‑heavy workloads.
+
+Operational notes:
+- The 1.11 runtime reduces connection churn and improves pipeline efficiency under load.
+- Slow Redis or network hiccups will now trip faster client‑side timeouts to keep request latency bounded; review your redis_read/write budgets accordingly.
+
+#### server::redis::pool_timeout
+_New in version 1.11.0_<br/>
+_Default: 80ms_
+
+Maximum time to wait for a free connection to become available from the pool before failing the operation.
+
+Valid range: 1ms–30s.
+
+```yaml
+server:
+  redis:
+    pool_timeout: 150ms
+```
+
+#### server::redis::dial_timeout
+_New in version 1.11.0_<br/>
+_Default: 200ms_
+
+TCP connect timeout when establishing a new Redis connection.
+
+Valid range: 1ms–60s.
+
+```yaml
+server:
+  redis:
+    dial_timeout: 500ms
+```
+
+#### server::redis::read_timeout
+_New in version 1.11.0_<br/>
+_Default: 100ms_
+
+Per‑read operation timeout for Redis commands.
+
+Valid range: 1ms–60s.
+
+```yaml
+server:
+  redis:
+    read_timeout: 250ms
+```
+
+#### server::redis::write_timeout
+_New in version 1.11.0_<br/>
+_Default: 100ms_
+
+Per‑write operation timeout for Redis commands.
+
+Valid range: 1ms–60s.
+
+```yaml
+server:
+  redis:
+    write_timeout: 250ms
+```
+
+#### server::redis::pool_fifo
+_New in version 1.11.0_<br/>
+_Default: true_
+
+Whether the pool hands out connections in FIFO order. Keeping this enabled generally reduces tail latency under load.
+
+```yaml
+server:
+  redis:
+    pool_fifo: true
+```
+
+#### server::redis::conn_max_idle_time
+_New in version 1.11.0_<br/>
+_Default: 90s_
+
+Maximum time a connection may remain idle in the pool before it is closed.
+
+Valid range: 0s–24h.
+
+```yaml
+server:
+  redis:
+    conn_max_idle_time: 2m
+```
+
+#### server::redis::max_retries
+_New in version 1.11.0_<br/>
+_Default: 1_
+
+Maximum number of retries for a Redis command on transient errors (like timeouts). Set to 0 to disable client‑side retries.
+
+```yaml
+server:
+  redis:
+    max_retries: 2
+```
 
 #### server::redis::database_number
 _Default: 0_

@@ -64,4 +64,4 @@ backend_server_monitoring:
       haproxy_v2: true
 ```
 
-The settings should be self-explained.
+The settings should be self-explanatory.

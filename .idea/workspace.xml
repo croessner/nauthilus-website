@@ -4,42 +4,28 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="docs: Update to v1.10.7, allow trailing dots in hostnames for configurations&#10;&#10;Documented changes in v1.10.7 enabling trailing dots for hostnames in `backend_server_monitoring` and `realtime-blackhole-lists` configurations. Updated examples, configuration references, and release notes to reflect the change. Adjusted `latest-version.json` to v1.10.7.">
+    <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="docs: Add v1.11 documentation and category definitions&#10;&#10;Introduced new documentation for v1.11, including detailed files on Account Protection, Backend Server Monitoring, and Brute Force Protection. Added `_category_.json` definitions for structure and organized indices for topics like &quot;About,&quot; &quot;Configuration,&quot; &quot;Installation,&quot; and others. Updated generated indices and sidebar positions accordingly.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/configuration/database-backends/encrypted-passwords.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/database-backends/encrypted-passwords.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/configuration/database-backends/lua.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/database-backends/lua.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/about/getting-started.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/about/getting-started.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/backend-server-monitoring.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/backend-server-monitoring.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/database-backends/protocols.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/database-backends/protocols.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/full-example.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/full-example.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/index.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docs/configuration/server-configuration.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/server-configuration.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/backendmonitor.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/backendmonitor.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/cache.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/cache.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/context.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/context.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/dns.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/dns.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/http-response.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/http-response.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/http.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/http.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/introduction.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/introduction.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/ldap.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/ldap.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/mail.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/mail.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/misc.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/misc.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/neural.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/neural.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/password.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/password.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/prometheus.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/prometheus.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/psnet.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/psnet.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/redis.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/redis.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/lua-api/softwhitelist.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/lua-api/softwhitelist.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.10.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.10.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.4.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.4.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.5.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.5.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.7.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.7.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.8.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.8.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.9.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.9.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/docusaurus.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/docusaurus.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.11.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.11.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/latest-version.json" beforeDir="false" afterPath="$PROJECT_DIR$/latest-version.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.10.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.10.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.4.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.4.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.5.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.5.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.7.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.7.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.8.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.8.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.9.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.9.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/versions.json" beforeDir="false" afterPath="$PROJECT_DIR$/versions.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/about/getting-started.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/about/getting-started.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/configuration/backend-server-monitoring.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/configuration/backend-server-monitoring.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/configuration/database-backends/protocols.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/configuration/database-backends/protocols.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/configuration/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/configuration/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.11.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.11.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/about/getting-started.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/about/getting-started.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/backend-server-monitoring.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/backend-server-monitoring.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/database-backends/protocols.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/database-backends/protocols.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/full-example.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/full-example.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/index.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/index.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/server-configuration.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/server-configuration.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/release-notes/1.11.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/release-notes/1.11.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,12 +47,12 @@
     &quot;assignee&quot;: &quot;croessner&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;git@github.com:croessner/nauthilus-website.git&quot;,
-    &quot;accountId&quot;: &quot;0bfad6a2-1607-4dc6-aa8b-7b255b1e41b1&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "git@github.com:croessner/nauthilus-website.git",
+    "accountId": "f45eeec2-97ec-465e-8805-b1e2252dedc1"
   }
-}</component>
+}]]></component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="true" />
   </component>
@@ -443,8 +429,6 @@
     <option name="version" value="3" />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Refactored Lua support documentation.&#10;&#10;The Lua support documentation has been split into many smaller pages to enhance the user experience." />
-    <MESSAGE value="Add pan-zoom support for Mermaid diagrams and refine layout&#10;&#10;Introduced `panzoom` integration to allow interactive zooming and panning for Mermaid diagrams, enhancing user interactivity. Updated CSS styles and added a dynamic description for usability. Refined project dependencies, including `panzoom`, and adjusted DOM observation for rendering Mermaid containers effectively." />
     <MESSAGE value="Update dependencies and refine documentation warnings&#10;&#10;Upgraded Docusaurus and Algolia-related dependencies to improve stability and performance. Replaced deprecated `:::warn` syntax with `:::warning` in documentation. Enhanced project configuration for better maintainability and interaction features." />
     <MESSAGE value="Update dependencies and improve Lua API documentation&#10;&#10;Upgraded Docusaurus and Algolia dependencies for better performance and stability. Enhanced Lua API documentation by adding new functions, restructuring sections, and introducing a &quot;Soft whitelists&quot; page. These changes improve usability, interactivity, and maintainability." />
     <MESSAGE value="Update Lua API docs and improve workspace configuration&#10;&#10;Enhanced the &quot;Soft Whitelist&quot; Lua API documentation by adding spacing for improved readability. Updated `.idea/workspace.xml` to reflect changes in dependencies and task summaries, ensuring consistency and better project management." />
@@ -468,7 +452,9 @@
     <MESSAGE value="chore: Update workspace.xml to correct CDATA escaping" />
     <MESSAGE value="docs: Add contributor guidelines for Nauthilus documentation project&#10;&#10;Added `.junie/guidelines.md` containing detailed instructions for setup, configuration, testing, content conventions, development practices, versioning workflow, and troubleshooting tailored for contributors to the Nauthilus Docusaurus-based documentation." />
     <MESSAGE value="docs: Update to v1.10.7, allow trailing dots in hostnames for configurations&#10;&#10;Documented changes in v1.10.7 enabling trailing dots for hostnames in `backend_server_monitoring` and `realtime-blackhole-lists` configurations. Updated examples, configuration references, and release notes to reflect the change. Adjusted `latest-version.json` to v1.10.7." />
-    <option name="LAST_COMMIT_MESSAGE" value="docs: Update to v1.10.7, allow trailing dots in hostnames for configurations&#10;&#10;Documented changes in v1.10.7 enabling trailing dots for hostnames in `backend_server_monitoring` and `realtime-blackhole-lists` configurations. Updated examples, configuration references, and release notes to reflect the change. Adjusted `latest-version.json` to v1.10.7." />
+    <MESSAGE value="docs: Add release notes for versions 1.4 through 1.11&#10;&#10;Added comprehensive release notes pages for versions 1.4 to 1.11 in the documentation, including configuration changes, feature highlights, and behavioral updates. Structured and placed content in chronological order under versioned documentation. Updated sidebar positions for new entries." />
+    <MESSAGE value="docs: Add v1.11 documentation and category definitions&#10;&#10;Introduced new documentation for v1.11, including detailed files on Account Protection, Backend Server Monitoring, and Brute Force Protection. Added `_category_.json` definitions for structure and organized indices for topics like &quot;About,&quot; &quot;Configuration,&quot; &quot;Installation,&quot; and others. Updated generated indices and sidebar positions accordingly." />
+    <option name="LAST_COMMIT_MESSAGE" value="docs: Add v1.11 documentation and category definitions&#10;&#10;Introduced new documentation for v1.11, including detailed files on Account Protection, Backend Server Monitoring, and Brute Force Protection. Added `_category_.json` definitions for structure and organized indices for topics like &quot;About,&quot; &quot;Configuration,&quot; &quot;Installation,&quot; and others. Updated generated indices and sidebar positions accordingly." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

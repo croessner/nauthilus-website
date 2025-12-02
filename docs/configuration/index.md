@@ -119,7 +119,7 @@ ldap:
       cache_name: "imap"
       base_dn: "ou=people,dc=example,dc=com"
       filter:
-        user: "(&(objectClass=inetOrgPerson)(uid=%u))"
+        user: "(&(objectClass=inetOrgPerson)(uid=%L{user}))"
       mapping:
         account_field: "uid"
       attribute:

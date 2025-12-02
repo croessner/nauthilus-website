@@ -44,6 +44,17 @@ server:
     custom_hooks: false                 # Default: false
     configuration: false                # Default: false (New in v1.7.11) 
 
+  # HTTP middlewares (New in v1.11.3)
+  # Omit a key to keep it enabled; set to false to disable.
+  middlewares:
+    logging: true                       # Default: true
+    limit: true                         # Default: true
+    recovery: true                      # Default: true
+    trusted_proxies: true               # Default: true
+    request_decompression: true         # Default: true
+    response_compression: true          # Default: true
+    metrics: true                       # Default: true
+
   # TLS configuration
   tls:
     enabled: true                       # Default: false
@@ -166,8 +177,33 @@ server:
     password_nonce: "random-nonce-string" # Default: ""
     pool_size: 10                       # Default: 0
     idle_pool_size: 2                   # Default: 0
+    # Connection and timeout tuning (New in v1.11.0)
+    pool_timeout: 150ms                 # Default: 80ms (1ms–30s)
+    dial_timeout: 500ms                 # Default: 200ms (1ms–60s)
+    read_timeout: 250ms                 # Default: 100ms (1ms–60s)
+    write_timeout: 250ms                # Default: 100ms (1ms–60s)
+    pool_fifo: true                     # Default: true
+    conn_max_idle_time: 2m              # Default: 90s (0s–24h)
+    max_retries: 2                      # Default: 1 (0 disables retries)
     positive_cache_ttl: 3600s           # Default: 3600s
     negative_cache_ttl: 7200s           # Default: 3600s
+
+    # In‑process account name cache (New in v1.11.3)
+    account_local_cache:
+      enabled: true                     # Default: false
+      ttl: 90s                          # Default: 60s
+      shards: 64                        # Default: 32 (1–1024)
+      cleanup_interval: 5m              # Default: 10m
+      max_items: 100000                 # Default: 0 (unlimited)
+
+    # Client‑side command batching (New in v1.11.3)
+    batching:
+      enabled: true                     # Default: false
+      max_batch_size: 32                # Default: 16 (2–1024)
+      max_wait: 3ms                     # Default: 2ms (0–200ms)
+      queue_capacity: 12000             # Default: 8192
+      skip_commands: ["blpop", "brpop", "subscribe"] # Default: []
+      pipeline_timeout: 5s              # Default: 5s
 
     # TLS configuration for Redis
     tls:                                # New in v1.7.11

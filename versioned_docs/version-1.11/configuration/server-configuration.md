@@ -170,6 +170,62 @@ Notes
 - server::timeouts::ldap_modify — Default: 5s
 - server::timeouts::singleflight_work — Default: 3s
 - server::timeouts::lua_backend — Default: 5s
+ 
+## HTTP Middlewares
+
+### server::middlewares
+
+New in version 1.11.3
+
+Feature switches to enable/disable individual HTTP middlewares. When a key is omitted, it defaults to true to preserve legacy behavior.
+
+Available switches (all default to true):
+
+- server::middlewares::logging — Access and request logging middleware.
+- server::middlewares::limit — Request limiting middleware (enforces server::max_concurrent_requests and protects against overload).
+- server::middlewares::recovery — Panic recovery middleware; converts panics into 500 responses and logs stack traces.
+- server::middlewares::trusted_proxies — Honors X-Forwarded-For / proxy headers from trusted upstreams.
+- server::middlewares::request_decompression — Transparently decompresses incoming requests (e.g., gzip) when applicable.
+- server::middlewares::response_compression — Compresses HTTP responses when accepted by the client.
+- server::middlewares::metrics — Exposes Prometheus-compatible HTTP metrics.
+
+Example
+
+```yaml
+server:
+  middlewares:
+    logging: true
+    limit: true
+    recovery: true
+    trusted_proxies: true
+    request_decompression: true
+    response_compression: true
+    metrics: true
+```
+
+Notes
+- Omit a key to keep it enabled. Set a key explicitly to false to disable the corresponding middleware.
+
+## Request de-duplication
+
+### server::dedup
+
+New in version 1.11.0
+
+Controls in-process request de-duplication (singleflight) to collapse identical concurrent work.
+
+Keys
+- server::dedup::in_process_enabled — Default: true. Enables in-process singleflight deduplication.
+- server::dedup::distributed_enabled — Deprecated/ignored. Distributed (Redis-based) deduplication was removed; this flag has no effect.
+
+Example
+
+```yaml
+server:
+  dedup:
+    in_process_enabled: true
+    # distributed_enabled is deprecated and ignored
+```
 
 ## TLS Configuration
 
@@ -791,6 +847,66 @@ server:
   redis:
     max_retries: 2
 ```
+
+#### server::redis::account_local_cache
+New in version 1.11.3
+
+Lightweight in-process cache for mapping username to account name. Reduces Redis lookups for frequently accessed users. Disabled by default.
+
+Keys and defaults
+- server::redis::account_local_cache::enabled — Default: false. Turns the cache on/off.
+- server::redis::account_local_cache::ttl — Default: 60s. Time to keep an item cached.
+- server::redis::account_local_cache::shards — Default: 32. Number of internal shards to reduce lock contention (1–1024).
+- server::redis::account_local_cache::cleanup_interval — Default: 10m. Background cleanup interval.
+- server::redis::account_local_cache::max_items — Default: 0 (unlimited). Best‑effort upper bound; when reached, new items are not added until entries expire.
+
+Example
+
+```yaml
+server:
+  redis:
+    account_local_cache:
+      enabled: true
+      ttl: 90s
+      shards: 64
+      cleanup_interval: 5m
+      max_items: 100000
+```
+
+Notes
+- This is an in‑memory cache per Nauthilus instance. It does not replicate across nodes.
+- Set max_items: 0 to disable size limiting (TTL still applies).
+
+#### server::redis::batching
+New in version 1.11.3
+
+Optional client‑side command batching for Redis. When enabled, commands are briefly queued and flushed as a pipeline, reducing network round‑trips under load.
+
+Keys and defaults
+- server::redis::batching::enabled — Default: false. Master switch.
+- server::redis::batching::max_batch_size — Default: 16. Max commands per pipeline (2–1024).
+- server::redis::batching::max_wait — Default: 2ms. Max time a command may wait before a forced flush (0–200ms; 0 disables time‑based flushing).
+- server::redis::batching::queue_capacity — Default: 8192. Internal queue capacity; 0 uses the default.
+- server::redis::batching::skip_commands — Default: []. List of command names to never batch (lowercase), e.g., ["blpop", "subscribe"].
+- server::redis::batching::pipeline_timeout — Default: 5s. Max time to wait when sending a pipeline.
+
+Example
+
+```yaml
+server:
+  redis:
+    batching:
+      enabled: true
+      max_batch_size: 32
+      max_wait: 3ms
+      queue_capacity: 12000
+      skip_commands: ["blpop", "brpop", "subscribe"]
+      pipeline_timeout: 5s
+```
+
+Operational guidance
+- Batching is most beneficial with high concurrency and many small commands. Measure p95/p99 latency before and after.
+- Do not batch blocking or PubSub‑related commands; add them to skip_commands.
 
 #### server::redis::database_number
 _Default: 0_

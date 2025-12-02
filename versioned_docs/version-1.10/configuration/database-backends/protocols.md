@@ -21,7 +21,7 @@ If all backends fail due to a missing definition, a temporary error is raised an
 
 ## Special Protocols
 
-If Nauthilus is called with the location **/api/v1/service/nginx**, the protocols **smtp** and **imap** will return
+If Nauthilus is called with the location **/api/v1/auth/nginx**, the protocols **smtp** and **imap** will return
 additional HTTP response headers:
 
 **Auth-Server** and **Auth-Port** (

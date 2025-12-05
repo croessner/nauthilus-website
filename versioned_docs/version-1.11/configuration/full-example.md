@@ -188,6 +188,15 @@ server:
     positive_cache_ttl: 3600s           # Default: 3600s
     negative_cache_ttl: 7200s           # Default: 3600s
 
+    # Client Tracking (New in v1.11.4)
+    client_tracking:
+      enabled: true                     # Default: false
+      bcast: false                      # Default: false
+      noloop: true                      # Default: false
+      opt_in: false                     # Default: false
+      opt_out: true                     # Default: false
+      prefixes: ["nt_", "sess:"]       # Default: []
+
     # In‑process account name cache (New in v1.11.3)
     account_local_cache:
       enabled: true                     # Default: false

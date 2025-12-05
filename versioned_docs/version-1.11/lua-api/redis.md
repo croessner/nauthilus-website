@@ -89,34 +89,72 @@ In the following, I will use the name "handle" for a pool handler.
 
 # Functions
 
-## nauthilus\_redis.redis\_set
+## nauthilus_redis.redis_set
 
-Stores a value in Redis with an optional expiration time.
+Set a key with rich options. Supports Redis SET flags: NX, XX, GET, KEEPTTL and expiration variants EX, PX, EXAT, PXAT.
+
+Backward compatibility: Passing a plain number as the 4th argument still sets EX seconds.
 
 ### Syntax
 
 ```lua
-local result, error = nauthilus_redis.redis_set(handle, key, value, expiration)
+-- Preferred form: options table
+local result, err = nauthilus_redis.redis_set(handle, key, value, {
+  nx = boolean,
+  xx = boolean,
+  get = boolean,
+  keepttl = boolean,
+  ex = number,     -- seconds
+  px = number,     -- milliseconds
+  exat = number,   -- absolute unix time in seconds
+  pxat = number    -- absolute unix time in milliseconds
+})
+
+-- Legacy form: expiration as seconds (equivalent to { ex = seconds })
+local result, err = nauthilus_redis.redis_set(handle, key, value, expiration_seconds)
 ```
 
 ### Parameters
 
-- `handle` (userdata/string): Redis connection handle or "default" for the default connection
-- `key` (string): The Redis key to store the value under
-- `value` (string): The value to store
-- `expiration` (number, optional): Time in seconds after which the key will expire
+- `handle` (userdata|string): Redis connection handle or "default" for the default connection
+- `key` (string): Key to set
+- `value` (string): Value to store
+- `options_or_expiration` (table|number|nil): Either an options table (see above) or a number of seconds for EX
+
+Mutual exclusivity and precedence rules follow Redis semantics:
+- Only one of `ex`, `px`, `exat`, `pxat` may be used at a time.
+- Only one of `nx` or `xx` may be true.
 
 ### Returns
 
-- `result` (string): "OK" if the operation was successful
-- `error` (string): An error message if the operation fails
+- `result` (string|nil): "OK" on success, or the previous value if `get = true` and the key existed (depending on Redis version); `nil` when `nx=true` and the key exists (or `xx=true` and the key does not exist)
+- `err` (string|nil): Error message if the command fails
 
-### Example
+### Examples
 
+Set with EX 60 using the legacy 4th arg:
 ```lua
-local nauthilus_redis = require("nauthilus_redis")
+local R = require("nauthilus_redis")
+local ok, err = R.redis_set(handle, "my:key", "v", 60)
+assert(not err)
+```
 
-local result, error = nauthilus_redis.redis_set(handle, "key", "value", 3600)
+Only set if not exists (NX) and keep existing TTL:
+```lua
+local ok, err = R.redis_set(handle, "my:key", "v", { nx = true, keepttl = true })
+```
+
+Replace only if exists (XX) and return old value (GET):
+```lua
+local old, err = R.redis_set(handle, "my:key", "new", { xx = true, get = true })
+if old then
+  print("previous:", old)
+end
+```
+
+Absolute expiration at a unix second timestamp:
+```lua
+local ok, err = R.redis_set(handle, "one-shot", "v", { exat = os.time() + 300 })
 ```
 
 ## nauthilus\_redis.redis\_incr
@@ -323,6 +361,39 @@ local nauthilus_redis = require("nauthilus_redis")
 
 local redis_key = "some_key"
 local result, err_redis_hset = nauthilus_redis.redis_hset(handle, redis_key, "send_mail", 1)
+```
+
+## nauthilus_redis.redis_hmget (since 1.11.4)
+
+Fetch multiple fields from a hash in a single call. Returns a Lua table mapping `field -> value`.
+Missing fields are present with value `nil`.
+
+### Syntax
+
+```lua
+local values, err = nauthilus_redis.redis_hmget(handle, key, field1, field2, ...)
+```
+
+### Parameters
+
+- `handle` (userdata|string): Redis connection handle or "default"
+- `key` (string): Hash key
+- `field1, field2, ...` (string): One or more field names
+
+### Returns
+
+- `values` (table): Lua table, e.g. `{ foo = "1", bar = nil, baz = "x" }`
+- `err` (string|nil): Error message if the operation fails
+
+### Example
+
+```lua
+local R = require("nauthilus_redis")
+local vals, err = R.redis_hmget(handle, "user:42", "name", "email", "age")
+assert(not err)
+if vals.email then
+  print("email:", vals.email)
+end
 ```
 
 ## nauthilus\_redis.redis\_hdel
@@ -1755,7 +1826,7 @@ local results, err = nauthilus_redis.redis_pipeline(handle_or_"default", mode, c
 ### Supported commands in pipelines
 
 - Connection and strings: `ping`, `get`, `set`, `incr`, `del`, `expire`, `exists`, `mget`, `mset`, `keys`, `scan`
-- Hashes: `hget`, `hset`, `hdel`, `hlen`, `hgetall`, `hincrby`, `hincrbyfloat`, `hexists`
+- Hashes: `hget`, `hset`, `hdel`, `hlen`, `hgetall`, `hmget`, `hincrby`, `hincrbyfloat`, `hexists`
 - Sets: `sadd`, `sismember`, `smembers`, `srem`, `scard`
 - Sorted sets: `zadd`, `zrem`, `zrank`, `zrange`, `zrevrange`, `zrangebyscore`, `zremrangebyscore`, `zremrangebyrank`, `zcount`,
   `zscore`, `zrevrank`, `zincrby`
@@ -1791,6 +1862,7 @@ local h = R.get_redis_connection("default")
 local res, err = R.redis_pipeline(h, "write", {
   {"set", "my:key", "value", 60},       -- EX 60
   {"hset", "my:hash", "field", "v"},
+  {"hmget", "my:hash", "field", "missing"}, -- results in a table { field = "v", missing = nil }
   {"get", "my:key"},                   -- will return later in results[3]
   {"hexists", "my:hash", "field"},    -- results[4] is true/false
 })

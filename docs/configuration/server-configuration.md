@@ -532,6 +532,7 @@ additional log modules. This is the list of all available debug modules:
 | neural       | Turn on debugging for neural network-related operations                                |
 | jwt          | Turn on debugging for JWT-related operations                                           |
 | http         | Turn on debugging for HTTP-related operations                                          |
+| account      | Turn on debugging for account lookup/mapping related operations                        |
 
 ```yaml
 server:
@@ -808,6 +809,38 @@ Valid range: 1ms–60s.
 server:
   redis:
     write_timeout: 250ms
+```
+
+#### server::redis::client_tracking
+_New in version 1.11.4_<br/>
+_Default: disabled_
+
+Client-side caching based on Redis CLIENT TRACKING (RESP3). When enabled, each new Redis connection issues a `CLIENT TRACKING ON` with the configured flags. This can reduce read round-trips by serving cached values and consuming invalidation push messages from Redis.
+
+Options:
+- `enabled` (bool): Turn tracking on for all new connections.
+- `bcast` (bool): Use broadcast mode (`BCAST`) to receive invalidations for all keys touched by the server, without per-key tracking.
+- `noloop` (bool): Avoid receiving invalidations for writes that originate from the same client connection.
+- `opt_in` (bool): Track only commands that explicitly opt-in via `CACHING yes`.
+- `opt_out` (bool): Track all commands except those that opt out via `CACHING no`.
+- `prefixes` (list of strings): Restrict tracking to keys with any of the given prefixes.
+
+Notes:
+- Requires Redis 6+ and RESP3.
+- `opt_in` and `opt_out` are mutually exclusive; configure at most one of them.
+- Use with care when network conditions are unstable, as invalidation push messages must be delivered reliably.
+
+Example:
+```yaml
+server:
+  redis:
+    client_tracking:
+      enabled: true
+      bcast: false
+      noloop: true
+      opt_in: false
+      opt_out: true
+      prefixes: ["nt_", "sess:"]
 ```
 
 #### server::redis::pool_fifo

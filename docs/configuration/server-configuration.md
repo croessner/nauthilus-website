@@ -152,14 +152,13 @@ server:
     ldap_search: 3s         # Timeout for LDAP search operations. Default: 3s
     ldap_bind: 3s           # Timeout for LDAP bind/auth operations. Default: 3s
     ldap_modify: 5s         # Timeout for LDAP modify operations. Default: 5s
-    singleflight_work: 3s   # Budget for the leader's work during in-process deduplication. Default: 3s
     lua_backend: 5s         # Timeout for Lua backend operations. Default: 5s
 ```
 
 Notes
 - These are client-side timeouts applied by Nauthilus when talking to external systems or running local subsystems.
 - All fields are optional; if omitted or set to a non-positive duration, the defaults shown above are used.
-- singleflight_work caps the time the leader performs a deduplicated operation before giving up; followers will see a cancellation/timeout if this budget is exceeded.
+- Deprecated: As of v1.11.4, `singleflight_work` is removed and ignored because in-process deduplication has been withdrawn.
 
 ### Keys and defaults
 
@@ -168,8 +167,9 @@ Notes
 - server::timeouts::ldap_search — Default: 3s
 - server::timeouts::ldap_bind — Default: 3s
 - server::timeouts::ldap_modify — Default: 5s
-- server::timeouts::singleflight_work — Default: 3s
 - server::timeouts::lua_backend — Default: 5s
+Deprecated/removed in v1.11.4
+- server::timeouts::singleflight_work — Removed. Ignored if present.
 
 ## HTTP Middlewares
 
@@ -214,17 +214,25 @@ New in version 1.11.0
 
 Controls in-process request de-duplication (singleflight) to collapse identical concurrent work.
 
+:::warning Deprecated/Removed in v1.11.4
+In-process deduplication has been removed due to unresolved instability under load. The following keys are deprecated and ignored:
+
+- `server.dedup.in_process_enabled`
+- `server.timeouts.singleflight_work`
+:::
+
 Keys
-- server::dedup::in_process_enabled — Default: true. Enables in-process singleflight deduplication.
-- server::dedup::distributed_enabled — Deprecated/ignored. Distributed (Redis-based) deduplication was removed; this flag has no effect.
+- server::dedup::in_process_enabled — Deprecated/ignored since v1.11.4.
+- server::dedup::distributed_enabled — Deprecated/ignored. Distributed (Redis-based) deduplication was removed earlier; this flag has no effect.
 
 Example
 
 ```yaml
-server:
-  dedup:
-    in_process_enabled: true
-    # distributed_enabled is deprecated and ignored
+# Deprecated/ignored since v1.11.4
+# server:
+#   dedup:
+#     in_process_enabled: true
+#     # distributed_enabled is deprecated and ignored
 ```
 
 ## TLS Configuration

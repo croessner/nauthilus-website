@@ -113,8 +113,8 @@ server:
     ldap_search: 3s         # Timeout for LDAP search operations. Default: 3s
     ldap_bind: 3s           # Timeout for LDAP bind/auth operations. Default: 3s
     ldap_modify: 5s         # Timeout for LDAP modify operations. Default: 5s
-    singleflight_work: 3s   # Budget for deduplicated leader work. Default: 3s
     lua_backend: 5s         # Timeout for Lua backend operations. Default: 5s
+    # Deprecated/removed in v1.11.4: singleflight_work (ignored if present)
 
   # Logging configuration
   log:
@@ -271,10 +271,10 @@ server:
     cookie_store_auth_key: 32-byte-long-random-secret
     cookie_store_encryption_key: 16-24-or-32-byte-long-random-secret
 
-  # Deduplication configuration
-  dedup:
-    # distributed_enabled: false      # Deprecated since v1.10.3 and ignored (distributed dedup removed)
-    in_process_enabled: true           # Default: true. Local in-process dedup within one instance
+  # Deduplication configuration (Deprecated/removed in v1.11.4)
+  # dedup:
+  #   in_process_enabled: true        # Deprecated and ignored since v1.11.4
+  #   # distributed_enabled is deprecated and ignored
 
   # Prometheus timer configuration
   prometheus_timer:

@@ -423,6 +423,40 @@ Flush a user from the Redis cache.
 
 ---
 
+#### `DELETE /api/v1/cache/flush/async` (since 1.11.4)
+
+Enqueue an asynchronous user cache flush and return immediately.
+
+**Description:** This endpoint accepts the same request body as the synchronous variant but runs the flush in the background. It returns `202 Accepted` together with a `jobId` that can be polled via the async jobs status endpoint.
+
+**Authentication:** Same as the synchronous endpoint.
+
+**Request:**
+```json
+{
+  "user": "testuser"
+}
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "guid": "2HDSEmkavbN4Ih3K89gBBPAGwPy",
+  "object": "cache",
+  "operation": "flush_async",
+  "result": {
+    "jobId": "1733669295000-2d5f1e...",
+    "status": "QUEUED"
+  }
+}
+```
+
+Notes:
+- Use the returned `jobId` with `GET /api/v1/async/jobs/{jobId}` to track progress.
+- Large flushes benefit from this mode to avoid client timeouts.
+
+---
+
 ### Brute Force Protection Endpoints
 
 #### `DELETE /api/v1/bruteforce/flush`
@@ -491,6 +525,74 @@ The Redis keys for protocol-specific rules include the protocol name as part of 
 For OIDC Client ID-specific rules, the Redis keys include both the `:oidc:` marker and the Client ID. For example: `nauthilus:bf:3600:24:5:4:192.168.1.0/24:oidc:my-client-id`.
 
 ---
+
+#### `DELETE /api/v1/bruteforce/flush/async` (since 1.11.4)
+
+Enqueue an asynchronous brute-force key flush for an IP address and return immediately.
+
+**Description:** Same request body as the synchronous variant; execution happens in the background. Returns `202 Accepted` with a `jobId` to track the operation.
+
+**Authentication:** Same as the synchronous endpoint.
+
+**Request:**
+```json
+{
+  "ip_address": "x.x.x.x",
+  "rule_name": "*",
+  "protocol": "imap",
+  "oidc_cid": "my-oidc-client-id"
+}
+```
+
+**Response (202 Accepted):**
+```json
+{
+  "guid": "2NMzAHKLwpSk6d20cJ4Zqj6hEAB",
+  "object": "bruteforce",
+  "operation": "flush_async",
+  "result": {
+    "jobId": "1733669295001-9c1a4b...",
+    "status": "QUEUED"
+  }
+}
+```
+
+---
+
+### Async Jobs
+
+#### `GET /api/v1/async/jobs/{jobId}` (since 1.11.4)
+
+Fetch the status of a previously enqueued async job.
+
+**Description:** Returns the current status and metadata for the async job created via one of the `/async` endpoints.
+
+**Response (200 OK):**
+```json
+{
+  "guid": "2HDSEmkavbN4Ih3K89gBBPAGwPy",
+  "object": "async",
+  "operation": "status",
+  "result": {
+    "jobId": "1733669295000-2d5f1e...",
+    "status": "INPROGRESS | DONE | ERROR | QUEUED",
+    "type": "CACHE_FLUSH | BF_FLUSH",
+    "createdAt": "2025-12-08T15:20:30.123Z",
+    "startedAt": "2025-12-08T15:20:31.456Z",
+    "finishedAt": "2025-12-08T15:20:33.000Z",
+    "resultCount": 42,
+    "error": ""
+  }
+}
+```
+
+**Status Codes:**
+- `200 OK`: Job found; status returned
+- `404 Not Found`: Unknown jobId or expired job record
+
+Notes:
+- Jobs expire automatically after a retention period.
+- The `resultCount` indicates how many keys were removed.
 
 #### `POST /api/v1/bruteforce/list`
 

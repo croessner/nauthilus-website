@@ -5,7 +5,16 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f11a53d7-461b-4cc5-b63b-b0ca4f6aae50" name="Changes" comment="docs: Add async REST endpoints in v1.11.4  &#10;&#10;Documented new asynchronous REST endpoints for cache and brute-force cleanup operations, as well as the async job status tracking endpoint. Updated release notes, configuration examples, and API documentation to reflect these additions.">
+      <change afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/guides/tracing-opentelemetry.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/lua-api/opentelemetry.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/about/current-features.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/about/current-features.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/configuration/server-configuration.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/configuration/server-configuration.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docs/release-notes/1.11.md" beforeDir="false" afterPath="$PROJECT_DIR$/docs/release-notes/1.11.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/latest-version.json" beforeDir="false" afterPath="$PROJECT_DIR$/latest-version.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.11.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.10/release-notes/1.11.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/server-configuration.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/configuration/server-configuration.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/versioned_docs/version-1.11/release-notes/1.11.md" beforeDir="false" afterPath="$PROJECT_DIR$/versioned_docs/version-1.11/release-notes/1.11.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -102,6 +102,8 @@ This document provides a comprehensive overview of all features currently suppor
   - Grafana dashboard templates included
   - Backend server monitoring
   - Detailed logging with configurable levels
+  - Distributed tracing via OpenTelemetry (opt-in). See Guides → Tracing (OpenTelemetry)
+    (/docs/guides/tracing-opentelemetry)
 
 - **API Integration**
   - RESTful API for authentication requests

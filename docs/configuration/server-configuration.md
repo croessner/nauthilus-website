@@ -744,6 +744,26 @@ server:
     monitor_connections: true
 ```
 
+#### server::insights::tracing (New in v1.11.5)
+_Default: disabled_
+
+Enable distributed tracing via OpenTelemetry and configure exporter, endpoint, sampling, and propagators. See the dedicated guide for full details and examples.
+
+```yaml
+server:
+  insights:
+    tracing:
+      enabled: true
+      exporter: otlphttp
+      endpoint: otel-collector.example.com:4318
+      sampler_ratio: 0.1
+      service_name: nauthilus
+      propagators: [tracecontext, baggage, b3]
+      enable_redis: true
+```
+
+See also: Guides → Tracing (OpenTelemetry): /docs/guides/tracing-opentelemetry
+
 ## Redis Configuration
 
 ### server::redis
@@ -762,6 +782,52 @@ This object defines settings related to the Redis server.
 Operational notes:
 - The 1.11 runtime reduces connection churn and improves pipeline efficiency under load.
 - Slow Redis or network hiccups will now trip faster client‑side timeouts to keep request latency bounded; review your redis_read/write budgets accordingly.
+
+### Compatibility and RESP3 features (New in v1.11.5)
+
+Nauthilus prefers RESP3 to support push notifications used by client tracking and maintenance notifications. The following options allow you to opt into related functionality while maintaining backward compatibility with older Redis deployments or proxies.
+
+#### server::redis::identity_enabled
+_Default: false_
+
+Controls whether the Redis client sends `CLIENT SETINFO` on connect (advertises client identity). Keep disabled for maximum compatibility with older Redis or proxies.
+
+```yaml
+server:
+  redis:
+    identity_enabled: true
+```
+
+#### server::redis::maint_notifications_enabled
+_Default: false_
+
+Enables `CLIENT MAINT_NOTIFICATIONS` (push‑based maintenance notifications; requires RESP3). Only applicable to standalone and cluster clients.
+
+```yaml
+server:
+  redis:
+    maint_notifications_enabled: true
+```
+
+#### server::redis::client_tracking
+
+Enable Redis client‑side caching (RESP3 `CLIENT TRACKING`) to reduce read round‑trips by caching values and receiving invalidation pushes.
+
+```yaml
+server:
+  redis:
+    client_tracking:
+      enabled: true
+      bcast: true       # broadcast invalidations
+      noloop: true      # do not receive invalidations for own writes
+      opt_in: false     # require CACHING yes on commands
+      opt_out: false    # track all unless CACHING no
+      prefixes: ["user:", "account:"]
+```
+
+Notes:
+- Requires Redis 6+ and RESP3. Use with care in environments with unstable networks or proxies that do not forward push messages.
+- Consider excluding blocking commands from batching (see `server.redis.batching.skip_commands`).
 
 #### server::redis::pool_timeout
 _New in version 1.11.0_<br/>

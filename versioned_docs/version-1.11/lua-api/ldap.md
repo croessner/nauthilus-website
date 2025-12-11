@@ -12,6 +12,54 @@ It is possible to send LDAP search requests to the main LDAP worker pool, if the
 local nauthilus_ldap = require("nauthilus_ldap")
 ```
 
+## nauthilus_ldap.ldap_endpoint
+
+Resolves the LDAP endpoint (host and port) for a given LDAP worker pool.
+
+This helper inspects the configured server_uri list of the selected pool and returns the hostname and port derived from the first URI. If the URI does not specify a port, a default is applied based on the scheme (ldaps → 636, otherwise 389). The function also ensures the pool is currently active (has workers registered).
+
+### Syntax
+
+```lua
+local server, port, err = nauthilus_ldap.ldap_endpoint(pool_name)
+```
+
+### Parameters
+
+- `pool_name` (string, optional): The name of the LDAP connection pool. If omitted, the main/default pool is used.
+
+### Returns
+
+- `server` (string or nil): Hostname of the LDAP endpoint on success; `nil` on error
+- `port` (number or nil): TCP port of the LDAP endpoint on success; `nil` on error
+- `err` (string or nil): Error message when resolution fails; `nil` on success
+
+### Possible errors
+
+- `ldap pool not active: <name>` — The requested pool has no active workers
+- `ldap pool config not found: <name>` — The named pool has no configuration
+- `no LDAP server_uri configured for pool: <name>` — The pool has no server URIs configured
+- `invalid LDAP server_uri: <uri>` — The first configured URI is malformed
+
+### Example
+
+```lua
+local nauthilus_ldap = require("nauthilus_ldap")
+
+-- Default pool
+local host, port, err = nauthilus_ldap.ldap_endpoint()
+if err ~= nil then
+  error("ldap_endpoint failed: " .. err)
+end
+print("LDAP host:", host, "port:", port)
+
+-- Optional named pool "directory_eu"
+local host2, port2, err2 = nauthilus_ldap.ldap_endpoint("directory_eu")
+if err2 == nil then
+  print("EU LDAP host:", host2, "port:", port2)
+end
+```
+
 ## nauthilus\_ldap.ldap\_search
 
 Performs an LDAP search request using the main LDAP worker pool.

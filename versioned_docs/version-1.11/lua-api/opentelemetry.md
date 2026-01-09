@@ -33,13 +33,18 @@ local tr = otel.tracer("nauthilus/policy")
 -- Start/End manually
 local sp = tr:start_span("operation", { kind = "internal", attributes = { ["peer.service"] = "example" } })
 sp:add_event("started")
-sp:end()
+sp:finish()
 
 -- With convenience: with_span
 tr:with_span("policy.evaluate", function(span)
   span:set_attributes({ ["key"] = "value", ["tries"] = 1, ["ok"] = true })
 end, { kind = "client" })
 ```
+
+### Tracer methods
+
+- `start_span(name, options?)` — returns a span object. Manual lifecycle: must call `finish()`.
+- `with_span(name, function, options?)` — runs the given function within a new span. The span is automatically finished when the function returns. The span object is passed as the first argument to the function. Available since v1.11.5.
 
 ### Span methods
 
@@ -48,7 +53,8 @@ end, { kind = "client" })
 - `add_event(name, attributes?)`
 - `set_status(code, description?)` — `code`: `ok` | `error` | `unset`
 - `record_error(err_or_msg)` — marks span as error and records the error
-- `end()`
+- `finish()` — alias for `end()`
+- `end()` — **Warning:** In Lua, `end` is a reserved keyword. Calling `:end()` directly will cause a syntax error. Use the alias `finish()` instead, or call it as `span["end"](span)`.
 
 ### Options for `start_span`/`with_span`
 

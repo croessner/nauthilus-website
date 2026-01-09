@@ -1118,6 +1118,22 @@ Units should now add a time unit like
 * m - minutes
 * h - hours
 
+#### server::redis::protocol
+_New in version 1.11.11_<br/>
+_Default: 2 (or 3 if RESP3 features are enabled)_
+
+This setting allows forcing the Redis protocol version (2 or 3). If not set (0), it defaults to 2 unless features requiring RESP3 (like client-side tracking or maintenance notifications) are enabled.
+
+Forcing the protocol to 2 can resolve parsing issues with asynchronous push messages in pipelines, especially during heavy brute-force protection logic where RESP3 push messages might interfere with command responses ("Pipeline BruteForce").
+
+```yaml
+server:
+  redis:
+    protocol: 2
+```
+
+Valid values: `0` (auto), `2`, or `3`.
+
 #### server::redis::master
 
 If running Redis standalone or in master-slave mode, you have to define the master object.

@@ -1,0 +1,100 @@
+---
+title: OpenTelemetry (Lua)
+description: Lua module nauthilus_opentelemetry — create spans, set attributes, use baggage and header propagation
+keywords: [Lua, OpenTelemetry, Tracing]
+sidebar_position: 35
+---
+
+# OpenTelemetry for Lua scripts (nauthilus_opentelemetry)
+
+This module allows Lua scripts to create and control OpenTelemetry spans, set attributes/events/status, use baggage, and inject/extract trace headers. The module is request‑scoped and becomes a no‑op when tracing is disabled in configuration.
+
+> Controlled by `server.insights.tracing.enabled`. When disabled, the module functions are present but do nothing.
+
+## Loading
+
+```lua
+local otel = require("nauthilus_opentelemetry")
+```
+
+## Feature detection
+
+```lua
+if not otel.is_enabled() then
+  -- tracing disabled; skip expensive telemetry work
+end
+```
+
+## Creating spans
+
+```lua
+local tr = otel.tracer("nauthilus/policy")
+
+-- Start/End manually
+local sp = tr:start_span("operation", { kind = "internal", attributes = { ["peer.service"] = "example" } })
+sp:add_event("started")
+sp:finish()
+
+-- With convenience: with_span
+tr:with_span("policy.evaluate", function(span)
+  span:set_attributes({ ["key"] = "value", ["tries"] = 1, ["ok"] = true })
+end, { kind = "client" })
+```
+
+### Tracer methods
+
+- `start_span(name, options?)` — returns a span object. Manual lifecycle: must call `finish()`.
+- `with_span(name, function, options?)` — runs the given function within a new span. The span is automatically finished when the function returns. The span object is passed as the first argument to the function. Available since v1.11.5.
+
+### Span methods
+
+- `set_attribute(key, value)` — value can be string/number/boolean
+- `set_attributes(table)` — bulk set attributes from a `{ key = value }` table
+- `add_event(name, attributes?)`
+- `set_status(code, description?)` — `code`: `ok` | `error` | `unset`
+- `record_error(err_or_msg)` — marks span as error and records the error
+- `finish()` — alias for `end()`
+- `end()` — **Warning:** In Lua, `end` is a reserved keyword. Calling `:end()` directly will cause a syntax error. Use the alias `finish()` instead, or call it as `span["end"](span)`.
+
+### Options for `start_span`/`with_span`
+
+- `kind`: `internal` (default) | `client` | `server` | `producer` | `consumer`
+- `attributes`: table of attributes `{ [string] = string|number|boolean }`
+- `links`: array of `{ trace_id = "...", span_id = "...", attributes = { ... } }`
+
+## Baggage
+
+```lua
+otel.baggage_set("user.id", "42")
+local v = otel.baggage_get("user.id")
+for k, val in pairs(otel.baggage_all()) do print(k, val) end
+otel.baggage_clear()
+```
+
+## Header propagation (HTTP)
+
+```lua
+local headers = { }
+otel.inject_headers(headers)   -- write trace headers into table
+-- ... perform HTTP request using these headers ...
+
+-- Extract example (restore context from headers)
+otel.extract_headers(headers)
+```
+
+## Semantic convenience helpers
+
+```lua
+local sem = otel.semconv
+local attrs = sem.http_client_attrs({ method = "GET", url = "https://api.example.com", status_code = 200 })
+-- Merge into span attributes
+tr:with_span("http.call", function(span)
+  span:set_attributes(attrs)
+end, { kind = "client" })
+```
+
+## Notes
+
+- The module follows the active request span created by the server; child spans created in Lua will be attached to the current request’s context.
+- Attribute tables ignore unsupported value types to keep encoding stable.
+- See also: Guides → Tracing (OpenTelemetry) for server‑side configuration.

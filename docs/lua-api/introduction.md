@@ -119,18 +119,29 @@ Nauthilus does automatically preload Lua modules.
 
 This is the list of modules that are currently available:
 
-| Loader name                 | Description                                        |
-|-----------------------------|----------------------------------------------------|
-| nauthilus\_mail             | E-Mail functions                                   |
-| nauthilus\_password         | Password compare and validation functions          |
-| nauthilus\_redis            | Redis related functions                            |
-| nauthilus\_misc             | Country code and sleep functions                   |
-| nauthilus\_context          | Global Lua context accross all States in Nauthilus |
-| nauthilus\_ldap             | LDAP related functions                             |
-| nauthilus\_backend          | Backend related functions                          |
-| nauthilus\_http_request     | HTTP request header functions                      |
-| nauthilus\_http_response    | HTTP response functions (headers, status, body; Filters/Features MUST NOT send a body)     |
-| glua\_crypto                | gluacrpyto project on Github                       |
+| Loader name                                               | Description                                                                            |
+|-----------------------------------------------------------|----------------------------------------------------------------------------------------|
+| [nauthilus\_mail](/docs/lua-api/mail)                     | E-Mail functions                                                                       |
+| [nauthilus\_password](/docs/lua-api/password)             | Password compare and validation functions                                              |
+| [nauthilus\_redis](/docs/lua-api/redis)                   | Redis related functions                                                                |
+| [nauthilus\_misc](/docs/lua-api/misc)                     | Country code and sleep functions                                                       |
+| [nauthilus\_context](/docs/lua-api/context)               | Global Lua context accross all States in Nauthilus                                     |
+| [nauthilus\_ldap](/docs/lua-api/ldap)                     | LDAP related functions                                                                 |
+| [nauthilus\_backend](/docs/lua-api/backend)               | Backend related functions                                                              |
+| [nauthilus\_http_request](/docs/lua-api/http)             | HTTP request header functions                                                          |
+| [nauthilus\_http_response](/docs/lua-api/http-response)   | HTTP response functions (headers, status, body; Filters/Features MUST NOT send a body) |
+| [nauthilus\_prometheus](/docs/lua-api/prometheus)         | Prometheus metrics functions                                                           |
+| [nauthilus\_soft\_whitelist](/docs/lua-api/softwhitelist) | Soft whitelist functions                                                               |
+| [nauthilus\_brute\_force](/docs/lua-api/bruteforce)       | Brute force prevention functions                                                       |
+| [nauthilus\_dns](/docs/lua-api/dns)                       | DNS related functions                                                                  |
+| [nauthilus\_cache](/docs/lua-api/cache)                   | In-process cache functions                                                             |
+| [nauthilus\_psnet](/docs/lua-api/psnet)                   | Network connection manager functions                                                   |
+| [nauthilus\_opentelemetry](/docs/lua-api/opentelemetry)   | OpenTelemetry tracing functions                                                        |
+| [nauthilus\_util](/docs/lua-api/nauthilus_util)           | Common utility functions                                                               |
+| glua\_crypto                                              | gluacrpyto project on Github                                                           |
+| glua\_http                                                | gluahttp project on Github                                                             |
+
+In addition to these Nauthilus-specific modules, the [gopher-lua-libs](https://github.com/vadv/gopher-lua-libs) collection is automatically preloaded, providing access to modules like `json`, `yaml`, `time`, `db`, `tcp`, and more.
 
 Example:
 
@@ -241,6 +252,7 @@ The following request fields are supported
 | session                  | string | always   | -                                                                 |
 | client\_ip               | string | always   | -                                                                 |
 | client\_port             | string | always   | -                                                                 |
+| client\_host             | string | maybe    | -                                                                 |
 | client_net               | string | maybe    | Available in conjunction with brute-force-actions                 |
 | client\_id               | string | maybe    | -                                                                 |
 | user\_agent              | string | maybe    | -                                                                 |
@@ -269,6 +281,18 @@ The following request fields are supported
 | ssl\_client\_issuer\_dn  | string | maybe    | HAproxy: %\{+Q\}[ssl\_c\_i\_dn]                                   |
 | ssl\_protocol            | string | maybe    | HAproxy: %[ssl\_fc\_protocol]                                     |
 | ssl\_cipher              | string | maybe    | HAproxy: %[ssl\_fc\_cipher]                                       |
+| ssl\_serial              | string | maybe    | SSL certificate serial number                                     |
+| ssl\_fingerprint         | string | maybe    | SSL certificate fingerprint                                       |
+| brute\_force\_counter    | number | always   | Current brute force attempt counter                               |
+| account\_field           | string | maybe    | The name of the field that contains the account                   |
+| method                   | string | maybe    | HTTP method (e.g., "GET", "POST")                                 |
+| oidc\_cid                | string | maybe    | OIDC Client ID                                                    |
+| log\_format              | string | always   | Configured log format ("default" or "json")                       |
+| log\_level               | string | always   | Configured log level                                              |
+| logging                  | table  | always   | Table containing `log_format` and `log_level`                     |
+| latency                  | number | always   | Request processing latency                                        |
+| http\_status             | number | always   | HTTP status code returned to the client                           |
+| redis\_prefix            | string | always   | Configured Redis key prefix                                       |
 
 :::note
 TLS-related values may be retrieved from Nginx and as a fallback tried to be retrieved from HAproxy headers.
@@ -299,10 +323,10 @@ which is an indicator for errors that occurred in the script itself.
 
 | Constant                                | Meaning                                                         | Value | Category      |
 |-----------------------------------------|-----------------------------------------------------------------|-------|---------------|
-| nauthilus_builtin.FEATURE\_TRIGGER\_NO  | The feature has not been triggered                              | 0     | trigger       |
-| nauthilus_builtin.FEATURE\_TRIGGER\_YES | The feature has been triggered and the request must be rejected | 1     | trigger       |
-| nauthilus_builtin.FEATURES\_ABORT\_NO   | Process other built-in features                                 | 0     | skip\_flag    |
-| nauthilus_builtin.FEATURES\_ABORT\_YES  | After finishing the script, skip all other built-in features    | 1     | skip\_flag    |
+| nauthilus_builtin.FEATURE\_TRIGGER\_NO  | The feature has not been triggered                              | false | trigger       |
+| nauthilus_builtin.FEATURE\_TRIGGER\_YES | The feature has been triggered and the request must be rejected | true  | trigger       |
+| nauthilus_builtin.FEATURES\_ABORT\_NO   | Process other built-in features                                 | false | skip\_flag    |
+| nauthilus_builtin.FEATURES\_ABORT\_YES  | After finishing the script, skip all other built-in features    | true  | skip\_flag    |
 | nauthilus_builtin.FEATURE\_RESULT\_OK   | The script finished without errors                              | 0     | failure\_info |
 | nauthilus_builtin.FEATURE\_RESULT\_FAIL | Something went wrong while executing the script                 | 1     | failure\_info |
 
@@ -335,8 +359,8 @@ which is an indicator for errors that occurred in the script itself.
 
 | Constant                                 | Meaning                                         | Value | Category       |
 |------------------------------------------|-------------------------------------------------|-------|----------------|
-| nauthilus_builtin.FILTER\_ACTION\_ACCEPT | The request must be accepted                    | 0     | filter\_action |
-| nauthilus_builtin.FILTER\_ACTION\_REJECT | The request has to be rejected                  | 1     | filter\_action |
+| nauthilus_builtin.FILTER\_ACCEPT         | The request must be accepted                    | false | filter\_action |
+| nauthilus_builtin.FILTER\_REJECT         | The request has to be rejected                  | true  | filter\_action |
 | nauthilus_builtin.FILTER\_RESULT\_OK     | The script finished without errors              | 0     | filter\_info   |
 | nauthilus_builtin.FILTER\_RESULT\_FAIL   | Something went wrong while executing the script | 1     | filter\_info   |
 

@@ -20,7 +20,7 @@ const latestProductVersion =
       return undefined;
     }
   })() ||
-  '1.10.3';
+  '1.12.0';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -61,12 +61,16 @@ const config = {
           // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
-          // Treat 1.11 as the latest stable docs version; "current" is unreleased/next
-          lastVersion: '1.11',
+          // Treat 1.12 as the latest stable docs version; "current" is unreleased/next
+          lastVersion: '1.12',
           versions: {
             current: {
               label: 'Next',
               banner: 'unreleased',
+            },
+            '1.12': {
+              label: '1.12',
+              banner: 'none',
             },
             '1.11': {
               label: '1.11',

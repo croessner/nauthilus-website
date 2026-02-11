@@ -16,7 +16,7 @@ This document provides a comprehensive overview of all features currently suppor
   - Dovecot authentication using a custom Lua backend
   - Cyrus-SASL authentication using the httppost-backend
   - Support for mail protocols (IMAP, POP3, SMTP, LMTP, Sieve)
-  - Support for web applications via OAuth2/OpenID Connect
+  - Native Identity Provider (OIDC Authorization Code) and SAML2 for web applications
 
 - **Multiple Authentication Backends**
   - LDAP backend with support for OpenLDAP and Active Directory
@@ -112,10 +112,7 @@ This document provides a comprehensive overview of all features currently suppor
 
 ## Single Sign-On (SSO)
 
-- **OAuth2/OpenID Connect**
-  - Integration with Keycloak via [nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak)
-  - Customizable templates for CI/CD integration
-  - Role-based access control
+- Native Identity Provider: OIDC (Authorization Code) and SAML2 with integrated consent and MFA (TOTP, WebAuthn)
 
 ## Administration
 
@@ -130,14 +127,12 @@ This document provides a comprehensive overview of all features currently suppor
   - Kubernetes compatibility
   - Systemd integration
 
-## Deprecated Features
+## Changes in 1.12
 
-The following features were originally designed to work with Ory Hydra. It is recommended to use Keycloak instead, as it offers full compatibility with [nauthilus-keycloak](https://github.com/croessner/nauthilus-keycloak).
-
-- OAuth2 and OpenID Connect support with Ory Hydra, including implementations for login, consent, and logout flows
-- TOTP-based two-factor authentication support in Nauthilus
-- User account registration with TOTP as a second-factor authentication (requires the build tag **register2fa**)
+- Removed: Ory Hydra/OAuth2 integration (use native IdP)
+- Added: Native Identity Provider with OIDC (Authorization Code) and SAML2
+- Added: Integrated multi-factor authentication (TOTP, WebAuthn)
 
 ## Roadmap
 
-- WebAuthn support for two-factor authentication
+- Policy and authorization improvements for the native IdP

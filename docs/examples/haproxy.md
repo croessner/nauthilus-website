@@ -54,12 +54,12 @@ userlist basic-auth-list
 frontend nauthilus
     mode http
     bind ....:443 ssl crt /path/to/crt alpn h2,http/1.1
-    acl url_beg path_beg /login /consent /logout /static
+    acl idp path_beg /idp/oidc /idp/saml /login /logout /mfa /webauthn /static
     acl invalid_src src 0.0.0.0/7 224.0.0.0/3
     acl invalid_src src_port 0:1023
     tcp-request connection reject if invalid_src
     option tcplog
-    use_backend nauthilus_oauth2 if url_beg
+    use_backend nauthilus_idp if idp
     default_backend nauthilus_mail
 
 backend nauthilus_mail
@@ -74,7 +74,7 @@ backend nauthilus_mail
     server nauthilus1 .... check inter 1m ssl alpn h2 verify none
     server nauthilus2 .... check inter 1m ssl alpn h2 verify none
 
-backend nauthilus_oauth2
+backend nauthilus_idp
     mode http
     balance leastconn
     option tcp-check

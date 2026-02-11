@@ -68,6 +68,20 @@ force protection!
 
 Specify the absolute path to the language resources. This directory contains the localized files need for Nauthilus.
 
+| Name    | **SERVER_REDIS_ENCRYPTION_SECRET** |
+|---------|------------------------------------|
+| Default | ""                                 |
+| Value   | String                              |
+
+Secret used to encrypt sensitive data in Redis. Provide a long, random password (min. 16 characters, no spaces). Nauthilus derives a 32‑byte key internally (SHA‑256) and encrypts with ChaCha20‑Poly1305.
+
+| Name    | **LDAP_CONFIG_ENCRYPTION_SECRET** |
+|---------|-----------------------------------|
+| Default | ""                                |
+| Value   | String                             |
+
+Secret for encrypting data stored in LDAP (optional). Required if you store TOTP secrets or recovery codes in LDAP. Same rules as above (password‑like; min. 16 chars; internal 32‑byte derivation via SHA‑256; ChaCha20‑Poly1305).
+
 | Name    | **LOCAL_CACHE_AUTH_TTL** |
 |---------|--------------------------|
 | Default | 30                       |
@@ -185,36 +199,35 @@ Specify the backend IP address for a IMAP server. This setting is used, if backe
 
 This is the port of a IMAP server. This setting is used, if backend monitoring is turned off.
 
-## OAuth2 / Ory Hydra settings
+## Identity Provider settings
 
-| Name    | **HTTP_STATIC_CONTENT_PATH** |
-|---------|------------------------------|
-| Default | "/usr/app/static"            |
-| Value   | String                       |
+| Name    | **IDP_OIDC_ISSUER** |
+|---------|---------------------|
+| Default | ""                  |
+| Value   | String              |
 
-Define the path where Nauthilus will find OAuth2 pages and content. The default is perfect if using Docker.
+The public issuer URL for the OpenID Connect provider.
 
-| Name    | **DEFAULT_LOGO_IMAGE** |
-|---------|------------------------|
-| Default | "/static/img/logo.png" |
-| Value   | String                 |
-
-Path to the company logo. The path is the location part of an HTTP url.
-
-| Name    | **HYDRA_ADMIN_URI**     |
+| Name    | **IDP_SAML2_ENTITY_ID** |
 |---------|-------------------------|
-| Default | "http://127.0.0.1:4445" |
+| Default | ""                      |
 | Value   | String                  |
 
-This is the protected URI to the Ory Hydra admin endpoint. You must change this if you plan on using OAuth2!
+The Entity ID for the SAML 2.0 Identity Provider.
 
-| Name    | **HTTP_CLIENT_SKIP_TLS_VERIFY** |
-|---------|---------------------------------|
-| Default | false                           |
-| Value   | Boolean                         |
+| Name    | **SERVER_FRONTEND_HTML_STATIC_CONTENT_PATH** |
+|---------|----------------------------------------------|
+| Default | "/usr/app/static"                            |
+| Value   | String                                       |
 
-Nauthilus does communicate to Ory Hydra using HTTP. If the server certificate can not be validated, you may turn of
-verification
+Define the path where Nauthilus will find IdP templates, CSS, and other static content.
+
+| Name    | **SERVER_FRONTEND_DEFAULT_LOGO_IMAGE** |
+|---------|----------------------------------------|
+| Default | "/static/img/logo.png"                 |
+| Value   | String                                 |
+
+Path to the company logo used in the IdP frontend.
 
 | Name    | **HOMEPAGE**            |
 |---------|-------------------------|

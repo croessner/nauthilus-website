@@ -86,8 +86,64 @@ See also:
 - Configuration → Database Backends → Lua Backend (ip_scoping_* options)
 - Configuration → Reference → Lua scoped IP controls
 
-## Other helpers
+## misc.get_country_name
 
-- `get_country_name(code)` → Country name for ISO code (requires countries DB)
-- `wait_random(min_ms, max_ms)` → Sleep for a random amount of milliseconds
-- `generate_password_hash(password)` → Redis‑compatible short hash used by Nauthilus
+Retrieves the full English name of a country based on its ISO 3166-1 alpha-2 code.
+
+### Syntax
+
+```lua
+local country_name, err = misc.get_country_name(iso_code)
+```
+
+### Parameters
+
+- `iso_code` (string, required): The two-letter country code (e.g., "DE", "US").
+
+### Returns
+
+- `country_name` (string): The full name of the country, or "Unknown" if not found.
+- `err` (nil): Always returns nil (errors result in "Unknown").
+
+---
+
+## misc.wait_random
+
+Causes the current execution to sleep for a random duration within a specified range. This is useful for implementing artificial delays to thwart timing attacks or rate-limit certain operations.
+
+### Syntax
+
+```lua
+local actual_wait, err = misc.wait_random(min_ms, max_ms)
+```
+
+### Parameters
+
+- `min_ms` (number, required): Minimum wait time in milliseconds.
+- `max_ms` (number, required): Maximum wait time in milliseconds.
+
+### Returns
+
+- `actual_wait` (number): The actual number of milliseconds slept.
+- `err` (string/nil): An error message if the range is invalid, otherwise nil.
+
+---
+
+## misc.generate_password_hash
+
+Generates a short, non-cryptographic hash of a password string. This hash is primarily used for the `PW_HIST` feature in Redis to recognize repeating wrong passwords without storing the actual password or a heavy cryptographic hash in the transient cache.
+
+### Syntax
+
+```lua
+local hash, err = misc.generate_password_hash(password)
+```
+
+### Parameters
+
+- `password` (string, required): The password to hash.
+
+### Returns
+
+- `hash` (string): A lowercase 8-character hexadecimal string representing the hash.
+- `err` (nil): Always returns nil.

@@ -14,7 +14,7 @@ This guide will help you understand, deploy, and configure Nauthilus for your en
 Nauthilus is a universal authentication and authorization platform written in Go. It serves as a central hub for handling various authentication requests from different services such as:
 
 - Mail servers (SMTP, IMAP, POP3)
-- Web applications via OAuth2/OpenID Connect
+- Web applications via the native Identity Provider (OIDC + SAML2)
 - Custom applications through its flexible API
 
 Key features include:
@@ -24,7 +24,7 @@ Key features include:
 - Brute force attack protection
 - Realtime blackhole list (RBL) checking
 - Two-factor authentication support
-- OAuth2/OpenID Connect integration
+- Native Identity Provider (OIDC + SAML2)
 - Extensibility through Lua scripts
 
 ## Prerequisites
@@ -297,22 +297,22 @@ For Postfix SMTP submission:
 
 Note: This integration provides fewer features compared to Dovecot integration.
 
-### Web Application Integration (OAuth2/OpenID Connect)
+### Web Application Integration (Native IdP: OIDC + SAML2)
 
 For Single Sign-On (SSO) with web applications:
 
-1. Set up Ory Hydra as the OAuth2/OpenID Connect provider
-2. Configure Nauthilus as the login and consent provider for Hydra
-3. Configure your load balancer to route authentication requests to Nauthilus
+1. Configure OIDC clients under `idp.oidc.clients` in your `nauthilus.yml`
+2. Configure SAML2 Service Providers under `idp.saml2.service_providers` if you use SAML
+3. Configure your load balancer to route IdP requests to Nauthilus (`/idp/oidc/*`, `/idp/saml/*`, and the shared frontend like `/login`)
 
 Example HAProxy configuration:
 
 ```haproxy
-acl oidc path_beg,url_dec -m beg -i /login /device /consent /logout /2fa/v1 /notify /static
+acl idp path_beg,url_dec -m beg -i /idp/oidc /idp/saml /login /logout /mfa /webauthn /static
 
-use_backend be_nauthilus_oidc if oidc
+use_backend be_nauthilus_idp if idp
 
-backend be_nauthilus_oidc
+backend be_nauthilus_idp
   mode http
   balance roundrobin
   option forwardfor
@@ -334,7 +334,6 @@ server:
     - imap
     - smtp
     - submission
-    - ory-hydra
 
 brute_force:
   buckets:
@@ -439,7 +438,7 @@ After basic setup, consider exploring:
 - [Advanced Configuration](/docs/configuration/index.md) - Detailed configuration options
 - [LDAP Backend](/docs/configuration/database-backends/ldap.md) - LDAP integration details
 - [Lua Backend](/docs/configuration/database-backends/lua.md) - Custom authentication with Lua
-- [OAuth2 Configuration](/docs/configuration/oauth2.md) - Setting up SSO
+- [Identity Provider](/docs/configuration/idp/index.md) - Native OIDC (Authorization Code) and SAML2
 - [Full Configuration Example](/docs/configuration/full-example.md) - Complete configuration reference
 
 ## Getting Help

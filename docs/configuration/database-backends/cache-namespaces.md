@@ -45,7 +45,9 @@ ldap:
       cache_name: submission
       # ...
 
-    - protocol: ory-hydra
+    - protocol:
+        - oidc
+        - saml
       cache_name: oidc
       # ...
 ```
@@ -66,7 +68,9 @@ lua:
         - submission
       cache_name: submission
 
-    - protocol: ory-hydra
+    - protocol:
+        - oidc
+        - saml
       cache_name: oidc
 ```
 

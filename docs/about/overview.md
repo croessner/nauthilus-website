@@ -10,7 +10,7 @@ See how Nauthilus is integrated into a larger IT ecosystem.
 
 ## What is Nauthilus?
 
-Nauthilus is a universal authentication and authorization platform written in Go. It serves as a central hub for handling various authentication requests from different services such as mail servers (SMTP, IMAP, POP3), web applications via OAuth2/OpenID Connect, and custom applications through its flexible API.
+Nauthilus is a universal authentication and authorization platform written in Go. It serves as a central hub for handling various authentication requests from different services such as mail servers (SMTP, IMAP, POP3), web applications via the native Identity Provider (OIDC/SAML2), and custom applications through its flexible API.
 
 ## Components
 
@@ -74,7 +74,7 @@ Nauthilus provides a wide range of features, including:
 - Redis-based caching for performance optimization
 - Brute force attack protection
 - Realtime blackhole list (RBL) checking
-- Integration with OAuth2/OpenID Connect for Single Sign-On
+- Native Identity Provider (OIDC Authorization Code) and SAML2 for Single Sign-On
 - Extensibility through Lua scripts
 - Comprehensive monitoring via Prometheus metrics
 

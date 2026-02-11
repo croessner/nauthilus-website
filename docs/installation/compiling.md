@@ -70,19 +70,6 @@ go build -mod=vendor -tags="tag1 tag2" -o nauthilus .
 
 ### Available Build Tags
 
-#### hydra
-
-Builds Nauthilus with Hydra/OIDC login/consent flows enabled. Also compiles the 2FA (TOTP) and WebAuthn frontend flows.
-
-```bash
-# Build with Hydra enabled
-go build -mod=vendor -tags="hydra" -o nauthilus ./server
-
-# Run tests with Hydra enabled
-go test -tags hydra ./...
-```
-
-Without this tag, the binary excludes Hydra/OIDC code and related routes. The service-internal JWT authentication remains available in all builds.
 
 #### dev
 
@@ -100,10 +87,6 @@ go build -mod=vendor -tags="register2fa" -o nauthilus .
 
 The `register2fa` tag enables a registration endpoint for two-factor authentication, allowing you to add TOTP tokens to user accounts.
 
-### Notes on 2FA/WebAuthn
-
-- The 2FA (TOTP) and WebAuthn registration/UI flows are only compiled and registered when building with `-tags hydra`.
-- OAuth2/OIDC configuration (the `oauth2` section in the config file) has effect only in hydra builds.
 
 ## Next Steps
 

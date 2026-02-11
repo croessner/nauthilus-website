@@ -9,19 +9,6 @@ sidebar_position: 11
 
 This page provides a complete example of a Nauthilus configuration file. You can use this as a reference when configuring your own Nauthilus instance.
 
-:::note Hydra/OIDC build tag (v1.9.12+)
-As of v1.9.12, OAuth2/OIDC (the `oauth2` section), the login/consent frontend, and 2FA/WebAuthn UI are compiled only when Nauthilus is built with the `hydra` build tag. The default builds (and official Docker images) do not include Hydra.
-
-- Without Hydra (default): `go build -mod=vendor ./server`
-- With Hydra enabled: `go build -mod=vendor -tags hydra ./server`
-- Docker with Hydra: `docker build --build-arg BUILD_TAGS=hydra -t nauthilus:hydra .`
-
-Configuration keys under `oauth2` and 2FA/WebAuthn-related settings only take effect in Hydra-enabled builds.
-:::
-
-::::note New in v1.10.0
-This example includes new LDAP configuration parameters introduced in v1.10.0, annotated inline with “New in v1.10.0”. They cover queue limits, per-op timeouts, search guardrails, retry/backoff, circuit breaker, caching options, and optional per-pool auth rate limiting.
-:::
 
 ```yaml
 server:
@@ -42,9 +29,9 @@ server:
     auth_saslauthd: false               # Default: false
     auth_jwt: false                     # Default: false
     custom_hooks: false                 # Default: false
-    configuration: false                # Default: false (New in v1.7.11) 
+    configuration: false                # Default: false 
 
-  # HTTP middlewares (New in v1.11.3)
+  # HTTP middlewares
   # Omit a key to keep it enabled; set to false to disable.
   middlewares:
     logging: true                       # Default: true
@@ -60,11 +47,10 @@ server:
     enabled: true                       # Default: false
     cert: /usr/local/etc/nauthilus/localhost.localdomain.pem
     key: /usr/local/etc/nauthilus/localhost.localdomain.key.pem
-    ca_file: /usr/local/etc/nauthilus/ca.pem  # Default: "" (New in v1.7.11)
-    min_tls_version: "TLS1.3"           # Default: "TLS1.2" (New in v1.7.11)
-    skip_verify: false                  # Default: false (New in v1.7.11)
-    http_client_skip_verify: true       # Default: false (Deprecated, use skip_verify instead)
-    cipher_suites:                      # Default: [] (New in v1.7.11)
+    ca_file: /usr/local/etc/nauthilus/ca.pem  # Default: ""
+    min_tls_version: "TLS1.3"           # Default: "TLS1.2"
+    skip_verify: false                  # Default: false
+    cipher_suites:                      # Default: []
       - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
       - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
       - "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"
@@ -75,9 +61,9 @@ server:
     max_idle_connections: 5             # Default: 0 (no limit)
     max_idle_connections_per_host: 1    # Default: 0 (no limit)
     idle_connection_timeout: 60s        # Default: 0 (no timeout)
-    proxy: "http://proxy.example.com:8080" # Default: "" (New in v1.7.11)
+    proxy: "http://proxy.example.com:8080" # Default: ""
     # TLS configuration for HTTP client
-    tls:                                # New in v1.7.11
+    tls:                
       skip_verify: false                # Default: false
 
   # Basic authentication
@@ -86,27 +72,11 @@ server:
     username: nauthilus
     password: nauthilus
 
-  # JWT authentication
-  jwt_auth:
+  # OIDC Bearer authentication for backchannel API
+  oidc_auth:
     enabled: true                       # Default: false
-    secret_key: "your-secret-key-at-least-32-characters"
-    token_expiry: 2h                    # Default: 1h
-    refresh_token: true                 # Default: false
-    refresh_token_expiry: 48h           # Default: 24h
-    store_in_redis: true                # Default: false
-    users:
-      - username: admin
-        password: "secure-password"
-        roles:
-          - admin
-          - authenticated
-      - username: user
-        password: "another-secure-password"
-        roles:
-          - user
-          - authenticated
 
-  # Timeouts (New in v1.10.0)
+  # Timeouts
   timeouts:
     redis_read: 1s          # Timeout for Redis read operations (GET/HGET). Default: 1s
     redis_write: 2s         # Timeout for Redis write operations (SET/HSET). Default: 2s
@@ -114,7 +84,6 @@ server:
     ldap_bind: 3s           # Timeout for LDAP bind/auth operations. Default: 3s
     ldap_modify: 5s         # Timeout for LDAP modify operations. Default: 5s
     lua_backend: 5s         # Timeout for Lua backend operations. Default: 5s
-    # Deprecated/removed in v1.11.4: singleflight_work (ignored if present)
 
   # Logging configuration
   log:
@@ -154,11 +123,10 @@ server:
     - submission
     - smtp
     - smtps
-    - ory-hydra
+    - oidc
+    - saml
     - http
 
-  # Ory Hydra configuration
-  ory_hydra_admin_url: https://hydra.example.com:4445  # Default: "http://127.0.0.1:4445"
 
   # DNS configuration
   dns:
@@ -179,7 +147,7 @@ server:
     password_nonce: "random-nonce-string" # Default: ""
     pool_size: 10                       # Default: 0
     idle_pool_size: 2                   # Default: 0
-    # Connection and timeout tuning (New in v1.11.0)
+    # Connection and timeout tuning
     pool_timeout: 150ms                 # Default: 80ms (1ms–30s)
     dial_timeout: 500ms                 # Default: 200ms (1ms–60s)
     read_timeout: 250ms                 # Default: 100ms (1ms–60s)
@@ -189,8 +157,9 @@ server:
     max_retries: 2                      # Default: 1 (0 disables retries)
     positive_cache_ttl: 3600s           # Default: 3600s
     negative_cache_ttl: 7200s           # Default: 3600s
+    encryption_secret: long-random-secret # Required for Lua redis_encrypt/decrypt (min. 16 chars, no spaces; internally derived to a 32-byte key)
 
-    # Client Tracking (New in v1.11.4)
+    # Client Tracking
     client_tracking:
       enabled: true                     # Default: false
       bcast: false                      # Default: false
@@ -199,7 +168,7 @@ server:
       opt_out: true                     # Default: false
       prefixes: ["nt_", "sess:"]       # Default: []
 
-    # In‑process account name cache (New in v1.11.3)
+    # In‑process account name cache
     account_local_cache:
       enabled: true                     # Default: false
       ttl: 90s                          # Default: 60s
@@ -207,7 +176,7 @@ server:
       cleanup_interval: 5m              # Default: 10m
       max_items: 100000                 # Default: 0 (unlimited)
 
-    # Client‑side command batching (New in v1.11.3)
+    # Client‑side command batching
     batching:
       enabled: true                     # Default: false
       max_batch_size: 32                # Default: 16 (2–1024)
@@ -217,7 +186,7 @@ server:
       pipeline_timeout: 5s              # Default: 5s
 
     # TLS configuration for Redis
-    tls:                                # New in v1.7.11
+    tls:                
       enabled: true                     # Default: false
       cert: /path/to/redis/cert.pem
       key: /path/to/redis/key.pem
@@ -255,8 +224,7 @@ server:
       password: cluster_password        # Default: ""
       route_by_latency: true            # Default: false
       route_randomly: true              # Default: false
-      route_reads_to_replicas: true     # Default: false (New in v1.7.11)
-      # read_only: true                 # Deprecated: Use route_reads_to_replicas instead
+      route_reads_to_replicas: true     # Default: false
       max_redirects: 5                  # Default: 3
       read_timeout: 3s                  # Default: 0 (no timeout)
       write_timeout: 3s                 # Default: 0 (no timeout)
@@ -269,37 +237,13 @@ server:
   # Frontend configuration
   frontend:
     enabled: true                       # Default: false
-    csrf_secret: 32-byte-long-random-secret
-    cookie_store_auth_key: 32-byte-long-random-secret
-    cookie_store_encryption_key: 16-24-or-32-byte-long-random-secret
-    html_static_content_path: /usr/app/static
-    default_logo_image: /static/img/logo.png
-    login_page: /login
-    login_page_welcome: "Welcome to Nauthilus"
-    login_page_logo_image_alt: "Nauthilus Logo"
-    two_factor_page: /register
-    consent_page: /consent
-    logout_page: /logout
-    error_page: /error
-    notify_page: /notify
-    device_page: /device
-    homepage: https://nauthilus.org
-    logout_page_welcome: "You have been logged out"
-    consent_page_welcome: "Authorize application"
-    consent_page_logo_image_alt: "Nauthilus Logo"
-    notify_page_welcome: "Information"
-    notify_page_logo_image_alt: "Nauthilus Logo"
-    language_resources: /usr/app/resources
+    encryption_secret: 16-byte-or-longer-random-secret
+    html_static_content_path: static/templates
+    language_resources: server/resources
+    languages: ["en", "de"]             # Default: ["en", "de", "fr", "es", "it", "pt", "ru", "zh", "hi", "fa", "ar", "ja"]
     default_language: en
-    hydra_admin_uri: http://127.0.0.1:4445
     totp_issuer: nauthilus.me
     totp_skew: 1
-    login_remember_for: 10800
-
-  # Deduplication configuration (Deprecated/removed in v1.11.4)
-  # dedup:
-  #   in_process_enabled: true        # Deprecated and ignored since v1.11.4
-  #   # distributed_enabled is deprecated and ignored
 
   # Prometheus timer configuration
   prometheus_timer:
@@ -319,13 +263,10 @@ server:
   # Compression configuration
   compression:
     enabled: true                       # Default: false
-    level_gzip: 7                       # Default (gzip): 5; 'level' is deprecated since v1.9.9
+    level_gzip: 7                       # Default (gzip): 5
     algorithms: ["br", "zstd", "gzip"]  # Order = preference
     level_zstd: 2                       # 0=Default,1=BestSpeed,2=BetterCompression,3=BestCompression
-    level_brotli: 2                     # 0=Default,1=BestSpeed,2=BetterCompression,3=BestCompression (since v1.9.9)
-    # content_types:                    # Deprecated since v1.9.2: no longer used, safe to remove
-    #   - text/html
-    #   - application/json
+    level_brotli: 2                     # 0=Default,1=BestSpeed,2=BetterCompression,3=BestCompression
     min_length: 2048                    # Default: 1024
 
   # Keep alive configuration
@@ -374,7 +315,7 @@ realtime_blackhole_lists:
   # RBL lists configuration
   lists:
     - name: SpamRats AuthBL             # Required
-      rbl: auth.spamrats.com.           # Required (v1.10.7 allows trailing dot to avoid search domains)
+      rbl: auth.spamrats.com.           # Required (allows trailing dot to avoid search domains)
       ipv4: true                        # Default: false
       ipv6: true                        # Default: false
       return_code: 127.0.0.43           # Required
@@ -413,6 +354,9 @@ relay_domains:
     - domain3.tld
 
 brute_force:
+  # Optional per-user soft whitelist for tolerations (username: [CIDR, ...])
+  soft_whitelist: {}
+
   # IP whitelist for brute force protection
   ip_whitelist:                         # Default: empty list
     - 127.0.0.0/8
@@ -433,7 +377,7 @@ brute_force:
   tolerate_percent: 20                  # Default: 0
   tolerate_ttl: 48h                     # Default: 24h
 
-  # Adaptive toleration settings (v1.7.7)
+  # Adaptive toleration settings
   adaptive_toleration: true             # Default: false
   min_tolerate_percent: 10              # Default: 10
   max_tolerate_percent: 50              # Default: 50
@@ -444,7 +388,7 @@ brute_force:
     - ip_address: 192.168.1.0/24
       tolerate_percent: 30
       tolerate_ttl: 72h
-      # Per-IP adaptive toleration settings (v1.7.7)
+      # Per-IP adaptive toleration settings
       adaptive_toleration: true
       min_tolerate_percent: 15
       max_tolerate_percent: 60
@@ -455,19 +399,19 @@ brute_force:
       # Explicitly disable adaptive toleration for this IP
       adaptive_toleration: false
 
-  # Reduce PW_HIST writes for already‑blocked requests (v1.9.4)
+  # Reduce PW_HIST writes for already‑blocked requests
   pw_history_for_known_accounts: true   # Default: false
 
-  # IPv6 ip_scoping for RWP and Tolerations (v1.9.4)
+  # IPv6 ip_scoping for RWP and Tolerations
   ip_scoping:
     rwp_ipv6_cidr: 64                   # Default: 0 (disabled)
     tolerations_ipv6_cidr: 64           # Default: 0 (disabled)
 
-  # Cold-start grace for known accounts without negative PW history (v1.9.10)
+  # Cold-start grace for known accounts without negative PW history
   cold_start_grace_enabled: true        # Default: false
   cold_start_grace_ttl: 120s            # Default: 120s
 
-  # Repeating-wrong-password allowance (tolerate up to N unique wrong password hashes within a window) (v1.9.12)
+  # Repeating-wrong-password allowance (tolerate up to N unique wrong password hashes within a window)
   rwp_allowed_unique_hashes: 5          # Default: 3
   rwp_window: 30m                       # Default: 15m
 
@@ -551,46 +495,70 @@ brute_force:
         - my-oidc-client-id
         - another-client-id
 
-# Requires hydra build tag (-tags hydra)
-oauth2:
-  # Custom scopes configuration
-  custom_scopes:                        # Default: empty list
-    - name: dovecot                     # Required
-      description: Some description that will be seen on the consent page  # Required
-      description_de: "Deutsche Beschreibung"  # Optional
-      description_fr: "Description française"  # Optional
-      claims:                           # Required
-        - name: dovecot_user            # Required
-          type: string                  # Required (string, boolean, integer, float)
+# Identity Provider configuration (Native OIDC and SAML2)
+idp:
+  # OpenID Connect configuration
+  oidc:
+    enabled: true
+    issuer: https://nauthilus.example.com
+    auto_key_rotation: true
+    key_rotation_interval: 168h
+    key_max_age: 720h
+    access_token_type: jwt              # jwt or opaque
+    default_access_token_lifetime: 1h
+    default_refresh_token_lifetime: 30d
+    custom_scopes:
+      - name: my_custom_scope
+        description: "A custom scope for my application"
+        claims:
+          - name: custom_claim_1
+            type: string
+          - name: custom_claim_2
+            type: string
+    # Device Code Flow (RFC 8628)
+    device_code_expiry: 600s              # Default: 600s
+    device_code_polling_interval: 5       # Default: 5
+    device_code_user_code_length: 8       # Default: 8
+    clients:
+      - name: "My Application"
+        client_id: my-client
+        client_secret: client-secret
+        redirect_uris:
+          - https://app.example.com/callback
+        scopes:
+          - openid
+          - profile
+          - email
+        grant_types:
+          - authorization_code
+        id_token_claims:
+          mappings:
+            - claim: email
+              attribute: mail
+            - claim: name
+              attribute: cn
+            - claim: groups
+              attribute: memberOf
 
-        - name: dovecot_mailbox_home
-          type: string
+  # SAML 2.0 configuration
+  saml2:
+    enabled: true
+    entity_id: https://nauthilus.example.com/idp/saml/metadata
+    cert_file: /etc/nauthilus/saml.crt
+    key_file: /etc/nauthilus/saml.key
+    service_providers:
+      - name: "Example App"
+        entity_id: https://app.example.com/saml/metadata
+        acs_url: https://app.example.com/saml/acs
+        allowed_attributes: ["mail", "cn", "uid", "memberOf"]
+        allow_mfa_manage: true
 
-        - name: dovecot_mailbox_path
-          type: string
-
-        - name: dovecot_acl_groups
-          type: string
-
-  # OAuth2 clients configuration
-  clients:                              # Default: empty list
-    - name: Testing                     # Required
-      client_id: SOME-CLIENT-ID         # Required
-      skip_consent: false               # Default: false
-      skip_totp: false                  # Default: false
-      subject: entryUUID                # Required
-      claims:                           # Required
-        name: cn
-        given_name: givenName
-        family_name: sn
-        nickname: uniqueIdentifier
-        preferred_username: uniqueIdentifier
-        email: mail
-        groups: organizationalStatus
-        dovecot_user: rnsMSDovecotUser
-        dovecot_mailbox_home: rnsMSMailboxHome
-        dovecot_mailbox_path: rnsMSMailPath
-        dovecot_acl_groups: rnsMSACLGroups
+  # WebAuthn settings
+  webauthn:
+    rp_display_name: "Nauthilus IdP"
+    rp_id: nauthilus.example.com
+    rp_origins:
+      - https://nauthilus.example.com
 
 
 # LDAP configuration
@@ -603,54 +571,56 @@ ldap:
     auth_pool_size: 8                   # Default: 10
     auth_idle_pool_size: 2              # Default: 2
     # Queue limits per pool (0 = unlimited)
-    lookup_queue_length: 0              # Default: 0 (New in v1.10.0)
-    auth_queue_length: 0                # Default: 0 (New in v1.10.0)
+    lookup_queue_length: 0              # Default: 0
+    auth_queue_length: 0                # Default: 0
 
     # Connection/token acquisition guard
     connect_abort_timeout: 10s          # Default: 10s
 
     # Operation-specific timeouts
-    search_timeout: 0s                  # Default: 0 (lib default) (New in v1.10.0)
-    bind_timeout: 0s                    # Default: 0 (lib default) (New in v1.10.0)
-    modify_timeout: 0s                  # Default: 0 (lib default) (New in v1.10.0)
+    search_timeout: 0s                  # Default: 0 (lib default)
+    bind_timeout: 0s                    # Default: 0 (lib default)
+    modify_timeout: 0s                  # Default: 0 (lib default)
 
     # Search guardrails
-    search_size_limit: 0                # Default: 0 (server default) (New in v1.10.0)
-    search_time_limit: 0s               # Default: 0 (server default) (New in v1.10.0)
+    search_size_limit: 0                # Default: 0 (server default)
+    search_time_limit: 0s               # Default: 0 (server default)
 
     # Retry/backoff on transient network errors
-    retry_max: 2                        # Default: 2 (New in v1.10.0)
-    retry_base: 200ms                   # Default: 200ms (New in v1.10.0)
-    retry_max_backoff: 2s               # Default: 2s (New in v1.10.0)
+    retry_max: 2                        # Default: 2
+    retry_base: 200ms                   # Default: 200ms
+    retry_max_backoff: 2s               # Default: 2s
 
     # Circuit breaker per target
-    cb_failure_threshold: 5             # Default: 5 (New in v1.10.0)
-    cb_cooldown: 30s                    # Default: 30s (New in v1.10.0)
-    cb_half_open_max: 1                 # Default: 1 (New in v1.10.0)
+    cb_failure_threshold: 5             # Default: 5
+    cb_cooldown: 30s                    # Default: 30s
+    cb_half_open_max: 1                 # Default: 1
 
     # Health checks
-    health_check_interval: 10s          # Default: 10s (New in v1.10.0)
-    health_check_timeout: 1.5s          # Default: 1.5s (New in v1.10.0)
+    health_check_interval: 10s          # Default: 10s
+    health_check_timeout: 1.5s          # Default: 1.5s
 
     # Request/result shaping & caches
-    dn_cache_ttl: 60s                   # Default: 0s (disabled) (New in v1.10.0)
-    membership_cache_ttl: 120s          # Default: 0s (disabled) (New in v1.10.0)
-    negative_cache_ttl: 20s             # Default: 20s (New in v1.10.0)
-    cache_max_entries: 5000             # Default: 5000 (New in v1.10.0)
-    cache_impl: ttl                     # Default: ttl (ttl|lru) (New in v1.10.0)
-    include_raw_result: false           # Default: false (New in v1.10.0)
+    dn_cache_ttl: 60s                   # Default: 0s (disabled)
+    membership_cache_ttl: 120s          # Default: 0s (disabled)
+    negative_cache_ttl: 20s             # Default: 20s
+    cache_max_entries: 5000             # Default: 5000
+    cache_impl: ttl                     # Default: ttl (ttl|lru)
+    include_raw_result: false           # Default: false
 
     # Optional auth rate limiting per pool
-    auth_rate_limit_per_second: 0       # Default: 0 (disabled) (New in v1.10.0)
-    auth_rate_limit_burst: 0            # Default: 0 (disabled) (New in v1.10.0)
+    auth_rate_limit_per_second: 0       # Default: 0 (disabled)
+    auth_rate_limit_burst: 0            # Default: 0 (disabled)
 
-    server_uri: ldap://some.server:389/ # Required
+    server_uri:
+      - ldap://some.server:389/         # Required
     bind_dn: cn=admin,dc=example,dc=com # Optional
     bind_pw: secret                     # Optional
+    encryption_secret: long-random-secret # Required if encrypted fields are used (min. 16 chars, no spaces; internally derived to a 32-byte key)
     starttls: true                      # Default: false
     tls_skip_verify: true               # Default: false
     sasl_external: true                 # Default: false
-    pool_only: false                    # Default: false
+    lookup_pool_only: false             # Default: false
 
     # Required if sasl_external is true
     tls_ca_cert: /path/to/cacert.pem
@@ -665,32 +635,33 @@ ldap:
       auth_pool_size: 5
       auth_idle_pool_size: 1
       # Per-pool queue limits (0 = unlimited)
-      lookup_queue_length: 100            # New in v1.10.0
-      auth_queue_length: 100              # New in v1.10.0
+      lookup_queue_length: 100
+      auth_queue_length: 100
       # Per-pool timeouts and guardrails
-      search_timeout: 2s                  # New in v1.10.0
-      bind_timeout: 1s                    # New in v1.10.0
-      modify_timeout: 2s                  # New in v1.10.0
-      search_size_limit: 500              # New in v1.10.0
-      search_time_limit: 3s               # New in v1.10.0
+      search_timeout: 2s  
+      bind_timeout: 1s    
+      modify_timeout: 2s  
+      search_size_limit: 500
+      search_time_limit: 3s 
       # Retry/backoff & breaker
-      retry_max: 2                        # New in v1.10.0
-      retry_base: 200ms                   # New in v1.10.0
-      retry_max_backoff: 2s               # New in v1.10.0
-      cb_failure_threshold: 5             # New in v1.10.0
-      cb_cooldown: 30s                    # New in v1.10.0
-      cb_half_open_max: 1                 # New in v1.10.0
+      retry_max: 2        
+      retry_base: 200ms   
+      retry_max_backoff: 2s 
+      cb_failure_threshold: 5 
+      cb_cooldown: 30s    
+      cb_half_open_max: 1 
       # Health checks
-      health_check_interval: 10s          # New in v1.10.0
-      health_check_timeout: 1.5s          # New in v1.10.0
+      health_check_interval: 10s        
+      health_check_timeout: 1.5s        
       # Cache settings (optional)
-      negative_cache_ttl: 20s             # New in v1.10.0
-      cache_impl: ttl                     # New in v1.10.0
-      include_raw_result: false           # New in v1.10.0
+      negative_cache_ttl: 20s 
+      cache_impl: ttl     
+      include_raw_result: false         
       # Per-pool auth rate limit (optional)
-      auth_rate_limit_per_second: 0       # New in v1.10.0
-      auth_rate_limit_burst: 0            # New in v1.10.0
-      server_uri: ldap://ldap1.example.com:389/
+      auth_rate_limit_per_second: 0     
+      auth_rate_limit_burst: 0
+      server_uri:
+        - ldap://ldap1.example.com:389/
       starttls: true
       tls_skip_verify: false
     pool2:
@@ -698,9 +669,10 @@ ldap:
       lookup_idle_pool_size: 1
       auth_pool_size: 3
       auth_idle_pool_size: 1
-      lookup_queue_length: 50             # New in v1.10.0
-      auth_queue_length: 50               # New in v1.10.0
-      server_uri: ldap://ldap2.example.com:389/
+      lookup_queue_length: 50 
+      auth_queue_length: 50 
+      server_uri:
+        - ldap://ldap2.example.com:389/
       starttls: true
       tls_skip_verify: false
 
@@ -747,7 +719,7 @@ ldap:
                 (rnsMSDovecotMaster=TRUE)
               )
             )
-        webauthn_credentials: |         # Optional (requires hydra build tag)
+        webauthn_credentials: |         # Optional
             (&
               (objectClass=rns2FAWebAuthn)
               (entryUUID=%{user_id})
@@ -757,7 +729,7 @@ ldap:
         totp_secret_field: rns2FATOTPSecret  # Optional
         totp_recovery_field: rns2FATOTPRecoveryCode  # Optional
         display_name_field: cn          # Optional
-        credential_object: rns2FAWebAuthn  # Optional (requires hydra build tag)
+        credential_object: rns2FAWebAuthn  # Optional
         credential_id_field: rns2FAWebAuthnCredID  # Optional
         public_key_field: rns2FAWebAuthnPubKey  # Optional
         unique_user_id_field: entryUUID  # Optional
@@ -802,8 +774,9 @@ ldap:
         - rnsMSDovecotUser
 
     - protocol:
-        - ory-hydra  # requires hydra build tag
-      cache_name: oauth
+        - oidc
+        - saml
+      cache_name: oidc
       base_dn: ou=people,ou=it,dc=example,dc=com
       filter:
         user: |
@@ -847,7 +820,7 @@ lua:
 
   # Lua filters configuration
   filters:                              # Default: empty list
-    # Lua Filter execution flags (New in v1.10.0)
+    # Lua Filter execution flags
     # Each filter can declare in which auth state it should run:
     # - when_authenticated: true|false   # run when request.authenticated == true
     # - when_unauthenticated: true|false # run when request.authenticated == false
@@ -857,33 +830,33 @@ lua:
 
     - name: geoip
       script_path: ./server/lua-plugins.d/filters/geoip.lua
-      when_authenticated: true          # New in v1.10.0
-      when_unauthenticated: false       # New in v1.10.0
-      when_no_auth: false               # New in v1.10.0
+      when_authenticated: true        
+      when_unauthenticated: false     
+      when_no_auth: false 
 
     - name: monitoring                  # Dovecot/Director routing
       script_path: ./server/lua-plugins.d/filters/monitoring.lua
-      when_authenticated: true          # New in v1.10.0
-      when_unauthenticated: false       # New in v1.10.0
-      when_no_auth: false               # New in v1.10.0
+      when_authenticated: true        
+      when_unauthenticated: false     
+      when_no_auth: false 
 
     - name: account_centric_monitoring  # Telemetry/metrics, should also run on failed logins
       script_path: ./server/lua-plugins.d/filters/account_centric_monitoring.lua
-      when_authenticated: true          # New in v1.10.0
-      when_unauthenticated: true        # New in v1.10.0
-      when_no_auth: false               # New in v1.10.0
+      when_authenticated: true        
+      when_unauthenticated: true      
+      when_no_auth: false 
 
     - name: soft_delay                  # Gentle per-account delay to slow down attacks
       script_path: ./server/lua-plugins.d/filters/soft_delay.lua
-      when_authenticated: true          # New in v1.10.0
-      when_unauthenticated: true        # New in v1.10.0
-      when_no_auth: false               # New in v1.10.0
+      when_authenticated: true        
+      when_unauthenticated: true      
+      when_no_auth: false 
 
     - name: account_protection_mode     # Progressive protection with optional enforcement
       script_path: ./server/lua-plugins.d/filters/account_protection_mode.lua
-      when_authenticated: true          # New in v1.10.0
-      when_unauthenticated: true        # New in v1.10.0
-      when_no_auth: true                # New in v1.10.0
+      when_authenticated: true        
+      when_unauthenticated: true      
+      when_no_auth: true
 
   # Lua actions configuration
   actions:                              # Default: empty list
@@ -905,36 +878,33 @@ lua:
     - http_location: "status"           # Required
       http_method: "GET"                # Required
       script_path: "/etc/nauthilus/lua-plugins.d/hooks/status_check.lua"  # Required
-      roles: ["admin", "monitoring"]    # Optional
+      scopes: ["admin", "monitoring"]   # Optional
     - http_location: "user-info"
       http_method: "GET"
       script_path: "/etc/nauthilus/lua-plugins.d/hooks/user_info.lua"
-      roles: ["user_info"]
+      scopes: ["user_info"]
 
   # Lua backend configuration
   config:
     script_path: ./server/lua-plugins.d/backend/backend.lua  # Required
     init_script_path: ./server/lua-plugins.d/init/init.lua  # Optional, single init script
-    init_script_paths:  # Optional, list of init scripts (v1.7.7)
+    init_script_paths:  # Optional, list of init scripts
       - ./server/lua-plugins.d/init/init.lua
     package_path: /usr/local/etc/nauthilus/lualib/?.lua  # Optional
-    backend_number_of_workers: 10       # Default: 10 (Lua backend workers) — New in v1.10.0
-    number_of_workers: 10               # Deprecated (use backend_number_of_workers); still supported for backward compatibility
+    backend_number_of_workers: 10       # Default: 10 (Lua backend workers)
     action_number_of_workers: 10        # Default: 10 (Lua Action workers)
-    feature_vm_pool_size: 10            # New in v1.10.0 (VM pool size for Lua features)
-    filter_vm_pool_size: 10             # New in v1.10.0 (VM pool size for Lua filters)
-    hook_vm_pool_size: 10               # New in v1.10.0 (VM pool size for Lua hooks)
-    ip_scoping_v6_cidr: 64              # New in v1.10.0 (IPv6 scoping for Lua features; 0 disables)
-    ip_scoping_v4_cidr: 24              # New in v1.10.0 (IPv4 scoping for Lua features; 0 disables)
+    feature_vm_pool_size: 10            # (VM pool size for Lua features)
+    filter_vm_pool_size: 10             # (VM pool size for Lua filters)
+    hook_vm_pool_size: 10               # (VM pool size for Lua hooks)
+    ip_scoping_v6_cidr: 64              # (IPv6 scoping for Lua features; 0 disables)
+    ip_scoping_v4_cidr: 24              # (IPv4 scoping for Lua features; 0 disables)
 
   # Optional Lua backends
   optional_lua_backends:
     backend1:
-      backend_number_of_workers: 5  # New in v1.10.0
-      # number_of_workers: 5        # Deprecated (use backend_number_of_workers)
+      backend_number_of_workers: 5
     backend2:
-      backend_number_of_workers: 3  # New in v1.10.0
-      # number_of_workers: 3        # Deprecated (use backend_number_of_workers)
+      backend_number_of_workers: 3
 
   # Lua search configuration
   search:                               # Default: empty list
@@ -954,7 +924,9 @@ lua:
         - submission
       cache_name: submission
 
-    - protocol: ory-hydra
+    - protocol:
+        - oidc
+        - saml
       cache_name: oidc
 
 backend_server_monitoring:

@@ -439,7 +439,7 @@ After basic setup, consider exploring:
 - [Advanced Configuration](/docs/configuration/index.md) - Detailed configuration options
 - [LDAP Backend](/docs/configuration/database-backends/ldap.md) - LDAP integration details
 - [Lua Backend](/docs/configuration/database-backends/lua.md) - Custom authentication with Lua
-- [OAuth2 Configuration](/docs/configuration/oauth2.md) - Setting up SSO
+- [OAuth2 Configuration](../configuration/oauth2.md) - Setting up SSO
 - [Full Configuration Example](/docs/configuration/full-example.md) - Complete configuration reference
 
 ## Getting Help

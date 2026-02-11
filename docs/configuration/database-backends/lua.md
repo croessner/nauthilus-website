@@ -104,16 +104,16 @@ The following **type**s are known:
 
 ### lua::custom_hooks
 
-Custom hooks allow you to define HTTP endpoints that execute Lua scripts. When JWT authentication is enabled, you can restrict access to these endpoints based on user roles.
+Custom hooks allow you to define HTTP endpoints that execute Lua scripts. When OIDC authentication is enabled, you can restrict access to these endpoints based on scopes.
 
 #### Definition of a "custom_hooks" list
 
-| Key           | Required | Description                                                                 | Example                                       |
-|---------------|:--------:|-----------------------------------------------------------------------------|-----------------------------------------------|
-| http_location |   yes    | The URL path for the hook (relative to /api/v1/custom/)                     | status                                        |
-| http_method   |   yes    | The HTTP method for the hook (GET, POST, PUT, DELETE, PATCH)                | GET                                           |
-| script_path   |   yes    | Full path to the Lua script that will be executed                           | /etc/nauthilus/lua-plugins.d/hooks/status.lua |
-| roles         |    no    | List of roles that are allowed to access this hook when JWT auth is enabled | ["admin", "monitoring"]                       |
+| Key           | Required | Description                                                                  | Example                                       |
+|---------------|:--------:|------------------------------------------------------------------------------|-----------------------------------------------|
+| http_location |   yes    | The URL path for the hook (relative to /api/v1/custom/)                      | status                                        |
+| http_method   |   yes    | The HTTP method for the hook (GET, POST, PUT, DELETE, PATCH)                 | GET                                           |
+| script_path   |   yes    | Full path to the Lua script that will be executed                            | /etc/nauthilus/lua-plugins.d/hooks/status.lua |
+| scopes        |    no    | List of scopes that are allowed to access this hook when OIDC auth is enabled | ["admin", "monitoring"]                       |
 
 Example configuration:
 
@@ -123,16 +123,15 @@ lua:
     - http_location: "status"
       http_method: "GET"
       script_path: "/etc/nauthilus/lua-plugins.d/hooks/status_check.lua"
-      roles: ["admin", "monitoring"]
+      scopes: ["admin", "monitoring"]
     - http_location: "user-info"
       http_method: "GET"
       script_path: "/etc/nauthilus/lua-plugins.d/hooks/user_info.lua"
-      roles: ["user_info"]
+      scopes: ["user_info"]
 ```
+When OIDC authentication is enabled, the scopes specified for a hook are checked against the scopes in the user's OIDC token. If the user doesn't have any of the required scopes, the request is rejected with a 403 Forbidden status.
 
-When JWT authentication is enabled, the roles specified for a hook are checked against the roles in the user's JWT token. If the user doesn't have any of the required roles, the request is rejected with a 403 Forbidden status.
-
-If no roles are specified for a hook, any authenticated user can access it when JWT is enabled.
+If no scopes are specified for a hook, any authenticated user can access it when OIDC auth is enabled.
 
 ### lua::config
 
@@ -250,7 +249,9 @@ lua:
         - submission
       cache_name: submission
 
-    - protocol: ory-hydra
+    - protocol:
+        - oidc
+        - saml
       cache_name: oidc
 ```
 

@@ -9,9 +9,6 @@ sidebar_position: 1
 
 Docker is the recommended way to deploy Nauthilus, providing a consistent and isolated environment for running the authentication service.
 
-:::note
-As of v1.9.12, official images are built without Hydra/OIDC by default. If you need Hydra (login/consent, 2FA/WebAuthn UI), build your own image with BUILD_TAGS=hydra as shown below.
-:::
 
 ## Available Docker Images
 
@@ -96,19 +93,6 @@ This allows you to:
 - Use the `reload` endpoint to apply changes without restarting
 - Maintain complex configurations in version control
 
-## Hydra-enabled image builds
-
-To build an image that includes Hydra/OIDC, pass BUILD_TAGS=hydra at build time. The project Dockerfile already supports this argument.
-
-```bash
-# Build without Hydra (default)
-docker build -t ghcr.io/yourorg/nauthilus:1.9.12 .
-
-# Build with Hydra enabled
-docker build --build-arg BUILD_TAGS=hydra -t ghcr.io/yourorg/nauthilus:1.9.12-hydra .
-```
-
-At runtime, configure the oauth2 section only when using a hydra-enabled image. 2FA/WebAuthn UI routes are present only in hydra builds.
 
 ## Advanced Docker Compose Setup
 

@@ -38,8 +38,7 @@ Nauthilus can be protected with HTTP basic authorization, which is configured wi
 username and password, you can add the **internal-basic-auth** protocol to one of your protocol definitions and Nauthilus
 will use this backend for username and passowrd checks.
 
-The protocol **ory-hydra** is for OAuth2/OpenID Connect. Note that it is ory-hydra and not oauth2, as other servers may
-appear in the future with different bindings/dependencies to Nauthilus.
+The protocol **oidc** and **saml** are for the native Identity Provider.
 
 The protocol **account-provider** is used internally when Nauthilus needs to retrieve a list of all known user accounts from the backend databases. This happens when the API endpoint is called with the `mode=list-accounts` query parameter.
 
@@ -68,7 +67,9 @@ ldap:
       cache_name: submission
       # ...
 
-    - protocol: ory-hydra
+    - protocol:
+        - oidc
+        - saml
       cache_name: oidc
       # ...
 ```
@@ -93,6 +94,8 @@ lua:
         - submission
       cache_name: submission
 
-    - protocol: ory-hydra
+    - protocol:
+        - oidc
+        - saml
       cache_name: oidc
 ```

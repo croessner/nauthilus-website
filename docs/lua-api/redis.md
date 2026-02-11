@@ -1898,3 +1898,53 @@ if err then error(err) end
 - Error handling: If building the batch fails (e.g., unsupported command name, missing uploaded script) an error is returned
   without executing the pipeline. If execution returns an error (e.g., network issue), it is propagated as `err`.
 
+
+
+---
+
+# Security helpers
+
+The Redis module provides optional encryption helpers backed by the Redis security manager.
+
+These functions return `result, error` pairs. When encryption is disabled or unavailable, an error is returned where applicable.
+
+## nauthilus_redis.redis_encrypt
+
+Encrypt a plaintext string using the configured security manager.
+
+### Syntax
+
+```lua
+local ciphertext, err = nauthilus_redis.redis_encrypt("my secret")
+```
+
+### Returns
+- `ciphertext` (string) – base64/encoded string (implementation-defined)
+- `err` (string|nil)
+
+## nauthilus_redis.redis_decrypt
+
+Decrypt a ciphertext string using the configured security manager.
+
+### Syntax
+
+```lua
+local plaintext, err = nauthilus_redis.redis_decrypt(ciphertext)
+```
+
+### Returns
+- `plaintext` (string)
+- `err` (string|nil)
+
+## nauthilus_redis.redis_is_encryption_enabled
+
+Check if encryption is enabled in the Redis security manager.
+
+### Syntax
+
+```lua
+local enabled = nauthilus_redis.redis_is_encryption_enabled()
+```
+
+### Returns
+- `enabled` (boolean)

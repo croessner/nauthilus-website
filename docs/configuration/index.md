@@ -82,7 +82,7 @@ The configuration is divided into the following main sections:
 - [Backend Server Monitoring](backend-server-monitoring.md) - Health checks for backend servers
 - [Brute Force Protection](brute-force.md) - Settings for brute force attack prevention
 - [Password Nonce](password-nonce.md) - Password hashing configuration
-- [OAuth2](oauth2.md) - OAuth2/OpenID Connect configuration
+- [Identity Provider](idp/index.md) - Native OIDC (Authorization Code) and SAML2
 - [Database Backends](database-backends/index.md) - Configuration for authentication backends
   - [Protocols](database-backends/protocols.md) - Protocol-specific settings
   - [Macros](database-backends/macros.md) - Macro definitions for queries

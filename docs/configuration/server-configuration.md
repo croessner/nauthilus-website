@@ -70,7 +70,6 @@ server:
     auth_json: false
     auth_basic: false
     auth_nginx: false
-    auth_saslauthd: false
     auth_jwt: false
     custom_hooks: false
     configuration: false    # Available from version 1.7.11
@@ -88,10 +87,13 @@ Disableing unused endpoints may enhance overall security!
 | auth\_json      | /api/v1/auth/json      | Turn off HTTP JSON-POST requests                               |
 | auth\_basic     | /api/v1/auth/basic     | Turn off HTTP Basic Authorization requests (recommended!)      |
 | auth\_nginx     | /api/v1/auth/nginx     | Turn off Nginx based requests used by the mail plugin of Nginx |
-| auth\_saslauthd | /api/v1/auth/saslauthd | Turn off saslauthd requests used with cyrus-sasl               |
 | auth\_jwt       | /api/v1/jwt/*          | Turn off JWT authentication endpoints                          |
 | custom\_hooks   | /api/v1/custom/*       | Turn off all Lua based custom hooks                            |
 | configuration   | /api/v1/config/*       | Turn off all configuration related endpoints                   |
+
+Note:
+- `/api/v1/auth/basic` is compiled only when the build tag `auth_basic_endpoint` is set.
+- `server.disabled_endpoints.auth_basic` only has an effect when that endpoint is present in the binary.
 
 ## HTTP Client Configuration
 
@@ -360,6 +362,57 @@ server:
   oidc_auth:
     enabled: true
 ```
+
+Behavior summary:
+- Protected `/api/v1/*` modules use this middleware and require a Bearer token with scope `nauthilus:authenticate`.
+- Missing or invalid Bearer token results in `401 Unauthorized`.
+- Valid token without required scope results in `403 Forbidden`.
+- If `server.basic_auth.enabled` and `server.oidc_auth.enabled` are both `true`, both checks apply (Basic Auth and OIDC Bearer).
+- This setting validates tokens; token issuance is done by the OIDC token endpoint (`/oidc/token`).
+
+Custom hooks (`/api/v1/custom/*`) are handled separately:
+- Hooks with no `lua.custom_hooks[].scopes` are public.
+- Hooks with configured `scopes` require a valid Bearer token carrying at least one configured scope.
+- If `scopes` are configured but `server.oidc_auth.enabled` is `false`, those hooks are denied (`401 Unauthorized`) because no token validator is active.
+
+## Privilege Drop and Chroot
+
+### server::run_as_user
+_Default: empty_
+
+Switches the process to the given unprivileged user after startup initialization.
+
+### server::run_as_group
+_Default: empty_
+
+Switches the process to the given group after startup initialization.
+
+### server::chroot
+_Default: empty_
+
+Chroots the process into the configured directory before `setgid`/`setuid` are applied.
+
+Example:
+
+```yaml
+server:
+  run_as_user: "nauthilus"
+  run_as_group: "nauthilus"
+  chroot: "/var/lib/nauthilus/chroot"
+```
+
+Behavior and ordering:
+- Nauthilus binds sockets and performs file-based startup initialization first, then applies privilege drop/chroot.
+- Effective order is: resolve user/group -> validate chroot essentials -> `chroot` -> `setgroups` -> `setgid` -> `setuid`.
+
+Important `chroot` constraints:
+- The chroot directory must contain these files for DNS resolution:
+  - `/etc/resolv.conf`
+  - `/etc/nsswitch.conf`
+  - `/etc/hosts`
+- Any files needed at runtime must be reachable inside the jail path (for example cert/key files, templates, static assets, Lua scripts, UNIX sockets).
+- Absolute paths are resolved inside the chroot after the switch.
+- `chroot`/`setuid`/`setgid` require sufficient privileges (typically root at process start).
 
 ## Instance Name
 

@@ -26,7 +26,21 @@ Scripts are run in order and the first script that triggers, aborts the executio
 |----------------|:--------:|----------------------------------------------------------------|---------|
 | name           |   yes    | A unique name for the Lua feature                              | demo    |
 | script\_path   |   yes    | Full path to the Lua feature script                            | -       |
-| when\_no\_auth |    no    | Run the feature when `request.no_auth == true`. Default: false | false   |
+| when\_authenticated | no | Run the feature when `request.authenticated == true` | true |
+| when\_unauthenticated | no | Run the feature when `request.authenticated == false` | true |
+| when\_no\_auth | no | Run the feature when `request.no_auth == true` | false |
+
+Feature execution flags:
+- `when_authenticated` (bool): run when `request.authenticated == true`.
+- `when_unauthenticated` (bool): run when `request.authenticated == false`.
+- `when_no_auth` (bool): run when `request.no_auth == true` (passwordless flows).
+
+Defaults and selection logic:
+- If all three flags are omitted, or all are explicitly `false`, Nauthilus applies safe defaults:
+  - `when_authenticated=true`
+  - `when_unauthenticated=true`
+  - `when_no_auth=false`
+- Local/in-memory cache hits set `authenticated=true`; features configured with `when_authenticated=true` can therefore run on cache hits.
 
 ### lua::filters
 
@@ -78,6 +92,27 @@ See also:
 - Configuration → [Full Configuration Example](/docs/configuration/full-example)
 - Release Notes → [1.10.x](/docs/release-notes/1.10)
 
+#### IdP-specific request fields for filters
+
+When a request is related to native IdP flows (OIDC/SAML), additional fields are available in Lua filters:
+
+- `request.grant_type`
+- `request.oidc_cid`
+- `request.oidc_client_name`
+- `request.redirect_uri`
+- `request.mfa_completed`
+- `request.mfa_method`
+- `request.requested_scopes`
+- `request.user_groups`
+- `request.allowed_client_scopes`
+- `request.allowed_client_grant_types`
+
+These fields are especially useful for policy enforcement in OIDC flows (for example scope- or grant-type-based decisions).
+
+Reference example from source tree:
+- `server/lua-plugins.d/filters/idp_policy.lua`
+- `server/lua-plugins.d/filters/README.md`
+
 ### lua::actions
 
 Actions have a type and script path element for each Lua script. An incoming request is waiting for all actions to be 
@@ -104,7 +139,7 @@ The following **type**s are known:
 
 ### lua::custom_hooks
 
-Custom hooks allow you to define HTTP endpoints that execute Lua scripts. When OIDC authentication is enabled, you can restrict access to these endpoints based on scopes.
+Custom hooks allow you to define HTTP endpoints that execute Lua scripts. You can optionally restrict access to these endpoints based on scopes.
 
 #### Definition of a "custom_hooks" list
 
@@ -113,7 +148,7 @@ Custom hooks allow you to define HTTP endpoints that execute Lua scripts. When O
 | http_location |   yes    | The URL path for the hook (relative to /api/v1/custom/)                      | status                                        |
 | http_method   |   yes    | The HTTP method for the hook (GET, POST, PUT, DELETE, PATCH)                 | GET                                           |
 | script_path   |   yes    | Full path to the Lua script that will be executed                            | /etc/nauthilus/lua-plugins.d/hooks/status.lua |
-| scopes        |    no    | List of scopes that are allowed to access this hook when OIDC auth is enabled | ["admin", "monitoring"]                       |
+| scopes        |    no    | List of scopes that are allowed to access this hook                             | ["admin", "monitoring"]                       |
 
 Example configuration:
 
@@ -129,9 +164,12 @@ lua:
       script_path: "/etc/nauthilus/lua-plugins.d/hooks/user_info.lua"
       scopes: ["user_info"]
 ```
-When OIDC authentication is enabled, the scopes specified for a hook are checked against the scopes in the user's OIDC token. If the user doesn't have any of the required scopes, the request is rejected with a 403 Forbidden status.
-
-If no scopes are specified for a hook, any authenticated user can access it when OIDC auth is enabled.
+Behavior:
+- If `scopes` are configured, Nauthilus expects a Bearer token and checks whether the token contains at least one listed scope.
+- If the token is missing or invalid, the request is rejected with `401 Unauthorized`.
+- If the token is valid but no required scope matches, the request is rejected with `403 Forbidden`.
+- If no `scopes` are configured, the hook is public.
+- If `scopes` are configured but `server.oidc_auth.enabled` is `false`, access is rejected (`401 Unauthorized`) because no OIDC token validator is active.
 
 ### lua::config
 

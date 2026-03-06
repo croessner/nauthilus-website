@@ -54,7 +54,7 @@ userlist basic-auth-list
 frontend nauthilus
     mode http
     bind ....:443 ssl crt /path/to/crt alpn h2,http/1.1
-    acl idp path_beg /idp/oidc /idp/saml /login /logout /mfa /webauthn /static
+    acl idp path_beg /oidc /saml /login /logout /mfa /static
     acl invalid_src src 0.0.0.0/7 224.0.0.0/3
     acl invalid_src src_port 0:1023
     tcp-request connection reject if invalid_src

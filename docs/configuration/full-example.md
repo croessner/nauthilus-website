@@ -18,15 +18,17 @@ server:
   max_password_history_entries: 10      # Default: 0
   http3: true                           # Default: false
   haproxy_v2: false                     # Default: false
+  run_as_user: "nauthilus"              # Optional
+  run_as_group: "nauthilus"             # Optional
+  chroot: "/var/lib/nauthilus/chroot"   # Optional (must contain required /etc files for DNS)
   instance_name: nauthilus_demo         # Default: "nauthilus"
 
   # Disabled endpoints
   disabled_endpoints:
     auth_header: false                  # Default: false
     auth_json: false                    # Default: false
-    auth_basic: false                   # Default: false
+    auth_basic: false                   # Default: false (only relevant if built with -tags auth_basic_endpoint)
     auth_nginx: false                   # Default: false
-    auth_saslauthd: false               # Default: false
     auth_jwt: false                     # Default: false
     custom_hooks: false                 # Default: false
     configuration: false                # Default: false 
@@ -407,10 +409,6 @@ brute_force:
     rwp_ipv6_cidr: 64                   # Default: 0 (disabled)
     tolerations_ipv6_cidr: 64           # Default: 0 (disabled)
 
-  # Cold-start grace for known accounts without negative PW history
-  cold_start_grace_enabled: true        # Default: false
-  cold_start_grace_ttl: 120s            # Default: 120s
-
   # Repeating-wrong-password allowance (tolerate up to N unique wrong password hashes within a window)
   rwp_allowed_unique_hashes: 5          # Default: 3
   rwp_window: 30m                       # Default: 15m
@@ -429,6 +427,7 @@ brute_force:
   buckets:                              # Default: empty list
     - name: b_1min_ipv4_32              # Required
       period: 60                        # Required
+      ban_time: 4h                      # Optional, default: 8h
       cidr: 32                          # Required
       ipv4: true                        # Default: false
       failed_requests: 10               # Required
@@ -507,6 +506,8 @@ idp:
     access_token_type: jwt              # jwt or opaque
     default_access_token_lifetime: 1h
     default_refresh_token_lifetime: 30d
+    consent_ttl: 720h
+    consent_mode: all_or_nothing        # all_or_nothing|granular_optional
     custom_scopes:
       - name: my_custom_scope
         description: "A custom scope for my application"
@@ -531,6 +532,20 @@ idp:
           - email
         grant_types:
           - authorization_code
+        require_mfa:
+          - webauthn
+        supported_mfa:
+          - totp
+          - webauthn
+          - recovery_codes
+        consent_ttl: 720h
+        consent_mode: all_or_nothing
+        required_scopes:
+          - openid
+          - profile
+        optional_scopes:
+          - email
+          - groups
         id_token_claims:
           mappings:
             - claim: email
@@ -543,15 +558,17 @@ idp:
   # SAML 2.0 configuration
   saml2:
     enabled: true
-    entity_id: https://nauthilus.example.com/idp/saml/metadata
+    entity_id: https://nauthilus.example.com/saml/metadata
     cert_file: /etc/nauthilus/saml.crt
     key_file: /etc/nauthilus/saml.key
+    signature_method: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" # XMLDSig algorithm URI (currently the only supported value)
     service_providers:
       - name: "Example App"
         entity_id: https://app.example.com/saml/metadata
         acs_url: https://app.example.com/saml/acs
         allowed_attributes: ["mail", "cn", "uid", "memberOf"]
-        allow_mfa_manage: true
+        require_mfa: ["webauthn"]
+        supported_mfa: ["totp", "webauthn", "recovery_codes"]
 
   # WebAuthn settings
   webauthn:
@@ -559,6 +576,9 @@ idp:
     rp_id: nauthilus.example.com
     rp_origins:
       - https://nauthilus.example.com
+    authenticator_attachment: platform  # Optional: platform|cross-platform
+    resident_key: preferred             # Optional, default: discouraged
+    user_verification: preferred        # Optional, default: preferred
 
 
 # LDAP configuration
@@ -811,11 +831,22 @@ ldap:
 lua:
   # Lua features configuration
   features:                             # Default: empty list
+    # Lua Feature execution flags
+    # Each feature can declare in which auth state it should run:
+    # - when_authenticated: true|false   # run when request.authenticated == true
+    # - when_unauthenticated: true|false # run when request.authenticated == false
+    # - when_no_auth: true|false         # run when request.no_auth == true (passwordless flows)
+    # Defaults when all three are omitted or all set to false: when_authenticated=true, when_unauthenticated=true, when_no_auth=false.
+    # Note: Local/in-memory cache hits set authenticated=true; features configured for authenticated can run for cache hits as well.
     - name: demo                        # Required
       script_path: ./server/lua-plugins.d/features/demo.lua  # Required
+      when_authenticated: true
+      when_unauthenticated: true
       when_no_auth: false
     - name: comm
       script_path: ./server/lua-plugins.d/features/comm.lua
+      when_authenticated: true
+      when_unauthenticated: false
       when_no_auth: true
 
   # Lua filters configuration

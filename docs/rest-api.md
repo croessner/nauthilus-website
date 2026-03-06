@@ -155,6 +155,11 @@ null
 
 #### `GET /api/v1/auth/basic`
 
+:::info Build Tag Requirement
+This endpoint exists only if Nauthilus was built with the Go build tag `auth_basic_endpoint` (for example: `go build -tags auth_basic_endpoint ...`).
+Without this build tag, the route is not available.
+:::
+
 **Request Headers (example):**
 ```
 Authorization: Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk
@@ -216,42 +221,89 @@ Auth-Wait: 2
 
 ---
 
-### SASLAuthd Service
-
-#### `POST /api/v1/auth/saslauthd`
-
-**Content-Type:** `application/x-www-form-urlencoded`
-
-**Request Body (example):**
-```
-username=testuser&password=testpassword&realm=example.com&protocol=imap&method=plain&port=993&tls=on&security=ssl&user_agent=Dovecot/2.3
-```
-
-**Response (success - 200 OK):**
-```
-(empty body)
-```
-
-**Response (failure - 403 Forbidden):**
-```
-FAIL
-```
-
-| Status Code | Description |
-| :--- | :--- |
-| `200 OK` | Authentication successful |
-| `400 Bad Request` | Invalid form data |
-| `403 Forbidden` | Authentication failed or blocked |
-| `404 Not Found` | Endpoint disabled |
-| `429 Too Many Requests` | Rate limit exceeded |
-| `500 Internal Server Error` | Temporary processing error |
-
----
-
 ## Identity Provider (IdP)
-Nauthilus ships a native OIDC and SAML2 Identity Provider. All IdP endpoints are at the root path (no `/idp` prefix). Language-specific paths are available for `/login`, `/oidc/authorize`, and `/oidc/consent` with the optional `/:languageTag` suffix.
+Nauthilus ships a native OIDC and SAML2 Identity Provider. All IdP endpoints are at the root path (no `/idp` prefix). Many browser-facing endpoints also support an optional `/:languageTag` suffix.
 
 *For flow diagrams, see [OIDC](./configuration/idp/oidc.md) and [SAML2](./configuration/idp/saml2.md).*
+
+### IdP Endpoint Inventory (Complete)
+
+The following list reflects all currently registered IdP routes.
+
+**OIDC + Login/Consent**
+- `GET /.well-known/openid-configuration`
+- `GET /oidc/authorize` and `GET /oidc/authorize/:languageTag`
+- `POST /oidc/token`, `GET /oidc/token`
+- `GET /oidc/userinfo`
+- `POST /oidc/introspect`
+- `GET /oidc/jwks`
+- `POST /oidc/device`
+- `GET /oidc/device/verify` and `GET /oidc/device/verify/:languageTag`
+- `GET /oidc/device/verify/failed` and `GET /oidc/device/verify/failed/:languageTag`
+- `POST /oidc/device/verify` and `POST /oidc/device/verify/:languageTag`
+- `GET /oidc/device/consent` and `GET /oidc/device/consent/:languageTag`
+- `POST /oidc/device/consent` and `POST /oidc/device/consent/:languageTag`
+- `GET /oidc/logout`, `GET /logout`
+- `GET /oidc/consent` and `GET /oidc/consent/:languageTag`
+- `POST /oidc/consent` and `POST /oidc/consent/:languageTag`
+
+**IdP Browser Login/MFA**
+- `GET /login` and `GET /login/:languageTag`
+- `POST /login` and `POST /login/:languageTag`
+- `GET /login/totp` and `GET /login/totp/:languageTag`
+- `POST /login/totp` and `POST /login/totp/:languageTag`
+- `GET /login/webauthn` and `GET /login/webauthn/:languageTag`
+- `GET /login/webauthn/begin` and `GET /login/webauthn/begin/:languageTag`
+- `POST /login/webauthn/finish` and `POST /login/webauthn/finish/:languageTag`
+- `GET /login/mfa` and `GET /login/mfa/:languageTag`
+- `GET /login/recovery` and `GET /login/recovery/:languageTag`
+- `POST /login/recovery` and `POST /login/recovery/:languageTag`
+- `GET /logged_out` and `GET /logged_out/:languageTag`
+
+**SAML2**
+- `GET /saml/metadata`
+- `GET /saml/sso`
+- `GET /saml/slo`
+- `POST /saml/slo`
+
+**IdP MFA Self-Service (session required, `/mfa/*`)**
+- `GET /mfa/register/home` and `GET /mfa/register/home/:languageTag`
+- `GET /mfa/totp/register` and `GET /mfa/totp/register/:languageTag`
+- `POST /mfa/totp/register` and `POST /mfa/totp/register/:languageTag`
+- `DELETE /mfa/totp`
+- `GET /mfa/webauthn/register` and `GET /mfa/webauthn/register/:languageTag`
+- `GET /mfa/webauthn/register/begin` and `GET /mfa/webauthn/register/begin/:languageTag`
+- `POST /mfa/webauthn/register/finish` and `POST /mfa/webauthn/register/finish/:languageTag`
+- `DELETE /mfa/webauthn`
+- `GET /mfa/webauthn/devices` and `GET /mfa/webauthn/devices/:languageTag`
+- `DELETE /mfa/webauthn/device/:id`
+- `POST /mfa/webauthn/device/:id/name`
+- `GET /mfa/recovery/register` and `GET /mfa/recovery/register/:languageTag`
+- `POST /mfa/recovery/register` and `POST /mfa/recovery/register/:languageTag`
+- `POST /mfa/recovery/register/save` and `POST /mfa/recovery/register/save/:languageTag`
+- `POST /mfa/recovery/generate` and `POST /mfa/recovery/generate/:languageTag`
+- `GET /mfa/register/continue` and `GET /mfa/register/continue/:languageTag`
+- `GET /mfa/register/cancel` and `GET /mfa/register/cancel/:languageTag`
+
+**IdP Backchannel APIs**
+- `GET /api/v1/mfa/totp/setup`
+- `POST /api/v1/mfa/totp/register`
+- `DELETE /api/v1/mfa/totp`
+- `POST /api/v1/mfa/recovery-codes/generate`
+- `GET /api/v1/mfa/webauthn/register/begin`
+- `POST /api/v1/mfa/webauthn/register/finish`
+- `DELETE /api/v1/mfa/webauthn/:credentialID`
+- `GET /api/v1/oidc/sessions/{user_id}`
+- `DELETE /api/v1/oidc/sessions/{user_id}`
+- `DELETE /api/v1/oidc/sessions/{user_id}/{token}`
+- `POST /api/v1/mfa-backchannel/totp`
+- `DELETE /api/v1/mfa-backchannel/totp`
+- `POST /api/v1/mfa-backchannel/totp/recovery-codes`
+- `DELETE /api/v1/mfa-backchannel/totp/recovery-codes`
+- `GET /api/v1/mfa-backchannel/webauthn/credential`
+- `POST /api/v1/mfa-backchannel/webauthn/credential`
+- `PUT /api/v1/mfa-backchannel/webauthn/credential`
+- `DELETE /api/v1/mfa-backchannel/webauthn/credential`
 
 ### OpenID Connect Discovery
 
@@ -267,6 +319,7 @@ Nauthilus ships a native OIDC and SAML2 Identity Provider. All IdP endpoints are
   "userinfo_endpoint": "https://idp.example.com/oidc/userinfo",
   "jwks_uri": "https://idp.example.com/oidc/jwks",
   "end_session_endpoint": "https://idp.example.com/oidc/logout",
+  "device_authorization_endpoint": "https://idp.example.com/oidc/device",
   "response_types_supported": ["code"],
   "scopes_supported": ["openid", "profile", "email"],
   "claims_supported": ["sub", "name", "email"],
@@ -283,7 +336,7 @@ Nauthilus ships a native OIDC and SAML2 Identity Provider. All IdP endpoints are
 
 ### OIDC Authorization Endpoint
 
-#### `GET /oidc/authorize`
+#### `GET /oidc/authorize` (alias: `GET /oidc/authorize/:languageTag`)
 
 **Request (example):**
 ```
@@ -305,7 +358,7 @@ Location: https://app.example.com/callback?code=SplxlOBeZQQYbYS6WxSbIA&state=abc
 
 ### OIDC Token Endpoint
 
-#### `POST /oidc/token`
+#### `POST /oidc/token` (alias: `GET /oidc/token`)
 
 **Content-Type:** `application/x-www-form-urlencoded`
 
@@ -313,6 +366,13 @@ Location: https://app.example.com/callback?code=SplxlOBeZQQYbYS6WxSbIA&state=abc
 ```
 grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA&redirect_uri=https%3A%2F%2Fapp.example.com%2Fcallback&client_id=demo&client_secret=secret
 ```
+
+**Client Credentials example:**
+```
+grant_type=client_credentials&scope=nauthilus:authenticate%20nauthilus:admin
+```
+
+For `private_key_jwt` client authentication, send `client_assertion_type` and `client_assertion` in the form body (instead of `client_secret`).
 
 **Response (success - 200 OK):**
 ```json
@@ -331,6 +391,12 @@ grant_type=authorization_code&code=SplxlOBeZQQYbYS6WxSbIA&redirect_uri=https%3A%
 | `400 Bad Request` | Invalid grant or request |
 | `401 Unauthorized` | Client authentication failed |
 | `500 Internal Server Error` | Token generation failed |
+
+Supported `grant_type` values:
+- `authorization_code`
+- `refresh_token`
+- `client_credentials`
+- `urn:ietf:params:oauth:grant-type:device_code`
 
 ---
 
@@ -440,9 +506,68 @@ Location: https://app.example.com/logged_out?state=abc123
 
 ---
 
+### OIDC Device Authorization Endpoints
+
+#### `POST /oidc/device`
+
+**Content-Type:** `application/x-www-form-urlencoded`
+
+**Request Body (example):**
+```
+client_id=demo-device&scope=openid%20profile
+```
+
+**Response (success - 200 OK):**
+```json
+{
+  "device_code": "dvc_abc123",
+  "user_code": "ABCD-EFGH",
+  "verification_uri": "https://idp.example.com/oidc/device/verify",
+  "verification_uri_complete": "https://idp.example.com/oidc/device/verify?user_code=ABCD-EFGH",
+  "expires_in": 600,
+  "interval": 5
+}
+```
+
+| Status Code | Description |
+| :--- | :--- |
+| `200 OK` | Device code issued |
+| `400 Bad Request` | Invalid client/scope request |
+| `401 Unauthorized` | Client authentication failed |
+| `500 Internal Server Error` | Device authorization failed |
+
+#### `GET /oidc/device/verify` / `POST /oidc/device/verify`
+
+Language variants are available with `/:languageTag`.
+
+| Status Code | Description |
+| :--- | :--- |
+| `200 OK` | Verification page rendered / code accepted |
+| `302 Found` | Redirect to login/consent/success page |
+| `400 Bad Request` | Invalid device verification request |
+| `500 Internal Server Error` | Device verification failed |
+
+#### `GET /oidc/device/verify/failed`
+
+Language variant available: `GET /oidc/device/verify/failed/:languageTag`.
+
+#### `GET /oidc/device/consent` / `POST /oidc/device/consent`
+
+Language variants are available with `/:languageTag`.
+
+| Status Code | Description |
+| :--- | :--- |
+| `200 OK` | Consent page rendered |
+| `302 Found` | Consent accepted and completion page shown |
+| `400 Bad Request` | Invalid device consent request |
+| `403 Forbidden` | Consent denied |
+| `500 Internal Server Error` | Device consent processing failed |
+
+---
+
 ### OIDC Consent Endpoints
 
-#### `GET /oidc/consent`
+#### `GET /oidc/consent` (alias: `GET /oidc/consent/:languageTag`)
 
 **Request (example):**
 ```
@@ -454,7 +579,7 @@ GET /oidc/consent?consent_challenge=abcd&state=xyz
 <HTML consent page>
 ```
 
-#### `POST /oidc/consent`
+#### `POST /oidc/consent` (alias: `POST /oidc/consent/:languageTag`)
 
 **Content-Type:** `application/x-www-form-urlencoded`
 
@@ -484,7 +609,7 @@ Location: https://app.example.com/callback?code=SplxlOBeZQQYbYS6WxSbIA&state=xyz
 These login endpoints are designed exclusively for IdP flows (OIDC and SAML2). They cannot be accessed directly without a valid flow state stored in cookies. The flow state is automatically set when a user initiates an OIDC authorization or SAML2 SSO request. Flow state is managed securely via HTTP-only cookies to prevent Open Redirect vulnerabilities.
 :::
 
-#### `GET /login`
+#### `GET /login` (alias: `GET /login/:languageTag`)
 
 Displays the login page. Requires a valid IdP flow state cookie.
 
@@ -503,7 +628,7 @@ GET /login
 <HTML error page: "This login page can only be accessed through a valid OIDC or SAML2 authentication flow.">
 ```
 
-#### `POST /login`
+#### `POST /login` (alias: `POST /login/:languageTag`)
 
 **Content-Type:** `application/x-www-form-urlencoded`
 
@@ -536,7 +661,7 @@ Location: /oidc/authorize?response_type=code&client_id=demo&...
 
 All MFA endpoints require a valid IdP flow state cookie and CSRF token.
 
-#### `GET /login/mfa`
+#### `GET /login/mfa` (alias: `GET /login/mfa/:languageTag`)
 
 Displays the MFA method selection page when the user has multiple MFA methods available.
 
@@ -545,7 +670,7 @@ Displays the MFA method selection page when the user has multiple MFA methods av
 <HTML MFA selection page>
 ```
 
-#### `GET /login/totp`
+#### `GET /login/totp` (alias: `GET /login/totp/:languageTag`)
 
 Displays the TOTP verification form.
 
@@ -559,7 +684,7 @@ GET /login/totp
 <HTML TOTP form>
 ```
 
-#### `POST /login/totp`
+#### `POST /login/totp` (alias: `POST /login/totp/:languageTag`)
 
 **Content-Type:** `application/x-www-form-urlencoded`
 
@@ -577,7 +702,7 @@ code=123456&csrf_token=<token>
 Location: /oidc/authorize?response_type=code&client_id=demo&...
 ```
 
-#### `GET /login/recovery`
+#### `GET /login/recovery` (alias: `GET /login/recovery/:languageTag`)
 
 Displays the recovery code verification form.
 
@@ -591,7 +716,7 @@ GET /login/recovery
 <HTML recovery code form>
 ```
 
-#### `POST /login/recovery`
+#### `POST /login/recovery` (alias: `POST /login/recovery/:languageTag`)
 
 **Content-Type:** `application/x-www-form-urlencoded`
 
@@ -609,7 +734,7 @@ code=R2D2-1C3P&csrf_token=<token>
 Location: /oidc/authorize?response_type=code&client_id=demo&...
 ```
 
-#### `GET /login/webauthn`
+#### `GET /login/webauthn` (alias: `GET /login/webauthn/:languageTag`)
 
 Displays the WebAuthn (passkey/security key) verification page.
 
@@ -634,7 +759,7 @@ GET /login/webauthn
 
 ### Logged-Out Page
 
-#### `GET /logged_out`
+#### `GET /logged_out` (alias: `GET /logged_out/:languageTag`)
 
 **Response (success - 200 OK):**
 ```
@@ -652,8 +777,9 @@ GET /login/webauthn
 
 WebAuthn is intentionally documented by endpoint names only. The UI handles payload details.
 
-- **Login flow:** `GET /login/webauthn/begin`, `POST /login/webauthn/finish`
-- **Registration flow:** `GET /api/v1/mfa/webauthn/register/begin`, `POST /api/v1/mfa/webauthn/register/finish`
+- **Login flow:** `GET /login/webauthn/begin`, `POST /login/webauthn/finish` (both also with `/:languageTag`)
+- **Browser self-service registration flow:** `GET /mfa/webauthn/register/begin`, `POST /mfa/webauthn/register/finish` (both also with `/:languageTag`)
+- **Backchannel registration flow:** `GET /api/v1/mfa/webauthn/register/begin`, `POST /api/v1/mfa/webauthn/register/finish`
 
 ---
 
@@ -675,7 +801,7 @@ WebAuthn is intentionally documented by endpoint names only. The UI handles payl
 
 ---
 
-#### `GET /saml/sso` / `POST /saml/sso`
+#### `GET /saml/sso`
 
 **Request (example):**
 ```
@@ -720,7 +846,7 @@ SAMLRequest=<base64>&RelayState=xyz
 ## Multi-Factor Authentication (MFA) API
 
 :::info Session Required
-These endpoints require an active frontend session (cookie). They are typically used by the internal `/account/mfa` management page.
+These endpoints require an active frontend session (cookie). They are typically used by the internal `/mfa/*` self-service pages.
 :::
 
 ### TOTP (Time-based One-Time Password)
@@ -819,6 +945,7 @@ Per requirement, WebAuthn is listed by endpoint name only:
 
 - `GET /api/v1/mfa/webauthn/register/begin`
 - `POST /api/v1/mfa/webauthn/register/finish`
+- `DELETE /api/v1/mfa/webauthn/:credentialID`
 
 ---
 
@@ -889,6 +1016,45 @@ These endpoints are typically protected by Basic Auth or JWT and used for monito
 | `401 Unauthorized` | Missing/invalid credentials |
 | `403 Forbidden` | Insufficient role |
 | `500 Internal Server Error` | Deletion failed |
+
+---
+
+### IdP MFA Backchannel API (`/api/v1/mfa-backchannel/*`)
+
+These endpoints are used by backend integrations (for example Lua proxy backend) to manage MFA artifacts in LDAP/Lua backends.
+
+Common request fields:
+- `username` (required for all operations)
+- `backend` (optional: empty/`lua`/`ldap`)
+- `backend_name` (optional backend instance name)
+
+#### TOTP + Recovery
+
+- `POST /api/v1/mfa-backchannel/totp`  
+  Body fields: `username`, `totp_secret`
+- `DELETE /api/v1/mfa-backchannel/totp`  
+  Body fields: `username`
+- `POST /api/v1/mfa-backchannel/totp/recovery-codes`  
+  Body fields: `username`, `codes` (array)
+- `DELETE /api/v1/mfa-backchannel/totp/recovery-codes`  
+  Body fields: `username`
+
+#### WebAuthn Credential Storage
+
+- `GET /api/v1/mfa-backchannel/webauthn/credential`  
+  Query: `username` (required), optional `backend`, `backend_name`
+- `POST /api/v1/mfa-backchannel/webauthn/credential`  
+  Body fields: `username`, `credential` (JSON-encoded credential string)
+- `PUT /api/v1/mfa-backchannel/webauthn/credential`  
+  Body fields: `username`, `credential`, `old_credential` (both JSON-encoded credential strings)
+- `DELETE /api/v1/mfa-backchannel/webauthn/credential`  
+  Body fields: `username`, `credential` (JSON-encoded credential string)
+
+Typical status codes:
+- `200 OK` success
+- `400 Bad Request` invalid input
+- `401 Unauthorized` or `403 Forbidden` backchannel authentication/authorization failure
+- `500 Internal Server Error` backend operation failed
 
 ---
 

@@ -287,6 +287,16 @@ The following request fields are supported
 | account\_field           | string | maybe    | The name of the field that contains the account                   |
 | method                   | string | maybe    | HTTP method (e.g., "GET", "POST")                                 |
 | oidc\_cid                | string | maybe    | OIDC Client ID                                                    |
+| saml\_entity\_id         | string | maybe    | SAML Service Provider Entity ID                                   |
+| grant\_type              | string | maybe    | OIDC grant/flow type (e.g. `authorization_code`, `device_code`)  |
+| oidc\_client\_name       | string | maybe    | Human-readable OIDC client name                                  |
+| redirect\_uri            | string | maybe    | OIDC redirect URI from current flow                              |
+| mfa\_completed           | bool   | maybe    | Whether MFA was completed in current flow                        |
+| mfa\_method              | string | maybe    | MFA method used (`totp`, `webauthn`, `recovery`)                |
+| requested\_scopes        | table  | maybe    | Requested OIDC scopes as Lua table                               |
+| user\_groups             | table  | maybe    | User group memberships (for example LDAP `memberOf`)             |
+| allowed\_client\_scopes  | table  | maybe    | Scopes configured on current OIDC client                         |
+| allowed\_client\_grant\_types | table | maybe | Grant types configured on current OIDC client                    |
 | log\_format              | string | always   | Configured log format ("default" or "json")                       |
 | log\_level               | string | always   | Configured log level                                              |
 | logging                  | table  | always   | Table containing `log_format` and `log_level`                     |

@@ -303,12 +303,12 @@ For Single Sign-On (SSO) with web applications:
 
 1. Configure OIDC clients under `idp.oidc.clients` in your `nauthilus.yml`
 2. Configure SAML2 Service Providers under `idp.saml2.service_providers` if you use SAML
-3. Configure your load balancer to route IdP requests to Nauthilus (`/idp/oidc/*`, `/idp/saml/*`, and the shared frontend like `/login`)
+3. Configure your load balancer to route IdP requests to Nauthilus (`/oidc/*`, `/saml/*`, and the shared frontend like `/login`, `/logout`, `/mfa/*`)
 
 Example HAProxy configuration:
 
 ```haproxy
-acl idp path_beg,url_dec -m beg -i /idp/oidc /idp/saml /login /logout /mfa /webauthn /static
+acl idp path_beg,url_dec -m beg -i /oidc /saml /login /logout /mfa /static
 
 use_backend be_nauthilus_idp if idp
 

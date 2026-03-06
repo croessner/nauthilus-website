@@ -4,11 +4,20 @@ import styles from './styles.module.css';
 
 const FeatureList = [
   {
+    title: 'Native Identity Provider',
+    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    description: (
+      <>
+        Nauthilus now includes a native IdP as a core feature: OIDC (Authorization Code + Device Code) and SAML2 with integrated login, consent, session management, and MFA (TOTP/WebAuthn).
+      </>
+    ),
+  },
+  {
     title: 'Multi-Protocol Authentication',
     Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
     description: (
       <>
-        Supports multiple protocols including HTTP/Nginx, Dovecot, Cyrus-SASL, and various mail protocols (IMAP, POP3, SMTP). Seamlessly integrates with web applications via OAuth2/OpenID Connect.
+        Supports multiple protocols including HTTP/Nginx, Dovecot, and various mail protocols (IMAP, POP3, SMTP). Also covers web SSO use cases through the native OIDC/SAML2 IdP.
       </>
     ),
   },
@@ -35,7 +44,7 @@ const FeatureList = [
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Seamless integration with Keycloak via nauthilus-keycloak for OAuth2/OpenID Connect support. Implement role-based access control and modern authentication flows for your applications.
+        First-party SSO with the built-in IdP replaces external OAuth2/Hydra dependencies. Use native endpoints for OIDC, SAML2, logout flows, and MFA-aware browser journeys.
       </>
     ),
   },

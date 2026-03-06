@@ -19,8 +19,8 @@ sequenceDiagram
     participant Nauthilus as Nauthilus IdP
     participant Backend as User Database (LDAP/Lua)
 
-    RP->>User: Redirect to /idp/oidc/authorize
-    User->>Nauthilus: GET /idp/oidc/authorize
+    RP->>User: Redirect to /oidc/authorize
+    User->>Nauthilus: GET /oidc/authorize
     Note over Nauthilus: Check session
     alt No Session
         Nauthilus->>User: Redirect to /login
@@ -43,11 +43,11 @@ sequenceDiagram
     Note over Nauthilus: Consent Required?
     alt Consent needed
         Nauthilus-->>User: Show Consent Page
-        User->>Nauthilus: POST /idp/oidc/consent
+        User->>Nauthilus: POST /oidc/consent
     end
     Nauthilus->>User: Redirect to RP (code)
     User->>RP: GET /callback?code=...
-    RP->>Nauthilus: POST /idp/oidc/token (code, client_id, client_secret)
+    RP->>Nauthilus: POST /oidc/token (code, client_id, client_secret)
     Nauthilus-->>RP: Access Token, ID Token, Refresh Token
 ```
 
@@ -55,15 +55,15 @@ This page covers endpoints, discovery, client authentication, logout variants, a
 
 ## Endpoints
 
-- Discovery: `GET /idp/oidc/.well-known/openid-configuration`
-- Authorization: `GET /idp/oidc/authorize`
-- Token: `POST /idp/oidc/token` (authorization_code, refresh_token, urn:ietf:params:oauth:grant-type:device_code)
-- Introspection: `POST /idp/oidc/introspect`
-- UserInfo: `GET /idp/oidc/userinfo`
-- JWKS: `GET /idp/oidc/jwks`
-- Logout: `GET /idp/oidc/logout`
-- Device Authorization: `POST /idp/oidc/device/authorize`
-- Device Verification: `GET /idp/oidc/device/verify`
+- Discovery: `GET /.well-known/openid-configuration`
+- Authorization: `GET /oidc/authorize`
+- Token: `POST /oidc/token` (authorization_code, refresh_token, urn:ietf:params:oauth:grant-type:device_code)
+- Introspection: `POST /oidc/introspect`
+- UserInfo: `GET /oidc/userinfo`
+- JWKS: `GET /oidc/jwks`
+- Logout: `GET /oidc/logout`
+- Device Authorization: `POST /oidc/device`
+- Device Verification: `GET /oidc/device/verify`
 
 ## Discovery document
 
@@ -71,13 +71,13 @@ Example fields returned by `/.well-known/openid-configuration`:
 
 ```json
 {
-  "issuer": "https://idp.example.com/idp",
-  "authorization_endpoint": "https://idp.example.com/idp/oidc/authorize",
-  "token_endpoint": "https://idp.example.com/idp/oidc/token",
-  "introspection_endpoint": "https://idp.example.com/idp/oidc/introspect",
-  "userinfo_endpoint": "https://idp.example.com/idp/oidc/userinfo",
-  "jwks_uri": "https://idp.example.com/idp/oidc/jwks",
-  "end_session_endpoint": "https://idp.example.com/idp/oidc/logout",
+  "issuer": "https://idp.example.com",
+  "authorization_endpoint": "https://idp.example.com/oidc/authorize",
+  "token_endpoint": "https://idp.example.com/oidc/token",
+  "introspection_endpoint": "https://idp.example.com/oidc/introspect",
+  "userinfo_endpoint": "https://idp.example.com/oidc/userinfo",
+  "jwks_uri": "https://idp.example.com/oidc/jwks",
+  "end_session_endpoint": "https://idp.example.com/oidc/logout",
   "frontchannel_logout_supported": true,
   "frontchannel_logout_session_supported": false,
   "backchannel_logout_supported": true,
@@ -99,6 +99,7 @@ Notes:
 ## Client authentication
 
 - `client_secret_basic` and `client_secret_post` are supported at the token and introspection endpoints.
+- `private_key_jwt` is supported per-client via `token_endpoint_auth_method: private_key_jwt` plus client public key configuration.
 
 ## Access tokens
 
@@ -113,7 +114,7 @@ Top-level section: `idp.oidc`
 idp:
   oidc:
     enabled: true
-    issuer: "https://idp.example.com/idp"
+    issuer: "https://idp.example.com"
 
     # Signing keys (inline or via files). One or more keys can be configured; mark the active one.
     signing_keys:
@@ -138,6 +139,8 @@ idp:
     custom_scopes:
       - name: "tenant"
         description: "Tenant information"
+        description_de: "Mandanteninformationen"
+        description_de_at: "Mandanteninformationen (AT)"
         claims:
           - name: tenant_id
             type: string
@@ -148,6 +151,8 @@ idp:
     access_token_type: "jwt"      # or "opaque"
     default_access_token_lifetime: 3600s
     default_refresh_token_lifetime: 4320h
+    consent_ttl: 720h
+    consent_mode: all_or_nothing  # or granular_optional
 
     # Device Code Flow (RFC 8628)
     device_code_expiry: 600s
@@ -162,12 +167,18 @@ idp:
         redirect_uris: ["https://app.example.com/callback"]
         scopes: ["openid","profile","email","offline_access"]
         grant_types: ["authorization_code"]
+        require_mfa: ["webauthn"]
+        supported_mfa: ["totp", "webauthn", "recovery_codes"]
         skip_consent: false
         delayed_response: false
         remember_me_ttl: 720h
         access_token_lifetime: 7200s
         access_token_type: "jwt"
         refresh_token_lifetime: 4320h
+        consent_ttl: 720h
+        consent_mode: all_or_nothing
+        required_scopes: ["openid", "profile"]
+        optional_scopes: ["email", "groups"]
         token_endpoint_auth_method: "client_secret_basic"
         # For private_key_jwt authentication:
         # client_public_key_file: "/etc/nauthilus/keys/client-pub.pem"
@@ -201,18 +212,27 @@ idp:
 - `auto_key_rotation` (bool), `key_rotation_interval` (duration), `key_max_age` (duration)
 - `custom_scopes` (list): Named custom scopes mapping to `claims`
 - Supported-values arrays used for discovery: `scopes_supported`, `response_types_supported`, `subject_types_supported`, `id_token_signing_alg_values_supported`, `token_endpoint_auth_methods_supported`, `claims_supported`
+- Logout discovery toggles: `front_channel_logout_supported`, `front_channel_logout_session_supported`, `back_channel_logout_supported`, `back_channel_logout_session_supported`
 - Token defaults: `access_token_type`, `default_access_token_lifetime`, `default_refresh_token_lifetime`
+- Consent defaults: `consent_ttl`, `consent_mode`
 - Device Code Flow: `device_code_expiry` (duration), `device_code_polling_interval` (int, seconds), `device_code_user_code_length` (int)
 - `clients` (list of OIDCClient):
   - `name`, `client_id`, `client_secret`, `redirect_uris`
   - `scopes`, `grant_types` (list, default: `["authorization_code"]`)
+  - `require_mfa`, `supported_mfa` (method sets: `totp`, `webauthn`, `recovery_codes`)
   - `skip_consent`, `delayed_response`, `remember_me_ttl`
   - `access_token_lifetime`, `access_token_type`, `refresh_token_lifetime`
+  - `consent_ttl`, `consent_mode`
+  - `required_scopes`, `optional_scopes`
   - `token_endpoint_auth_method`
   - `client_public_key` or `client_public_key_file`, `client_public_key_algorithm` (for `private_key_jwt` auth)
   - `id_token_claims` with `mappings[]` (`claim`, `attribute`, `type`)
   - `access_token_claims` with `mappings[]` (`claim`, `attribute`, `type`)
   - `post_logout_redirect_uris`, `backchannel_logout_uri`, `frontchannel_logout_uri`, `frontchannel_logout_session_required`, `logout_redirect_uri`
+
+Validation notes:
+- If both `require_mfa` and `supported_mfa` are configured, `require_mfa` must be a subset of `supported_mfa`.
+- `optional_scopes` must not include `openid`.
 
 ## Device Authorization Grant (RFC 8628)
 
@@ -220,10 +240,10 @@ Nauthilus supports the Device Authorization Grant for input-constrained devices 
 
 ### Flow
 
-1. The device requests a device code via `POST /idp/oidc/device/authorize` with `client_id` and `scope`.
+1. The device requests a device code via `POST /oidc/device` with `client_id` and `scope`.
 2. The user visits the verification URL and enters the user code shown on the device.
 3. The user authenticates and authorizes the device.
-4. The device polls `POST /idp/oidc/token` with `grant_type=urn:ietf:params:oauth:grant-type:device_code` until the user completes authorization.
+4. The device polls `POST /oidc/token` with `grant_type=urn:ietf:params:oauth:grant-type:device_code` until the user completes authorization.
 
 ### Configuration
 
@@ -248,14 +268,82 @@ Clients must include `urn:ietf:params:oauth:grant-type:device_code` in their `gr
         scopes: ["openid", "profile", "email"]
 ```
 
+## Client Credentials Flow
+
+Nauthilus also supports the `client_credentials` grant for machine-to-machine access.
+
+Client configuration example:
+
+```yaml
+idp:
+  oidc:
+    clients:
+      - name: "Backchannel API Client"
+        client_id: "api-client"
+        client_secret: "super-secret"
+        grant_types: ["client_credentials"]
+        scopes:
+          - nauthilus:authenticate
+          - nauthilus:admin
+```
+
+Token request example (`client_secret_basic`):
+
+```bash
+curl -u api-client:super-secret \
+  -d 'grant_type=client_credentials&scope=nauthilus:authenticate nauthilus:admin' \
+  https://idp.example.com/oidc/token
+```
+
+`private_key_jwt` is also supported for `client_credentials`:
+
+```yaml
+idp:
+  oidc:
+    clients:
+      - name: "Backchannel API Client (JWT)"
+        client_id: "api-client-jwt"
+        grant_types: ["client_credentials"]
+        token_endpoint_auth_method: "private_key_jwt"
+        client_public_key_file: "/etc/nauthilus/oidc/api-client-jwt.pub.pem"
+        client_public_key_algorithm: "RS256"
+        scopes: ["nauthilus:authenticate", "nauthilus:admin"]
+```
+
+Token request example (`private_key_jwt`):
+
+```bash
+curl -X POST https://idp.example.com/oidc/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials&scope=nauthilus:authenticate nauthilus:admin&client_id=api-client-jwt&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer&client_assertion=<signed-jwt>'
+```
+
+Notes:
+- `id_token` is not returned for `client_credentials`.
+- For `private_key_jwt`, the signed `client_assertion` must include:
+  - `iss` = `client_id`
+  - `sub` = `client_id`
+  - `aud` contains the token endpoint URL (for example `https://idp.example.com/oidc/token`)
+  - valid `exp` in the future
+- Use `server.oidc_auth.enabled: true` to accept these Bearer tokens on `/api/v1/*`.
+
 ## Using custom scopes and claims
 
 Custom scopes allow you to expose additional claims in ID tokens, access tokens, and the UserInfo response based on attributes coming from your user backend (LDAP or Lua).
 
 How it fits together:
 - Server-wide you declare `idp.oidc.custom_scopes[]` with a `name` and a list of `claims { name, type }`.
+- For consent UI text, each custom scope uses `description` as the default and can define localized variants via `description_<language>` and `description_<language>_<region>` (for example `description_de`, `description_de_at`).
 - Per client you map claim names to backend attributes using `id_token_claims.mappings[]` and `access_token_claims.mappings[]`.
 - At runtime, only claims for scopes requested by the client are included.
+
+Localization lookup behavior:
+- The effective language is taken from the URL `:languageTag` when present, otherwise from the user session language.
+- Nauthilus normalizes tags to lowercase and `_` separators (`de-AT` -> `de_at`).
+- Resolution order for custom scope description is:
+  - `description_<full tag>` (for example `description_de_at`)
+  - `description_<base language>` (for example `description_de`)
+  - `description` (fallback/default)
 
 Example (end-to-end):
 
@@ -311,7 +399,7 @@ Nauthilus defines a set of reserved scopes prefixed with `nauthilus:`. These sco
 | `nauthilus:admin` | Grants full administrative access to the backchannel API, including brute-force listing and metrics endpoints. |
 | `nauthilus:security` | Grants access to security-related features such as Prometheus metrics and brute-force listing. Can be used as an alternative to `nauthilus:admin` for read-only security operations. |
 | `nauthilus:list_accounts` | Grants access to the list-accounts mode on the backchannel API. Required when using the account listing endpoint. |
-| `nauthilus:mfa:manage` | Grants access to MFA registration and management pages. This scope is included in the default `scopes_supported` set and allows users to enroll or manage TOTP and WebAuthn credentials. SAML service providers can also leverage MFA management via `allow_mfa_manage`. |
+| `nauthilus:mfa:manage` | Grants access to MFA registration and management pages. This scope is included in the default `scopes_supported` set and allows users to enroll or manage TOTP and WebAuthn credentials. |
 
 ### Usage
 
@@ -355,6 +443,30 @@ lua:
 ```
 
 See also: [Lua custom hooks](../database-backends/lua.md)
+
+### Lua request fields for IdP policies
+
+For Lua features/filters/actions that run during IdP-backed requests, Nauthilus now provides additional IdP-related fields on the `request` object:
+
+- `request.grant_type`
+- `request.oidc_cid`
+- `request.oidc_client_name`
+- `request.redirect_uri`
+- `request.mfa_completed`
+- `request.mfa_method`
+- `request.requested_scopes`
+- `request.user_groups`
+- `request.allowed_client_scopes`
+- `request.allowed_client_grant_types`
+
+Behavior notes:
+- These fields are populated from active IdP flow/session context where available.
+- For non-IdP requests, values may be empty strings, `false`, or empty tables.
+- `request.allowed_client_scopes` and `request.allowed_client_grant_types` are derived from the configured OIDC client.
+
+Example policy plugin:
+- `server/lua-plugins.d/filters/idp_policy.lua`
+- `server/lua-plugins.d/filters/README.md` (explains all IdP-specific fields and policy examples)
 
 ## Headers and logging
 

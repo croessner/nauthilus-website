@@ -20,4 +20,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.idpHighlight {
+  margin: 1rem auto 1.25rem;
+  max-width: 56rem;
+  font-weight: 600;
 }

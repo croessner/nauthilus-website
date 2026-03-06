@@ -14,7 +14,6 @@ This document provides a comprehensive overview of all features currently suppor
 - **Multi-Protocol Authentication Service**
   - HTTP/Nginx authentication using the HTTP protocol
   - Dovecot authentication using a custom Lua backend
-  - Cyrus-SASL authentication using the httppost-backend
   - Support for mail protocols (IMAP, POP3, SMTP, LMTP, Sieve)
   - Native Identity Provider (OIDC Authorization Code) and SAML2 for web applications
 
@@ -35,7 +34,6 @@ This document provides a comprehensive overview of all features currently suppor
   - Multiple bucket types based on time periods and network ranges
   - Customizable thresholds and actions
   - Adaptive toleration mechanism that dynamically adjusts tolerance thresholds (v1.7.7)
-  - Dynamic response with cold-start warm-up gating to avoid global impact on first deployment (v1.8.x)
 
 - **Realtime Blackhole Lists (RBL)**
   - Integration with multiple RBL services
@@ -112,7 +110,7 @@ This document provides a comprehensive overview of all features currently suppor
 
 ## Single Sign-On (SSO)
 
-- Native Identity Provider: OIDC (Authorization Code) and SAML2 with integrated consent and MFA (TOTP, WebAuthn)
+- Native Identity Provider: OIDC (Authorization Code + Device Code) and SAML2 with integrated consent and MFA (TOTP, WebAuthn)
 
 ## Administration
 

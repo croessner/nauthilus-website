@@ -38,12 +38,34 @@ This section lists chains of buckets. Here is the definition of a bucket:
 |--------------------|------------------------------------------------------------------------------------------------------|
 | name               | A user friendly name for the bucket                                                                  |
 | period             | The TTL after which an unused bucket is removed from Redis                                           |
+| ban_time           | Optional ban duration for blocked networks after threshold breach (default: `8h` if omitted)        |
 | cidr               | The network mask of an IP address                                                                    |
 | ipv4               | Boolean that enables the bucket for IPv4 support                                                     |
 | ipv6               | Boolean that enables the bucket for IPv6 support                                                     |
 | failed_requests    | Threshold value unitl a client will be blocked directly without asking authentication backends       |
 | filter_by_protocol | Optional list of protocols for which this bucket should be used (available from version 1.7.5)       |
 | filter_by_oidc_cid | Optional list of OIDC Client IDs for which this bucket should be used (available from version 1.7.5) |
+
+### brute_force::buckets::ban_time
+_Default: 8h_
+
+Optional duration for how long a network remains banned after a bucket threshold is reached. If omitted, Nauthilus uses
+`8h` as default.
+
+Validation:
+- Must be greater than `0`
+- Maximum value is `8760h` (one year)
+
+```yaml
+brute_force:
+  buckets:
+    - name: login_rule
+      period: 10m
+      ban_time: 4h
+      cidr: 24
+      ipv4: true
+      failed_requests: 5
+```
 
 ### brute_force::ip_whitelist
 _Default: empty list_
@@ -161,38 +183,6 @@ brute_force:
     # Group IPv6 password‑history and tolerations by /64 instead of /128
     rwp_ipv6_cidr: 64
     tolerations_ipv6_cidr: 64
-```
-
-### brute_force::cold_start_grace_enabled (v1.9.10)
-_Default: false_
-
-Enables a one-time, per-IP cold-start grace for known accounts that currently have no negative password history (PW_HIST).
-This prevents immediate bucket inflation and self-lockouts right after a cache flush or password change when multiple
-clients might still send the old password in parallel.
-
-Behavior when enabled:
-- On the first failed attempt from an IP (scoped consistently with RWP and IPv6 ip_scoping), Nauthilus learns metadata
-  for password history but does not enforce brute-force bucket increments yet.
-- Concurrent first attempts are recognized via an atomic Redis seed to allow Repeating‑Wrong‑Password to short‑circuit
-  without inflating generic buckets.
-- From the next attempt within the grace TTL, brute-force computation is enforced again so complex rules can fill/trigger.
-
-See also: `brute_force::cold_start_grace_ttl`.
-
-```yaml
-brute_force:
-  cold_start_grace_enabled: true
-```
-
-### brute_force::cold_start_grace_ttl (v1.9.10)
-_Default: 120s_
-
-Time window in which the cold-start grace and the seed evidence apply. Use a short TTL (e.g., 60–180 seconds) to cover
-initial spikes right after password changes or cache flushes.
-
-```yaml
-brute_force:
-  cold_start_grace_ttl: 120s
 ```
 
 ## Neural Network Configuration
@@ -325,6 +315,7 @@ brute_force:
   buckets:
     - name: b_1min_ipv4_32
       period: 60
+      ban_time: 4h
       cidr: 32
       ipv4: true
       failed_requests: 10

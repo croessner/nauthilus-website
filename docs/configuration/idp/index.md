@@ -15,7 +15,7 @@ This section documents configuration, endpoints and migration notes.
 
 > Migration note
 >
-> If you previously used Hydra: remove all oauth2/hydra settings from your configuration and add the new `idp.*` sections described here. Update reverse proxy routes to `/idp/oidc/*` and `/idp/saml/*`.
+> If you previously used Hydra: remove all oauth2/hydra settings from your configuration and add the new `idp.*` sections described here. Route OIDC/SAML traffic to the native endpoints (`/oidc/*`, `/saml/*`) plus shared frontend paths such as `/login`, `/logout`, and `/mfa/*`.
 
 ## Components
 
@@ -35,6 +35,9 @@ idp:
     rp_display_name: "Nauthilus"
     rp_id: "localhost"
     rp_origins: ["https://localhost"]
+    authenticator_attachment: "platform"
+    resident_key: "preferred"
+    user_verification: "preferred"
   oidc: { ... }
   saml2: { ... }
 ```

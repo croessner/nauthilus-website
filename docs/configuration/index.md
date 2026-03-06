@@ -75,6 +75,7 @@ Each section has individual subsections. See details in the specific documentati
 
 The configuration is divided into the following main sections:
 
+- [Includes](includes.md) - Split configuration across multiple files (`required`, `optional`, and `env`-specific includes)
 - [Server Configuration](server-configuration.md) - Core server settings including address, TLS, logging, Redis, and more
 - [Realtime Blackhole Lists](realtime-blackhole-lists.md) - Configuration for RBL checks
 - [Cleartext Networks](cleartext-networks.md) - Settings for allowing unencrypted connections

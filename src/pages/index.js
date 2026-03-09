@@ -19,7 +19,7 @@ function HomepageHeader() {
                     Native Identity Provider: OIDC + SAML2 with integrated consent and MFA.
                 </p>
                 <div className={styles.buttons}>
-                    <Link className="button button--secondary button--lg margin-right--sm" to="/docs/next/configuration/idp/oidc">
+                    <Link className="button button--secondary button--lg margin-right--sm" to="/docs/configuration/idp/oidc">
                         Explore Native IdP
                     </Link>
                     <Link className="button button--outline button--lg" to="/docs/rest-api">

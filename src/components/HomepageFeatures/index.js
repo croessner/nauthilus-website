@@ -8,7 +8,7 @@ const FeatureList = [
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        Nauthilus now includes a native IdP as a core feature: OIDC (Authorization Code + Device Code) and SAML2 with integrated login, consent, session management, and MFA (TOTP/WebAuthn).
+        Nauthilus now includes a native IdP as a core feature: OIDC (Authorization Code + Device Code + Client Credentials) and SAML2 with integrated login, consent, session management, and MFA (TOTP/WebAuthn).
       </>
     ),
   },
@@ -44,7 +44,7 @@ const FeatureList = [
     Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
     description: (
       <>
-        First-party SSO with the built-in IdP replaces external OAuth2/Hydra dependencies. Use native endpoints for OIDC, SAML2, logout flows, and MFA-aware browser journeys.
+        First-party SSO with the built-in IdP provides native endpoints for OIDC, SAML2, logout flows, and MFA-aware browser journeys.
       </>
     ),
   },

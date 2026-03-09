@@ -7,20 +7,23 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import { createRequire } from 'module';
 
-// Determine latest product version including patch (e.g., 1.10.1)
+// Determine the latest product release including patch (e.g. 2.0.1).
 const require = createRequire(import.meta.url);
 const latestProductVersion =
   process.env.NAUTHILUS_LATEST_VERSION ||
   (() => {
     try {
       // optional JSON file maintained by CI
-      // { "version": "1.10.1" }
+      // { "version": "2.0.1" }
       return require('./latest-version.json').version;
     } catch (_) {
       return undefined;
     }
   })() ||
-  '1.12.0';
+  '2.0.1';
+
+// The docs dropdown should display major.minor only.
+const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -61,12 +64,17 @@ const config = {
           // Remove this to remove the "edit this page" links.
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
-          // Treat 1.12 as the latest stable docs version; "current" is unreleased/next
-          lastVersion: '1.12',
+          // `lastVersion` must reference an existing docs snapshot id from `versions.json`.
+          // The latest snapshot on disk is still `2.0.0`; only the navbar badge reflects `2.0.1`.
+          lastVersion: '2.0.0',
           versions: {
             current: {
               label: 'Next',
               banner: 'unreleased',
+            },
+            '2.0.0': {
+              label: latestDocsVersionLabel,
+              banner: 'none',
             },
             '1.12': {
               label: '1.12',

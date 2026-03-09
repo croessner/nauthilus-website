@@ -197,6 +197,20 @@ a.navbar__link--active:hover {
   padding: 2px 8px;
   margin-left: 6px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.navbar__item--version-badge::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background-color: currentColor;
+  flex: 0 0 12px;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='black' d='M2 3.5A1.5 1.5 0 0 1 3.5 2h5.793a1.5 1.5 0 0 1 1.06.44l3.207 3.207A1.5 1.5 0 0 1 14 6.707V12.5A1.5 1.5 0 0 1 12.5 14h-9A1.5 1.5 0 0 1 2 12.5v-9ZM9.5 3H3.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V7H10.5A1.5 1.5 0 0 1 9 5.5V3Zm1 0v2.5a.5.5 0 0 0 .5.5H13L10.5 3ZM5.25 6.5a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Z'/%3E%3C/svg%3E");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 :root .navbar__item--version-badge { color: #000; }
 [data-theme='dark'] .navbar__item--version-badge { color: #000; }

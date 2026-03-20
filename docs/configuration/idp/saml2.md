@@ -74,6 +74,13 @@ idp:
     signature_method: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
     default_expire_time: 1h
     name_id_format: "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent"
+    slo:
+      enabled: true
+      front_channel_enabled: true
+      back_channel_enabled: false
+      request_timeout: 3s
+      max_participants: 64
+      back_channel_max_retries: 1
 
     # Service Providers
     service_providers:
@@ -81,12 +88,13 @@ idp:
         entity_id: "https://sp.example.com/metadata"
         acs_url: "https://sp.example.com/saml/acs"
         slo_url: "https://sp.example.com/saml/slo"
+        slo_back_channel_url: "https://sp.example.com/saml/slo/backchannel"
+        authn_requests_signed: true
         cert_file: "/etc/nauthilus/saml/sp.pem"
         allowed_attributes: ["mail", "cn", "uid", "memberOf"]
         require_mfa: ["webauthn"]
         supported_mfa: ["totp", "webauthn", "recovery_codes"]
         delayed_response: false
-        remember_me_ttl: 720h
         logout_redirect_uri: "https://sp.example.com/"
 ```
 
@@ -99,20 +107,28 @@ idp:
   - `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`
 - `default_expire_time` (duration): ID/Assertion validity
 - `name_id_format` (string): Default NameIDFormat (persistent recommended)
+- `slo` (object): protocol-aware Single Logout fanout behavior
+  - `enabled` (bool, default: `true`)
+  - `front_channel_enabled` (bool, default: `true`)
+  - `back_channel_enabled` (bool, default: `false`)
+  - `request_timeout` (duration, default: `3s`)
+  - `max_participants` (int, default: `64`)
+  - `back_channel_max_retries` (int, default: `1`; `0` keeps default, negative clamps to `0`)
 - `service_providers` (list of SAML2ServiceProvider):
   - `name` (string): Human-readable name for the service provider
-  - `entity_id` (required), `acs_url` (required), `slo_url` (optional)
+  - `entity_id` (required), `acs_url` (required), `slo_url` (optional), `slo_back_channel_url` (optional)
   - `cert` or `cert_file`: SP certificate (inline or file path) for signature verification
+  - `authn_requests_signed` (bool): if `true`, AuthnRequests from this SP must be signed and `cert`/`cert_file` must be configured with a valid PEM certificate
   - `allowed_attributes` (list of strings): Restrict which attributes are released to this SP. If empty, all attributes are allowed.
   - `require_mfa` / `supported_mfa` (lists): MFA policy per SP (`totp`, `webauthn`, `recovery_codes`)
   - `delayed_response` (bool)
-  - `remember_me_ttl` (duration)
   - `logout_redirect_uri` (string)
 
 ## MFA and Consent
 
 - SAML flows leverage the same integrated login, consent, and MFA (TOTP/WebAuthn) UI as OIDC.
 - If both `require_mfa` and `supported_mfa` are set, `require_mfa` must be a subset of `supported_mfa`.
+- If `slo.enabled` is `false`, front-/back-channel toggles are effectively disabled.
 
 ## Metadata
 

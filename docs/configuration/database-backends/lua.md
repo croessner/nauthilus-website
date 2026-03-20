@@ -11,6 +11,8 @@ The Lua backend allows Nauthilus to authenticate users using custom Lua scripts.
 
 The Lua backend is described in detail in the [Lua API](/docs/lua-api/introduction).
 
+For local script validation and regression tests, see [Lua Test Framework](../../guides/lua-test-framework.md).
+
 ## Configuration Options
 
 ### lua::features

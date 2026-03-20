@@ -12,6 +12,7 @@ This page lists all new configuration settings introduced with the native Identi
 
 ```yaml
 idp:
+  remember_me_ttl: duration
   terms_of_service_url: string
   privacy_policy_url: string
   webauthn:
@@ -30,6 +31,10 @@ idp:
 
 ### `idp.privacy_policy_url`
 - URL to Privacy Policy page shown in the frontend
+
+### `idp.remember_me_ttl`
+- Global remember-me TTL for IdP login sessions.
+- If not set (`0`), remember-me is disabled.
 
 ### `idp.webauthn`
 - `rp_display_name` (string) default: "Nauthilus"
@@ -101,7 +106,8 @@ Localization behavior for custom scope descriptions:
 - `access_token_type` (string: `jwt` or `opaque`)
 - `default_access_token_lifetime` (duration)
 - `default_refresh_token_lifetime` (duration)
-- `consent_ttl` (duration, default: internal default)
+- `consent_ttl` (duration, default: `720h` / 30 days)
+- `token_endpoint_allow_get` (bool, default: `false`)
 - `consent_mode` (string: `all_or_nothing` or `granular_optional`, default: `all_or_nothing`)
 ### Device Code Flow (RFC 8628)
 - `device_code_expiry` (duration, default: 600s)
@@ -117,7 +123,6 @@ Localization behavior for custom scope descriptions:
 - `supported_mfa` ([]string: `totp`, `webauthn`, `recovery_codes`)
 - `skip_consent` (bool)
 - `delayed_response` (bool)
-- `remember_me_ttl` (duration)
 - `access_token_lifetime` (duration)
 - `access_token_type` (string)
 - `refresh_token_lifetime` (duration)
@@ -155,18 +160,26 @@ PKCE policy for `authorization_code`:
 - `signature_method` (string, default: `http://www.w3.org/2001/04/xmldsig-more#rsa-sha256`): XMLDSig algorithm identifier URI, not an HTTP endpoint URL. Currently only this value is supported.
 - `default_expire_time` (duration, default: 1h)
 - `name_id_format` (string, default: `urn:oasis:names:tc:SAML:2.0:nameid-format:persistent`)
+- `slo` (object):
+  - `enabled` (bool, default: `true`)
+  - `front_channel_enabled` (bool, default: `true`)
+  - `back_channel_enabled` (bool, default: `false`)
+  - `request_timeout` (duration, default: `3s`)
+  - `max_participants` (int, default: `64`)
+  - `back_channel_max_retries` (int, default: `1`; negative values clamp to `0`)
 
 ### Service Providers (`idp.saml2.service_providers[]`)
 - `name` (string): Human-readable name
 - `entity_id` (string, required)
 - `acs_url` (string, required)
 - `slo_url` (string, optional)
+- `slo_back_channel_url` (string, optional)
 - `cert` (string PEM) or `cert_file` (string path): SP certificate for signature verification
+- `authn_requests_signed` (bool): requires `cert`/`cert_file` and validates incoming AuthnRequest signatures
 - `allowed_attributes` ([]string): Restrict released attributes; empty = all allowed
 - `require_mfa` ([]string: `totp`, `webauthn`, `recovery_codes`)
 - `supported_mfa` ([]string: `totp`, `webauthn`, `recovery_codes`)
 - `delayed_response` (bool)
-- `remember_me_ttl` (duration)
 - `logout_redirect_uri` (string)
 
 Validation note:

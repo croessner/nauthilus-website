@@ -58,6 +58,7 @@ This page covers endpoints, discovery, client authentication, logout variants, a
 - Discovery: `GET /.well-known/openid-configuration`
 - Authorization: `GET /oidc/authorize`
 - Token: `POST /oidc/token` (authorization_code, refresh_token, urn:ietf:params:oauth:grant-type:device_code)
+- Token (optional legacy mode): `GET /oidc/token` when `idp.oidc.token_endpoint_allow_get: true`
 - Introspection: `POST /oidc/introspect`
 - UserInfo: `GET /oidc/userinfo`
 - JWKS: `GET /oidc/jwks`
@@ -84,7 +85,7 @@ Example fields returned by `/.well-known/openid-configuration`:
   "backchannel_logout_session_supported": false,
   "response_types_supported": ["code"],
   "subject_types_supported": ["public"],
-  "id_token_signing_alg_values_supported": ["RS256"],
+  "id_token_signing_alg_values_supported": ["RS256","EdDSA"],
   "code_challenge_methods_supported": ["S256"],
   "scopes_supported": ["openid","profile","email","groups","offline_access"],
   "token_endpoint_auth_methods_supported": ["client_secret_basic","client_secret_post"],
@@ -132,9 +133,14 @@ idp:
 
     # Signing keys (inline or via files). One or more keys can be configured; mark the active one.
     signing_keys:
-      - id: "2026-01-key"
-        key_file: "/etc/nauthilus/keys/oidc-2026-01.pem"
+      - id: "2026-01-rs256"
+        key_file: "/etc/nauthilus/keys/oidc-2026-01-rs256.pem"
+        algorithm: "RS256"
         active: true
+      - id: "2026-02-eddsa"
+        key_file: "/etc/nauthilus/keys/oidc-2026-02-eddsa.pem"
+        algorithm: "EdDSA"
+        active: false
 
     # Optional key rotation
     auto_key_rotation: false
@@ -145,10 +151,14 @@ idp:
     scopes_supported: ["openid","profile","email","groups","offline_access"]
     response_types_supported: ["code"]
     subject_types_supported: ["public"]
-    id_token_signing_alg_values_supported: ["RS256"]
+    id_token_signing_alg_values_supported: ["RS256","EdDSA"]
     code_challenge_methods_supported: ["S256"] # only S256 is supported
     token_endpoint_auth_methods_supported: ["client_secret_basic","client_secret_post"]
     claims_supported: ["sub","name","email","email_verified","preferred_username","given_name","family_name","groups"]
+    front_channel_logout_supported: true
+    front_channel_logout_session_supported: false
+    back_channel_logout_supported: true
+    back_channel_logout_session_supported: false
 
     # Custom scopes map to claims (server-wide declarations)
     custom_scopes:
@@ -168,6 +178,7 @@ idp:
     default_refresh_token_lifetime: 4320h
     consent_ttl: 720h
     consent_mode: all_or_nothing  # or granular_optional
+    token_endpoint_allow_get: false
 
     # Device Code Flow (RFC 8628)
     device_code_expiry: 600s
@@ -186,7 +197,6 @@ idp:
         supported_mfa: ["totp", "webauthn", "recovery_codes"]
         skip_consent: false
         delayed_response: false
-        remember_me_ttl: 720h
         access_token_lifetime: 7200s
         access_token_type: "jwt"
         refresh_token_lifetime: 4320h
@@ -223,19 +233,20 @@ idp:
 
 - `enabled` (bool): Enable/disable the OIDC provider
 - `issuer` (string): External issuer base URL used in discovery/JWKS
-- `signing_keys` (list): One or more keys (inline `key` or `key_file`), with `id` and `active`
+- `signing_keys` (list): One or more keys (inline `key` or `key_file`), with `id`, `algorithm` (default `RS256`) and `active`
 - `auto_key_rotation` (bool), `key_rotation_interval` (duration), `key_max_age` (duration)
 - `custom_scopes` (list): Named custom scopes mapping to `claims`
 - Supported-values arrays used for discovery: `scopes_supported`, `response_types_supported`, `subject_types_supported`, `id_token_signing_alg_values_supported`, `code_challenge_methods_supported`, `token_endpoint_auth_methods_supported`, `claims_supported`
 - Logout discovery toggles: `front_channel_logout_supported`, `front_channel_logout_session_supported`, `back_channel_logout_supported`, `back_channel_logout_session_supported`
 - Token defaults: `access_token_type`, `default_access_token_lifetime`, `default_refresh_token_lifetime`
 - Consent defaults: `consent_ttl`, `consent_mode`
+- `token_endpoint_allow_get` (bool, default `false`): accepts GET requests on `/oidc/token` in addition to POST
 - Device Code Flow: `device_code_expiry` (duration), `device_code_polling_interval` (int, seconds), `device_code_user_code_length` (int)
 - `clients` (list of OIDCClient):
   - `name`, `client_id`, `client_secret`, `redirect_uris`
   - `scopes`, `grant_types` (list, default: `["authorization_code"]`)
   - `require_mfa`, `supported_mfa` (method sets: `totp`, `webauthn`, `recovery_codes`)
-  - `skip_consent`, `delayed_response`, `remember_me_ttl`
+  - `skip_consent`, `delayed_response`
   - `access_token_lifetime`, `access_token_type`, `refresh_token_lifetime`
   - `consent_ttl`, `consent_mode`
   - `required_scopes`, `optional_scopes`

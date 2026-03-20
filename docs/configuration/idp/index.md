@@ -29,6 +29,7 @@ Top-level IdP section in the main configuration file:
 
 ```yaml
 idp:
+  remember_me_ttl: 720h
   terms_of_service_url: "https://example.com/tos"
   privacy_policy_url: "https://example.com/privacy"
   webauthn:
@@ -42,6 +43,7 @@ idp:
   saml2: { ... }
 ```
 
+- `remember_me_ttl` defines the global "remember me" session TTL for IdP logins.
 - For detailed OIDC configuration, see [OIDC](oidc.md).
 - For detailed SAML2 configuration, see [SAML2](saml2.md).
 - For customizing the user interface, see [Templates](templates.md).

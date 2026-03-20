@@ -35,8 +35,13 @@ Nauthilus supports the following command-line options:
 - `-config <path>`: Specify a custom path to the configuration file. This overrides the default search locations.
 - `-config-format <format>`: Specify the configuration file format (yaml, json, toml, etc.). Default is "yaml".
 - `-version`: Print the version information and exit.
-
-_New in version 1.7.9_
+- `-gen-oidc-key`: Generate a new RSA private key for OIDC signing and exit.
+- `-gen-saml-cert <common-name>`: Generate a self-signed SAML certificate/key pair and exit.
+- `-key-bits <bits>`: RSA key size used by generation flags. Default: `4096`.
+- `-cert-years <years>`: Certificate validity for `-gen-saml-cert`. Default: `10`.
+- `--test-lua <script.lua>`: Run Lua test mode for a single script and exit.
+- `--test-callback <filter|feature|action|backend|hook>`: Required in Lua test mode.
+- `--test-mock <mock.json>`: Optional JSON mock fixture in Lua test mode.
 
 ## Environment Variables
 

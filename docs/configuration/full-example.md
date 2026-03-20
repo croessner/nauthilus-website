@@ -496,21 +496,44 @@ brute_force:
 
 # Identity Provider configuration (Native OIDC and SAML2)
 idp:
+  remember_me_ttl: 720h
+  terms_of_service_url: "https://nauthilus.example.com/terms"
+  privacy_policy_url: "https://nauthilus.example.com/privacy"
+
   # OpenID Connect configuration
   oidc:
     enabled: true
     issuer: https://nauthilus.example.com
+    signing_keys:
+      - id: "nauthilus-rs256-2026-01"
+        key_file: /etc/nauthilus/keys/oidc-rs256-2026-01.pem
+        algorithm: RS256
+        active: true
     auto_key_rotation: true
     key_rotation_interval: 168h
     key_max_age: 720h
+    scopes_supported: ["openid", "profile", "email", "groups", "offline_access", "nauthilus:mfa:manage"]
+    response_types_supported: ["code"]
+    subject_types_supported: ["public"]
+    id_token_signing_alg_values_supported: ["RS256", "EdDSA"]
+    token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post"]
+    code_challenge_methods_supported: ["S256"] # "plain" is rejected
+    claims_supported: ["sub", "name", "preferred_username", "email"]
+    front_channel_logout_supported: true
+    front_channel_logout_session_supported: false
+    back_channel_logout_supported: true
+    back_channel_logout_session_supported: false
     access_token_type: jwt              # jwt or opaque
-    default_access_token_lifetime: 1h
-    default_refresh_token_lifetime: 30d
+    default_access_token_lifetime: 1h   # Default: 1h
+    default_refresh_token_lifetime: 720h # Default: 720h (30 days)
     consent_ttl: 720h
     consent_mode: all_or_nothing        # all_or_nothing|granular_optional
+    token_endpoint_allow_get: false     # Default: false (POST only)
     custom_scopes:
       - name: my_custom_scope
         description: "A custom scope for my application"
+        description_de: "Ein benutzerdefinierter Scope fuer meine Anwendung"
+        description_de_at: "Ein benutzerdefinierter Scope fuer meine Anwendung (AT)"
         claims:
           - name: custom_claim_1
             type: string
@@ -538,6 +561,11 @@ idp:
           - totp
           - webauthn
           - recovery_codes
+        skip_consent: false
+        delayed_response: false
+        access_token_type: jwt
+        access_token_lifetime: 2h
+        refresh_token_lifetime: 720h
         consent_ttl: 720h
         consent_mode: all_or_nothing
         required_scopes:
@@ -546,6 +574,10 @@ idp:
         optional_scopes:
           - email
           - groups
+        token_endpoint_auth_method: client_secret_basic
+        # For token_endpoint_auth_method: private_key_jwt
+        # client_public_key_file: /etc/nauthilus/keys/my-client.pub.pem
+        # client_public_key_algorithm: RS256
         id_token_claims:
           mappings:
             - claim: email
@@ -554,6 +586,17 @@ idp:
               attribute: cn
             - claim: groups
               attribute: memberOf
+        access_token_claims:
+          mappings:
+            - claim: tenant_id
+              attribute: tenantId
+              type: string
+        post_logout_redirect_uris:
+          - https://app.example.com/logout/callback
+        backchannel_logout_uri: https://app.example.com/logout/backchannel
+        frontchannel_logout_uri: https://app.example.com/logout/frontchannel
+        frontchannel_logout_session_required: true
+        logout_redirect_uri: https://app.example.com/
 
   # SAML 2.0 configuration
   saml2:
@@ -561,14 +604,29 @@ idp:
     entity_id: https://nauthilus.example.com/saml/metadata
     cert_file: /etc/nauthilus/saml.crt
     key_file: /etc/nauthilus/saml.key
+    default_expire_time: 1h
+    name_id_format: urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
     signature_method: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" # XMLDSig algorithm URI (currently the only supported value)
+    slo:
+      enabled: true
+      front_channel_enabled: true
+      back_channel_enabled: false
+      request_timeout: 3s
+      max_participants: 64
+      back_channel_max_retries: 1
     service_providers:
       - name: "Example App"
         entity_id: https://app.example.com/saml/metadata
         acs_url: https://app.example.com/saml/acs
+        slo_url: https://app.example.com/saml/slo
+        slo_back_channel_url: https://app.example.com/saml/slo/backchannel
+        cert_file: /etc/nauthilus/saml-sp.crt
+        authn_requests_signed: true
         allowed_attributes: ["mail", "cn", "uid", "memberOf"]
         require_mfa: ["webauthn"]
         supported_mfa: ["totp", "webauthn", "recovery_codes"]
+        delayed_response: false
+        logout_redirect_uri: https://app.example.com/
 
   # WebAuthn settings
   webauthn:

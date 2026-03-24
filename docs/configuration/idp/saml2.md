@@ -90,6 +90,8 @@ idp:
         slo_url: "https://sp.example.com/saml/slo"
         slo_back_channel_url: "https://sp.example.com/saml/slo/backchannel"
         authn_requests_signed: true
+        logout_requests_signed: true
+        logout_responses_signed: true
         cert_file: "/etc/nauthilus/saml/sp.pem"
         allowed_attributes: ["mail", "cn", "uid", "memberOf"]
         require_mfa: ["webauthn"]
@@ -119,6 +121,8 @@ idp:
   - `entity_id` (required), `acs_url` (required), `slo_url` (optional), `slo_back_channel_url` (optional)
   - `cert` or `cert_file`: SP certificate (inline or file path) for signature verification
   - `authn_requests_signed` (bool): if `true`, AuthnRequests from this SP must be signed and `cert`/`cert_file` must be configured with a valid PEM certificate
+  - `logout_requests_signed` (bool, optional): if `true`, LogoutRequests from this SP must be signed and `cert`/`cert_file` must be configured with a valid PEM certificate
+  - `logout_responses_signed` (bool, optional): if `true`, LogoutResponses from this SP must be signed and `cert`/`cert_file` must be configured with a valid PEM certificate
   - `allowed_attributes` (list of strings): Restrict which attributes are released to this SP. If empty, all attributes are allowed.
   - `require_mfa` / `supported_mfa` (lists): MFA policy per SP (`totp`, `webauthn`, `recovery_codes`)
   - `delayed_response` (bool)

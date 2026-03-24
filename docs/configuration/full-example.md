@@ -622,6 +622,8 @@ idp:
         slo_back_channel_url: https://app.example.com/saml/slo/backchannel
         cert_file: /etc/nauthilus/saml-sp.crt
         authn_requests_signed: true
+        logout_requests_signed: true
+        logout_responses_signed: true
         allowed_attributes: ["mail", "cn", "uid", "memberOf"]
         require_mfa: ["webauthn"]
         supported_mfa: ["totp", "webauthn", "recovery_codes"]

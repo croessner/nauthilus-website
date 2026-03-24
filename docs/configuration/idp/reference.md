@@ -176,6 +176,8 @@ PKCE policy for `authorization_code`:
 - `slo_back_channel_url` (string, optional)
 - `cert` (string PEM) or `cert_file` (string path): SP certificate for signature verification
 - `authn_requests_signed` (bool): requires `cert`/`cert_file` and validates incoming AuthnRequest signatures
+- `logout_requests_signed` (bool, optional): requires `cert`/`cert_file` and validates incoming LogoutRequest signatures
+- `logout_responses_signed` (bool, optional): requires `cert`/`cert_file` and validates incoming LogoutResponse signatures
 - `allowed_attributes` ([]string): Restrict released attributes; empty = all allowed
 - `require_mfa` ([]string: `totp`, `webauthn`, `recovery_codes`)
 - `supported_mfa` ([]string: `totp`, `webauthn`, `recovery_codes`)

@@ -65,7 +65,7 @@ const config = {
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
           // `lastVersion` must reference an existing docs snapshot id from `versions.json`.
-          // The latest snapshot on disk is still `2.0.0`; only the navbar badge reflects `2.0.1`.
+          // The latest snapshot on disk is still `2.0.0`; only the navbar badge reflects `2.0.17`.
           lastVersion: '2.0.0',
           versions: {
             current: {

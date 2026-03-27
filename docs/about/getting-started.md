@@ -170,6 +170,7 @@ Nauthilus supports the following command-line options:
 
 - `-config <path>`: Specify a custom path to the configuration file. This overrides the default search locations.
 - `-config-format <format>`: Specify the configuration file format (yaml, json, toml, etc.). Default is "yaml".
+- `-config-check` (or `--config-check`): Validate the loaded configuration and exit (`0` if valid, `1` if invalid).
 - `-version`: Print the version information and exit.
 
 _New in version 1.7.9_

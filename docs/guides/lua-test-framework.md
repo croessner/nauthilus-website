@@ -108,6 +108,7 @@ Additional derived fields:
   "backend_result": { },
   "http_request": { },
   "http_response": { },
+  "http_client": { },
   "expected_output": { }
 }
 ```
@@ -538,6 +539,58 @@ JSON example:
 }
 ```
 
+### `http_client` (glua_http)
+
+Fields:
+- `responses` array of objects:
+  - `status_code` integer (optional, defaults to `200`)
+  - `headers` object (`map[string]string`) (optional)
+  - `body` string (optional)
+  - `error` string (optional, returns `nil, error` to Lua)
+- `expected_calls` common format
+
+Supported `expected_calls.method` values:
+- `get`
+- `post`
+- any lowercase HTTP verb emitted through `http.request(...)` (for example `put`, `delete`)
+
+Behavior notes:
+- Each `glua_http` call consumes one response from `responses` in order.
+- If `responses` is exhausted, the mock returns a default success response (`200` + empty body).
+- `arg_contains` matching is performed against `url=<url> body=<body>`.
+
+Lua example:
+
+```lua
+local http = require("glua_http")
+
+local res, err = http.post("http://clickhouse.local:8123", {
+  body = "SELECT 1",
+  headers = { ["Content-Type"] = "text/plain" }
+})
+if err ~= nil then error(err) end
+```
+
+JSON example:
+
+```json
+{
+  "http_client": {
+    "responses": [
+      {
+        "status_code": 200,
+        "headers": {"X-Test": "ok"},
+        "body": "{\"rows\":0}"
+      }
+    ],
+    "expected_calls": [
+      {"method": "post", "arg_contains": "clickhouse.local"},
+      {"method": "post", "arg_contains": "SELECT 1"}
+    ]
+  }
+}
+```
+
 ### `dns`
 
 Fields:
@@ -843,16 +896,38 @@ Fields:
 
 Supported `expected_calls.method` values:
 - `getenv`
+- `log`
+- `get_redis_key`
+- `if_error_raise`
 - `print_result`
 - `is_table`
 - `table_length`
 - `is_string`
 
+Behavior notes:
+- `get_redis_key(request, key)` returns `request.redis_prefix .. key` when `request.redis_prefix` is present; otherwise it returns `key`.
+- `if_error_raise(err)` raises a Lua error when `err` is non-nil.
+
 Lua example:
 
 ```lua
 local u = require("nauthilus_util")
+
 local mode = u.getenv("MODE", "dev")
+u.log("clickhouse", "debug", "mode=" .. mode)
+
+local req = { redis_prefix = "nauthilus:" }
+local dedupKey = u.get_redis_key(req, "clickhouse:authdedup:alice:203.0.113.10")
+
+local info = { key = dedupKey, mode = mode }
+if u.is_table(info) then
+  local count = u.table_length(info)
+  if u.is_string(dedupKey) and count > 0 then
+    u.print_result("util-demo", mode, dedupKey)
+  end
+end
+
+u.if_error_raise(nil)
 ```
 
 JSON example:
@@ -862,7 +937,14 @@ JSON example:
   "util": {
     "envs": {"MODE": "prod"},
     "expected_calls": [
-      {"method": "getenv", "arg_contains": "MODE"}
+      {"method": "getenv", "arg_contains": "MODE"},
+      {"method": "log", "arg_contains": "debug"},
+      {"method": "get_redis_key", "arg_contains": "clickhouse:authdedup"},
+      {"method": "is_table"},
+      {"method": "table_length"},
+      {"method": "is_string"},
+      {"method": "print_result"},
+      {"method": "if_error_raise", "arg_contains": "nil"}
     ]
   }
 }
@@ -1021,6 +1103,9 @@ go run ./server --test-lua example_feature.lua --test-callback feature --test-mo
 Repository fixtures for core plugins:
 - `testdata/lua/plugins/*.json`
 - wrappers: `testdata/lua/plugins/*_wrapper.lua`
+- ClickHouse-specific luatest fixtures and wrappers:
+  - `server/testing/luatest/testdata/clickhouse/*.json`
+  - `server/testing/luatest/testdata/clickhouse/*_wrapper.lua`
 
 Run all plugin tests:
 

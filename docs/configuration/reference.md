@@ -514,6 +514,11 @@ Administration alerting controls and warm‑up parameters for dynamic threat res
 | CLICKHOUSE_BATCH_SIZE | 100                       | Integer      | Batch size for buffered inserts.                                                                                          |
 | CLICKHOUSE_CACHE_KEY  | "clickhouse:batch:logins" | String       | Cache key used for the in‑process batching queue.                                                                         |
 
+Inserted row fields include IdP metadata when available:
+- `saml_entity_id` (SAML SP entity ID)
+- `grant_type` (OIDC token grant, for example `authorization_code`, `client_credentials`, `refresh_token`, `urn:ietf:params:oauth:grant-type:device_code`)
+- `mfa_method` (`totp`, `webauthn`, `recovery`)
+
 ### ClickHouse query hook (hooks/clickhouse-query.lua)
 
 | Name                   | Default          | Type         | Description                                                    |
@@ -522,6 +527,11 @@ Administration alerting controls and warm‑up parameters for dynamic threat res
 | CLICKHOUSE_TABLE       | nauthilus.logins | String       | Table to query for read‑only operations.                       |
 | CLICKHOUSE_USER        | —                | String       | Optional basic auth user (also sent via headers).              |
 | CLICKHOUSE_PASSWORD    | —                | String       | Optional basic auth password (also sent via headers).          |
+
+The hook projections (`recent`, `by_user`, `by_ip`) include these IdP columns as well:
+- `saml_entity_id`
+- `grant_type`
+- `mfa_method`
 
 ### Blocklist feature (features/blocklist.lua)
 

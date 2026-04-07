@@ -1,0 +1,135 @@
+---
+title: Features
+description: A comprehensive overview of features supported by Nauthilus
+keywords: [Features, Authentication, Authorization, Security]
+sidebar_position: 1
+---
+
+# Nauthilus Features
+
+This document provides a comprehensive overview of all features currently supported by Nauthilus.
+
+## Core Authentication Features
+
+- **Multi-Protocol Authentication Service**
+  - HTTP/Nginx authentication using the HTTP protocol
+  - Dovecot authentication using a custom Lua backend
+  - Support for mail protocols (IMAP, POP3, SMTP, LMTP, Sieve)
+  - Native Identity Provider (OIDC Authorization Code, Device Code, and Client Credentials) and SAML2 for web applications
+
+- **Multiple Authentication Backends**
+  - LDAP backend with support for OpenLDAP and Active Directory
+  - Lua backend for custom authentication logic
+  - Redis cache backend for improved performance
+
+- **Authentication Methods**
+  - Password-based authentication with secure password handling
+  - JWT (JSON Web Token) authentication with role-based access control
+  - HTTP Basic Authentication for simple integrations
+
+## Security Features
+
+- **Brute Force Protection**
+  - Configurable brute force buckets to detect password attacks
+  - Multiple bucket types based on time periods and network ranges
+  - Customizable thresholds and actions
+  - Adaptive toleration mechanism that dynamically adjusts tolerance thresholds (v1.7.7)
+
+- **Realtime Blackhole Lists (RBL)**
+  - Integration with multiple RBL services
+  - Configurable thresholds and scoring
+  - IPv4 and IPv6 support
+
+- **Network Security**
+  - TLS support with certificate validation
+  - Cleartext network definitions for enforcing encryption
+  - Client IP verification and filtering
+
+- **Domain Security**
+  - Static list of known domains for email address validation
+  - Relay domain verification for email authentication
+
+## Performance and Reliability
+
+- **Redis Integration**
+  - Support for multiple Redis deployment models:
+    - Standalone Redis
+    - Master-replica configuration
+    - Redis Sentinel
+    - Redis Cluster
+  - Configurable connection pooling
+  - Custom namespaces for protocol-dependent data
+  - Lua HyperLogLog API support (PFADD, PFCOUNT, PFMERGE) (v1.8.4)
+  - Lua Redis pipelining API to batch commands in one round-trip: nauthilus_redis.redis_pipeline (v1.8.8)
+    - Supported commands in pipelines include: PING, GET, SET, INCR, DEL, EXPIRE, EXISTS, HGET, HSET, HDEL, HLEN, HGETALL, HINCRBY, HINCRBYFLOAT, HEXISTS,
+      RENAME, SADD, SISMEMBER, SMEMBERS, SREM, SCARD, ZADD, ZREM, ZRANK, ZRANGE, ZREVRANGE, ZRANGEBYSCORE, ZREMRANGEBYSCORE, ZREMRANGEBYRANK, ZCOUNT, ZSCORE,
+      ZREVRANK, ZINCRBY, LPUSH, RPUSH, LPOP, RPOP, LRANGE, LLEN, MGET, MSET, KEYS, SCAN, PFADD, PFCOUNT, PFMERGE, and EVALSHA via uploaded script names (run_script).
+    - Example usage:
+      ```lua
+      nauthilus_redis.redis_pipeline(handle, "write", {
+        {"set", "key", "value", 60},
+        {"hset", "hash", "field", "val"},
+        {"zadd", "myz", 1.23, "member"},
+        {"run_script", "ZAddRemExpire", {"some:key"}, {os.time(), "m", 0, os.time()-60, 120}},
+      })
+      ```
+
+- **Connection Handling**
+  - HTTP/2 and HTTP/3 support
+  - HAproxy v2 protocol support
+  - Keep-alive optimization
+  - Connection monitoring
+
+- **Caching**
+  - Redis-based caching for authentication results
+  - Configurable TTLs for positive and negative caches
+  - Optimized LDAP pooling with idle connections
+
+## Extensibility
+
+- **Lua Scripting**
+  - Lua features to filter authentication requests before backend processing
+  - Lua filters to integrate with third-party endpoints and override authentication decisions
+  - Lua post-actions for workflow triggers after request processing
+  - Custom HTTP endpoints via Lua hooks
+  - Shared in-memory cache for Lua scripts
+  - Redis and LDAP integration in Lua scripts
+
+- **Monitoring and Metrics**
+  - Prometheus metrics support
+  - Grafana dashboard templates included
+  - Backend server monitoring
+  - Detailed logging with configurable levels
+  - Distributed tracing via OpenTelemetry (opt-in). See Guides → Tracing (OpenTelemetry)
+    (/docs/guides/tracing-opentelemetry)
+
+- **API Integration**
+  - RESTful API for authentication requests
+  - JSON response format
+  - Custom headers support
+
+## Single Sign-On (SSO)
+
+- Native Identity Provider: OIDC (Authorization Code + Device Code + Client Credentials) and SAML2 with integrated consent and MFA (TOTP, WebAuthn)
+
+## Administration
+
+- **Configuration**
+  - YAML-based configuration
+  - Environment variable support
+  - Hot reloading of configuration
+  - Restart of LDAP connections without service interruption
+
+- **Deployment**
+  - Docker support
+  - Kubernetes compatibility
+  - Systemd integration
+
+## Changes in 1.12
+
+- Added: Native Identity Provider with OIDC (Authorization Code + Device Code + Client Credentials) and SAML2
+- Added: Integrated multi-factor authentication (TOTP, WebAuthn)
+
+## Roadmap
+
+- Policy and authorization improvements for the native IdP

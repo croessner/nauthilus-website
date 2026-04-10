@@ -117,6 +117,17 @@ The following constants are available via the `nauthilus_builtin` module:
 | `BACKEND_RESULT_NOT_FOUND` | The user or resource was not found. |
 | `BACKEND_RESULT_DENIED` | Access was explicitly denied. |
 
+## Backend Result Methods
+
+The `nauthilus_backend_result` object exposes several methods to enrich the authentication result with user details, particularly for Identity Provider flows like OIDC and SAML.
+
+- `authenticated(bool)`: Set whether the user successfully authenticated.
+- `user_found(bool)`: Set whether the user exists in the backend.
+- `account_field(string)`: The primary account identifier.
+- `groups(table)`: Provide a list of group names the user belongs to (e.g., `{"groupA", "groupB"}`). These can be consumed in OIDC mappings via `from: "groups"`.
+- `group_dns(table)`: Provide a list of full group DNs (e.g., `{"cn=groupA,ou=groups,dc=example,dc=org"}`). These can be consumed via `from: "group_dns"`.
+- `attributes(table)`: A key-value table of arbitrary user attributes (e.g., mail, display name, roles).
+
 ## Example Backend Result
 
 ```lua
@@ -124,9 +135,12 @@ local b = nauthilus_backend_result.new()
 b:authenticated(true)
 b:user_found(true)
 b:account_field("account")
+b:groups({"groupA", "groupB"})
+b:group_dns({"cn=groupA,ou=groups,dc=example,dc=org", "cn=groupB,ou=groups,dc=example,dc=org"})
 b:attributes({
     mail = "user@example.com",
-    display_name = "John Doe"
+    display_name = "John Doe",
+    roles = {"openCloudAdmin"}
 })
 return nauthilus_builtin.BACKEND_RESULT_OK, b
 ```

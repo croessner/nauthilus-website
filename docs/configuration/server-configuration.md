@@ -1377,6 +1377,57 @@ server:
     delimiter: "*"
 ```
 
+## CORS Configuration
+
+### server::cors
+
+Nauthilus supports configuring centralized Cross-Origin Resource Sharing (CORS) for HTTP routes.
+CORS is disabled by default. When enabled, policies are evaluated in order, and the first active policy matching the request path is applied.
+
+#### server::cors::enabled
+_Default: false_
+
+Enable or disable centralized CORS handling globally.
+
+#### server::cors::policies
+
+A list of CORS policy definitions.
+
+**Properties of a policy:**
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `name` | `""` | A descriptive name for the policy. |
+| `enabled` | `true` | Indicates if this specific policy is active. |
+| `path_prefixes` | `[]` | List of URL prefixes this policy applies to (e.g., `["/api/v1/"]`). If empty, it matches all paths. |
+| `allow_origins` | `[]` | List of allowed origins (e.g., `["https://example.com"]`). Use `["*"]` to allow all. |
+| `allow_methods` | `["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]` | Allowed HTTP methods. |
+| `allow_headers` | `["Origin", "Content-Length", "Content-Type", "Authorization", "Accept", "X-Requested-With"]` | Allowed request headers. |
+| `expose_headers` | `[]` | Headers exposed to the browser. |
+| `allow_credentials` | `false` | Whether to allow credentials (cookies, authorization headers). |
+| `max_age` | `0` | How long the preflight response can be cached (in seconds), maximum 86400. |
+
+**Example:**
+
+```yaml
+server:
+  cors:
+    enabled: true
+    policies:
+      - name: "API CORS"
+        enabled: true
+        path_prefixes: 
+          - "/api/v1/"
+        allow_origins: 
+          - "https://webapp.example.com"
+        allow_methods: 
+          - "GET"
+          - "POST"
+          - "OPTIONS"
+        allow_credentials: true
+        max_age: 86400
+```
+
 ## Frontend Configuration
 
 ### server::frontend
@@ -1439,6 +1490,71 @@ The issuer name displayed in TOTP apps (like Google Authenticator) when a user s
 _Default: 1_
 
 The allowed clock skew for TOTP verification (number of 30-second windows before/after). A skew of 1 allows for 30 seconds of clock drift.
+
+#### server::frontend::security_headers
+
+Configure browser security headers for frontend routes. If omitted, they are mostly enabled by default with secure defaults.
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `enabled` | `true` | Indicates if frontend security headers are enabled. |
+| `content_security_policy` | _(strict default)_ | Sets the `Content-Security-Policy` header. Can be a string or structured object. Uses a `{{nonce}}` placeholder by default. |
+| `content_security_policy_report_only`| `false` | When true, uses `Content-Security-Policy-Report-Only` instead of enforcing. |
+| `strict_transport_security` | _(strict default)_ | Sets the `Strict-Transport-Security` (HSTS) header. |
+| `x_content_type_options` | `"nosniff"` | Sets the `X-Content-Type-Options` header. |
+| `x_frame_options` | `"DENY"` | Sets the `X-Frame-Options` header to prevent clickjacking. |
+| `referrer_policy` | `"strict-origin-when-cross-origin"`| Sets the `Referrer-Policy` header. |
+| `permissions_policy` | _(strict default)_ | Sets the `Permissions-Policy` header. Can be a string or structured object. |
+| `cross_origin_opener_policy` | `"same-origin"` | Sets the `Cross-Origin-Opener-Policy` header. |
+| `cross_origin_resource_policy`| `"same-origin"` | Sets the `Cross-Origin-Resource-Policy` header. |
+| `cross_origin_embedder_policy`| `"require-corp"`| Sets the `Cross-Origin-Embedder-Policy` header. |
+| `x_permitted_cross_domain_policies`| `"none"` | Sets the `X-Permitted-Cross-Domain-Policies` header. |
+| `x_dns_prefetch_control` | `"off"` | Sets the `X-DNS-Prefetch-Control` header. |
+
+**Structured Objects:**
+
+For `content_security_policy`, `permissions_policy`, and `strict_transport_security`, you can configure them either as a single string (legacy/manual control) or as a structured object.
+
+**1. Content-Security-Policy (`content_security_policy`) object keys:**
+- `default-src`, `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src`, `object-src`, `base-uri`, `frame-ancestors`, `form-action`
+- `form_action_optional_uris` (appended, deduplicated, to `form-action`)
+- `directives` (optional object containing any of the directive keys listed above)
+*Note: Sources can be configured as a single space-separated string or as a list of strings (`[]string`).*
+
+**2. Strict-Transport-Security (`strict_transport_security`) object keys:**
+- `max_age`: Overrides the default max-age (in seconds).
+- `include_subdomains`: Controls `includeSubDomains` (default is `true`).
+- `preload`: Toggles `preload` directive.
+- `extra_tokens`: Appends custom tokens to the header.
+
+**3. Permissions-Policy (`permissions_policy`) object keys:**
+- `features`: A mapping of `feature: value` (e.g., `geolocation: "()"`).
+- Direct `feature: value` keys at the object root are also supported.
+
+**Example:**
+
+```yaml
+server:
+  frontend:
+    security_headers:
+      enabled: true
+      content_security_policy:
+        connect-src:
+          - "'self'"
+          - "https://api.example.test"
+        form-action:
+          - "'self'"
+        form_action_optional_uris:
+          - "https://idp.example.test"
+      strict_transport_security:
+        max_age: 31536000
+        include_subdomains: true
+      permissions_policy:
+        features:
+          geolocation: "()"
+          camera: "()"
+      x_frame_options: "DENY"
+```
 
 ## Prometheus Timer Configuration
 

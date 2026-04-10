@@ -171,6 +171,44 @@ This section defines blocks that combine protocols and LDAP filters. Here is a t
 | aaguid\_field           |    no    | Tell Nauthilus which field is used for the WebAuthn AAGUID         | rns2FAWebAuthnAAGUID    |
 | sign\_count\_field      |    no    | Tell Nauthilus which field is used for the WebAuthn sign count     | rns2FAWebAuthnSignCount |
 
+## Groups Resolution
+
+Nauthilus can resolve LDAP group memberships dynamically when retrieving user attributes. This is especially useful for Identity Provider protocols like OIDC or SAML, where group information needs to be mapped into tokens and assertions.
+
+The `groups` configuration block allows you to define how group memberships are determined. A common strategy is `search`, where Nauthilus executes an LDAP search for group objects that contain the user's DN.
+
+**Properties:**
+- `strategy`: The group resolution strategy. Supported strategies:
+  - `"search"`: Query group entries using `filter`, `base_dn`, and `scope`.
+  - `"member_of"`: Read group memberships directly from a multi-value user attribute. This avoids additional LDAP searches.
+  - `"hybrid"`: A union of both `"member_of"` and `"search"` strategies.
+- `attribute`: The user attribute to read when using the `"member_of"` or `"hybrid"` strategy (default: `"memberOf"`).
+- `base_dn`: The Base DN where the search for groups is executed (for `"search"` or `"hybrid"`, e.g., `ou=groups,dc=example,dc=org`).
+- `scope`: The search scope (`"base"`, `"one"`, or `"sub"`).
+- `filter`: The LDAP filter to find groups. Use `%{user_dn}` to insert the user's Distinguished Name, or `%{username}` for the plain login name. (e.g., `(&(objectClass=groupOfNames)(member=%{user_dn}))`).
+- `name_attribute`: The attribute in the group entry that contains the group name (e.g., `cn`).
+- `recursive`: (boolean) Whether to resolve nested groups.
+- `max_depth`: The maximum depth for recursive group searches (e.g., `1`).
+
+**Example:**
+
+```yaml
+ldap:
+  search:
+    - protocol: ["oidc", "saml"]
+      # ... other settings ...
+      groups:
+        strategy: "search"
+        base_dn: "ou=groups,dc=example,dc=org"
+        scope: "sub"
+        filter: "(&(objectClass=groupOfNames)(member=%{user_dn}))"
+        name_attribute: "cn"
+        recursive: false
+        max_depth: 1
+```
+
+Once configured, the resolved group names (and their full DNs) are added to the internal user object and can be mapped to tokens (e.g. `from: "groups"` or `from: "group_dns"` in the OIDC configuration).
+
 ## Example Configuration
 
 ```yaml

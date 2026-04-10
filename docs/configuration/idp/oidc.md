@@ -361,11 +361,36 @@ Custom scopes allow you to expose additional claims in ID tokens, access tokens,
 
 How it fits together:
 - Server-wide you declare `idp.oidc.custom_scopes[]` with a `name` and a list of `claims { name, type }`.
+- Clients can also define their own `custom_scopes[]` to **override** or extend the server-wide custom scopes. This allows client-specific claim exposure.
 - For consent UI text, each custom scope uses `description` as the default and can define localized variants via `description_<language>` and `description_<language>_<region>` (for example `description_de`, `description_de_at`).
 - Per client you map claim names to backend attributes using `id_token_claims.mappings[]` and `access_token_claims.mappings[]`.
 - At runtime, only claims for scopes requested by the client are included.
 
-Localization lookup behavior:
+### Implied Scopes (Compatibility)
+
+For compatibility scenarios, clients can define `implied_scopes`. These scopes are automatically added to the effective scope set even when they are not explicitly requested by the incoming authorization request.
+
+```yaml
+idp:
+  oidc:
+    clients:
+      - client_id: "opencloud-desktop"
+        scopes:
+          - openid
+          - profile
+          - email
+          - roles
+        implied_scopes:
+          - roles
+```
+
+Behavior:
+- Requested scopes are filtered against the configured `scopes` allow list.
+- `implied_scopes` are appended afterward in stable order and deduplicated.
+- Implied scopes not present in the client's `scopes` allow list are ignored.
+- The resulting effective scope set is used for consent evaluation, claim filtering, and token issuance.
+
+### Localization lookup behavior:
 - The effective language is taken from the URL `:languageTag` when present, otherwise from the user session language.
 - Nauthilus normalizes tags to lowercase and `_` separators (`de-AT` -> `de_at`).
 - Resolution order for custom scope description is:
@@ -397,8 +422,22 @@ idp:
 ```
 
 Backend attribute source:
-- LDAP: ensure the LDAP search populates an attribute key `tenant` (e.g., from `departmentNumber` or a custom attribute). The key must appear in the session attribute map.
-- Lua: in your backend plugin, set `attributes["tenant"] = "acme"` in the result.
+- LDAP: ensure the LDAP search populates an attribute key `tenant` (e.g., from `departmentNumber` or a custom attribute). The key must appear in the session attribute map. Alternatively, use the `groups` resolution strategy in LDAP to resolve user group memberships dynamically.
+- Lua: in your backend plugin, set `attributes["tenant"] = "acme"` in the result. Or set groups natively using `backend_result:groups({"acme"})` and `backend_result:group_dns({"cn=acme,ou=groups"})`.
+
+Mapping Groups or Group DNs:
+Instead of mapping custom attributes via `attribute: "..."`, you can map resolved group lists directly using `from: "groups"` or `from: "group_dns"`.
+
+```yaml
+        id_token_claims:
+          mappings:
+            - claim: "groups"
+              from: "groups"
+              type: "string_array"
+            - claim: "group_dns"
+              from: "group_dns"
+              type: "string_array"
+```
 
 Client request:
 - The RP includes the scope in the authorization request, e.g. `scope=openid profile email tenant`.

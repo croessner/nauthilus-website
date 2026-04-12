@@ -102,6 +102,10 @@ Notes:
 
 - `client_secret_basic` and `client_secret_post` are supported at the token and introspection endpoints.
 - `private_key_jwt` is supported per-client via `token_endpoint_auth_method: private_key_jwt` plus client public key configuration.
+- `allow_refresh_token_combined_client_auth` can be enabled per client for refresh-token interoperability when third-party clients send both Basic auth and body credentials.
+  - Public clients: allows duplicate body `client_id` with empty body `client_secret`.
+  - Confidential clients: requires exact Basic/body credential match and a non-empty body `client_secret`.
+  - Default remains strict (`false`).
 
 ## PKCE policy (`authorization_code`)
 
@@ -205,6 +209,7 @@ idp:
         required_scopes: ["openid", "profile"]
         optional_scopes: ["email", "groups"]
         token_endpoint_auth_method: "client_secret_basic"
+        allow_refresh_token_combined_client_auth: false
         # For private_key_jwt authentication:
         # client_public_key_file: "/etc/nauthilus/keys/client-pub.pem"
         # client_public_key_algorithm: "RS256"

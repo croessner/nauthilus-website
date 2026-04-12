@@ -576,6 +576,7 @@ idp:
           - email
           - groups
         token_endpoint_auth_method: client_secret_basic
+        allow_refresh_token_combined_client_auth: false # Default strict; set true for non-compliant refresh-token clients using Basic + body credentials
         # For token_endpoint_auth_method: private_key_jwt
         # client_public_key_file: /etc/nauthilus/keys/my-client.pub.pem
         # client_public_key_algorithm: RS256

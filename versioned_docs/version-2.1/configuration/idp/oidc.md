@@ -102,6 +102,10 @@ Notes:
 
 - `client_secret_basic` and `client_secret_post` are supported at the token and introspection endpoints.
 - `private_key_jwt` is supported per-client via `token_endpoint_auth_method: private_key_jwt` plus client public key configuration.
+- `allow_refresh_token_combined_client_auth` can be enabled per client for refresh-token interoperability when third-party clients send both Basic auth and body credentials.
+  - Public clients: allows duplicate body `client_id` with empty body `client_secret`.
+  - Confidential clients: requires exact Basic/body credential match and a non-empty body `client_secret`.
+  - Default remains strict (`false`).
 
 ## PKCE policy (`authorization_code`)
 
@@ -120,6 +124,13 @@ Notes:
 
 - Access tokens can be JWT or opaque (configurable default and per client override).
 - Default lifetimes can be overridden per client.
+
+## Refresh tokens
+
+- Refresh tokens are issued when `offline_access` is granted.
+- By default, refresh token rotation is enabled. A successful refresh invalidates the previous refresh token and returns a new one.
+- `revoke_refresh_token: false` disables rotation for the configured scope and keeps the existing refresh token reusable across refresh requests.
+- When rotation is disabled, refresh responses do not include a new `refresh_token`.
 
 ## Configuration
 
@@ -176,6 +187,7 @@ idp:
     access_token_type: "jwt"      # or "opaque"
     default_access_token_lifetime: 3600s
     default_refresh_token_lifetime: 4320h
+    revoke_refresh_token: true
     consent_ttl: 720h
     consent_mode: all_or_nothing  # or granular_optional
     token_endpoint_allow_get: false
@@ -200,11 +212,13 @@ idp:
         access_token_lifetime: 7200s
         access_token_type: "jwt"
         refresh_token_lifetime: 4320h
+        revoke_refresh_token: true
         consent_ttl: 720h
         consent_mode: all_or_nothing
         required_scopes: ["openid", "profile"]
         optional_scopes: ["email", "groups"]
         token_endpoint_auth_method: "client_secret_basic"
+        allow_refresh_token_combined_client_auth: false
         # For private_key_jwt authentication:
         # client_public_key_file: "/etc/nauthilus/keys/client-pub.pem"
         # client_public_key_algorithm: "RS256"
@@ -238,7 +252,7 @@ idp:
 - `custom_scopes` (list): Named custom scopes mapping to `claims`
 - Supported-values arrays used for discovery: `scopes_supported`, `response_types_supported`, `subject_types_supported`, `id_token_signing_alg_values_supported`, `code_challenge_methods_supported`, `token_endpoint_auth_methods_supported`, `claims_supported`
 - Logout discovery toggles: `front_channel_logout_supported`, `front_channel_logout_session_supported`, `back_channel_logout_supported`, `back_channel_logout_session_supported`
-- Token defaults: `access_token_type`, `default_access_token_lifetime`, `default_refresh_token_lifetime`
+- Token defaults: `access_token_type`, `default_access_token_lifetime`, `default_refresh_token_lifetime`, `revoke_refresh_token`
 - Consent defaults: `consent_ttl`, `consent_mode`
 - `token_endpoint_allow_get` (bool, default `false`): accepts GET requests on `/oidc/token` in addition to POST
 - Device Code Flow: `device_code_expiry` (duration), `device_code_polling_interval` (int, seconds), `device_code_user_code_length` (int)
@@ -247,10 +261,11 @@ idp:
   - `scopes`, `grant_types` (list, default: `["authorization_code"]`)
   - `require_mfa`, `supported_mfa` (method sets: `totp`, `webauthn`, `recovery_codes`)
   - `skip_consent`, `delayed_response`
-  - `access_token_lifetime`, `access_token_type`, `refresh_token_lifetime`
+  - `access_token_lifetime`, `access_token_type`, `refresh_token_lifetime`, `revoke_refresh_token`
   - `consent_ttl`, `consent_mode`
   - `required_scopes`, `optional_scopes`
   - `token_endpoint_auth_method`
+  - `allow_refresh_token_combined_client_auth`
   - `client_public_key` or `client_public_key_file`, `client_public_key_algorithm` (for `private_key_jwt` auth)
   - `id_token_claims` with `mappings[]` (`claim`, `attribute`, `type`)
   - `access_token_claims` with `mappings[]` (`claim`, `attribute`, `type`)

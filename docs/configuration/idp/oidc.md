@@ -125,6 +125,13 @@ Notes:
 - Access tokens can be JWT or opaque (configurable default and per client override).
 - Default lifetimes can be overridden per client.
 
+## Refresh tokens
+
+- Refresh tokens are issued when `offline_access` is granted.
+- By default, refresh token rotation is enabled. A successful refresh invalidates the previous refresh token and returns a new one.
+- `revoke_refresh_token: false` disables rotation for the configured scope and keeps the existing refresh token reusable across refresh requests.
+- When rotation is disabled, refresh responses do not include a new `refresh_token`.
+
 ## Configuration
 
 Top-level section: `idp.oidc`
@@ -180,6 +187,7 @@ idp:
     access_token_type: "jwt"      # or "opaque"
     default_access_token_lifetime: 3600s
     default_refresh_token_lifetime: 4320h
+    revoke_refresh_token: true
     consent_ttl: 720h
     consent_mode: all_or_nothing  # or granular_optional
     token_endpoint_allow_get: false
@@ -204,6 +212,7 @@ idp:
         access_token_lifetime: 7200s
         access_token_type: "jwt"
         refresh_token_lifetime: 4320h
+        revoke_refresh_token: true
         consent_ttl: 720h
         consent_mode: all_or_nothing
         required_scopes: ["openid", "profile"]
@@ -243,7 +252,7 @@ idp:
 - `custom_scopes` (list): Named custom scopes mapping to `claims`
 - Supported-values arrays used for discovery: `scopes_supported`, `response_types_supported`, `subject_types_supported`, `id_token_signing_alg_values_supported`, `code_challenge_methods_supported`, `token_endpoint_auth_methods_supported`, `claims_supported`
 - Logout discovery toggles: `front_channel_logout_supported`, `front_channel_logout_session_supported`, `back_channel_logout_supported`, `back_channel_logout_session_supported`
-- Token defaults: `access_token_type`, `default_access_token_lifetime`, `default_refresh_token_lifetime`
+- Token defaults: `access_token_type`, `default_access_token_lifetime`, `default_refresh_token_lifetime`, `revoke_refresh_token`
 - Consent defaults: `consent_ttl`, `consent_mode`
 - `token_endpoint_allow_get` (bool, default `false`): accepts GET requests on `/oidc/token` in addition to POST
 - Device Code Flow: `device_code_expiry` (duration), `device_code_polling_interval` (int, seconds), `device_code_user_code_length` (int)
@@ -252,7 +261,7 @@ idp:
   - `scopes`, `grant_types` (list, default: `["authorization_code"]`)
   - `require_mfa`, `supported_mfa` (method sets: `totp`, `webauthn`, `recovery_codes`)
   - `skip_consent`, `delayed_response`
-  - `access_token_lifetime`, `access_token_type`, `refresh_token_lifetime`
+  - `access_token_lifetime`, `access_token_type`, `refresh_token_lifetime`, `revoke_refresh_token`
   - `consent_ttl`, `consent_mode`
   - `required_scopes`, `optional_scopes`
   - `token_endpoint_auth_method`

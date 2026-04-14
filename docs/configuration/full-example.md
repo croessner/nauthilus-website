@@ -527,6 +527,7 @@ idp:
     access_token_type: jwt              # jwt or opaque
     default_access_token_lifetime: 1h   # Default: 1h
     default_refresh_token_lifetime: 720h # Default: 720h (30 days)
+    revoke_refresh_token: true          # Default: true (rotate refresh tokens and return a new one after refresh)
     consent_ttl: 720h
     consent_mode: all_or_nothing        # all_or_nothing|granular_optional
     token_endpoint_allow_get: false     # Default: false (POST only)
@@ -567,6 +568,7 @@ idp:
         access_token_type: jwt
         access_token_lifetime: 2h
         refresh_token_lifetime: 720h
+        revoke_refresh_token: true      # Default: true; set false to reuse the same refresh token across refresh requests
         consent_ttl: 720h
         consent_mode: all_or_nothing
         required_scopes:

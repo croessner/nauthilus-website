@@ -110,6 +110,7 @@ Localization behavior for custom scope descriptions:
 - `access_token_type` (string: `jwt` or `opaque`)
 - `default_access_token_lifetime` (duration)
 - `default_refresh_token_lifetime` (duration)
+- `revoke_refresh_token` (bool, default: `true`) — enables one-time-use refresh token rotation; set to `false` to keep refresh tokens reusable and suppress `refresh_token` in refresh responses
 - `consent_ttl` (duration, default: `720h` / 30 days)
 - `token_endpoint_allow_get` (bool, default: `false`)
 - `consent_mode` (string: `all_or_nothing` or `granular_optional`, default: `all_or_nothing`)
@@ -130,6 +131,7 @@ Localization behavior for custom scope descriptions:
 - `access_token_lifetime` (duration)
 - `access_token_type` (string)
 - `refresh_token_lifetime` (duration)
+- `revoke_refresh_token` (bool, client-specific override of refresh token rotation)
 - `consent_ttl` (duration, client-specific override)
 - `consent_mode` (string, client-specific override)
 - `required_scopes` ([]string)

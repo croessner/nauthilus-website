@@ -110,6 +110,7 @@ Localization behavior for custom scope descriptions:
 - `access_token_type` (string: `jwt` or `opaque`)
 - `default_access_token_lifetime` (duration)
 - `default_refresh_token_lifetime` (duration)
+- `revoke_refresh_token` (bool, default: `true`) — enables one-time-use refresh token rotation; set to `false` to keep refresh tokens reusable and suppress `refresh_token` in refresh responses
 - `consent_ttl` (duration, default: `720h` / 30 days)
 - `token_endpoint_allow_get` (bool, default: `false`)
 - `consent_mode` (string: `all_or_nothing` or `granular_optional`, default: `all_or_nothing`)
@@ -130,11 +131,13 @@ Localization behavior for custom scope descriptions:
 - `access_token_lifetime` (duration)
 - `access_token_type` (string)
 - `refresh_token_lifetime` (duration)
+- `revoke_refresh_token` (bool, client-specific override of refresh token rotation)
 - `consent_ttl` (duration, client-specific override)
 - `consent_mode` (string, client-specific override)
 - `required_scopes` ([]string)
 - `optional_scopes` ([]string, `openid` is not allowed here)
 - `token_endpoint_auth_method` (string: `client_secret_basic`, `client_secret_post`, `private_key_jwt`, `none`)
+- `allow_refresh_token_combined_client_auth` (bool, default: `false`) — per-client compatibility mode for refresh-token requests that send both Basic auth and body credentials
 - `client_public_key` (string PEM) or `client_public_key_file` (string path) — for `private_key_jwt` authentication
 - `client_public_key_algorithm` (string, default: `RS256`)
 - `id_token_claims` (IdTokenClaims):
@@ -154,6 +157,13 @@ PKCE policy for `authorization_code`:
 - Public clients must send:
   - `code_challenge` and `code_challenge_method=S256` at `/oidc/authorize`
   - `code_verifier` at `/oidc/token`
+
+Refresh-token client authentication compatibility (`allow_refresh_token_combined_client_auth`):
+- Default is strict (`false`): requests with both Basic auth and body credentials are rejected.
+- Compatibility applies only to `grant_type=refresh_token`.
+- Public clients: allows duplicate `client_id` in the body with an empty body `client_secret`.
+- Confidential clients: requires body `client_id` and `client_secret` to exactly match Basic auth credentials.
+- Confidential clients still require a non-empty body `client_secret` when compatibility is enabled.
 
 ## `idp.saml2` (SAML2Config)
 

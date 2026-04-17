@@ -58,17 +58,30 @@ Exit codes:
 ## Callback contract
 
 Required global Lua functions by callback type:
-- `filter`: `nauthilus_call_filter(request)` -> integer
-- `feature`: `nauthilus_call_feature(request)` -> boolean
+- `filter`: `nauthilus_call_filter(request)` -> `action, result`
+- `feature`: `nauthilus_call_feature(request)` -> `triggered, abort, result`
 - `action`: `nauthilus_call_action(request)` -> boolean, integer, or `nil`
-- `backend`: `nauthilus_backend_verify_password(request)` -> table or userdata
+- `backend`: `nauthilus_backend_verify_password(request)` -> `result, table|userdata`
 - `hook`: `nauthilus_run_hook()` -> any (test runtime stores boolean-like result as action result)
 - `cache_flush`: `nauthilus_cache_flush(request)` -> table, string|nil
+
+Filter return semantics:
+- `action`: boolean (`nauthilus_builtin.FILTER_ACCEPT` or `nauthilus_builtin.FILTER_REJECT`)
+- `result`: integer (`nauthilus_builtin.FILTER_RESULT_OK` or `nauthilus_builtin.FILTER_RESULT_FAIL`)
+
+Feature return semantics:
+- `triggered`: boolean (`nauthilus_builtin.FEATURE_TRIGGER_NO` or `nauthilus_builtin.FEATURE_TRIGGER_YES`)
+- `abort`: boolean (`nauthilus_builtin.FEATURES_ABORT_NO` or `nauthilus_builtin.FEATURES_ABORT_YES`)
+- `result`: integer (`nauthilus_builtin.FEATURE_RESULT_OK` or `nauthilus_builtin.FEATURE_RESULT_FAIL`)
 
 Action return semantics:
 - boolean: used directly
 - integer: `0` means success, any other value means failure
 - `nil`: treated as success
+
+Backend return semantics:
+- `result`: integer (`nauthilus_builtin.BACKEND_RESULT_OK` or `nauthilus_builtin.BACKEND_RESULT_FAIL`)
+- `backend_result`: table or userdata payload returned from `nauthilus_backend_result.new()`
 
 ## Request object (`request`) in test runtime
 

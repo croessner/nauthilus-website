@@ -41,7 +41,13 @@ Nauthilus supports the following command-line options:
 - `-key-bits <bits>`: RSA key size used by generation flags. Default: `4096`.
 - `-cert-years <years>`: Certificate validity for `-gen-saml-cert`. Default: `10`.
 - `--test-lua <script.lua>`: Run Lua test mode for a single script and exit.
-- `--test-callback <filter|feature|action|backend|hook|cache_flush>`: Required in Lua test mode.
+- `--test-callback <filter|feature|action|backend|hook|cache_flush>`: Required in Lua test mode. Callback signatures follow the production contracts:
+  - `filter`: `nauthilus_call_filter(request) -> action, result`
+  - `feature`: `nauthilus_call_feature(request) -> triggered, abort, result`
+  - `action`: `nauthilus_call_action(request) -> boolean|integer|nil`
+  - `backend`: `nauthilus_backend_verify_password(request) -> result, backend_result`
+  - `hook`: `nauthilus_run_hook(request) -> nil|table`
+  - `cache_flush`: `nauthilus_cache_flush(request) -> additional_keys, account_name`
 - `--test-mock <mock.json>`: Optional JSON mock fixture in Lua test mode.
 
 ## Environment Variables

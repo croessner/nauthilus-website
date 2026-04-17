@@ -14,13 +14,13 @@ const latestProductVersion =
   (() => {
     try {
       // optional JSON file maintained by CI
-      // { "version": "2.1.2" }
+      // { "version": "2.1.3" }
       return require('./latest-version.json').version;
     } catch (_) {
       return undefined;
     }
   })() ||
-  '2.1.2';
+  '2.1.3';
 
 // The docs dropdown should display major.minor only.
 const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');
@@ -65,7 +65,7 @@ const config = {
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
           // `lastVersion` must reference an existing docs snapshot id from `versions.json`.
-          // The latest snapshot on disk is `2.1`; the navbar badge reflects the full product release `2.1.2`.
+          // The latest snapshot on disk is `2.1`; the navbar badge reflects the full product release `2.1.3`.
           lastVersion: '2.1',
           versions: {
             current: {

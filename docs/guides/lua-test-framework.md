@@ -146,6 +146,13 @@ Rules:
 - missing calls fail
 - extra calls fail
 
+Scope:
+- `expected_calls` only works for functions that the Lua test runner instruments explicitly.
+- In practice, that means the mocked or wrapped module APIs documented on this page, for example `nauthilus_context`, `nauthilus_redis`, `nauthilus_backend`, `nauthilus_http_request`, `nauthilus_http_response`, `nauthilus_util`, `nauthilus_cache`, the dedicated `db` mock, and the wrapped HTTP client module.
+- Arbitrary self-written Lua helper functions are not tracked.
+- Standard library calls such as `string.*`, `table.*`, `math.*`, or generic `require(...)` modules are not tracked unless the test runner exposes a dedicated mock or wrapper for that module.
+- Use the per-module "Supported `expected_calls.method` values" lists below as the authoritative source. If a function is not listed there, it is not observable via `expected_calls`.
+
 DB uses a dedicated expected-call structure (see DB section).
 
 ## Complete module reference
@@ -1019,16 +1026,20 @@ Assertions:
 
 Fields:
 - `filter_result` int
+- `filter_action` bool
 - `feature_result` bool
+- `feature_abort` bool
+- `feature_status` int
 - `action_result` bool
 - `backend_result` bool
-- `cache_flush_additional_keys` array of strings
-- `cache_flush_account_name` string
+- `backend_return_code` int
 - `backend_authenticated` bool
 - `backend_user_found` bool
 - `backend_account_field` string
 - `backend_display_name` string
 - `backend_unique_user_id` string
+- `cache_flush_additional_keys` array of strings
+- `cache_flush_account_name` string
 - `used_backend_address` string
 - `used_backend_port` int
 - `status_message_contain` array of strings
@@ -1037,12 +1048,19 @@ Fields:
 - `logs_not_contain` array of strings
 - `error_expected` bool
 
+Notes:
+- All fields are optional. The runner only validates fields that are present in `expected_output`.
+- `status_message_contain`, `status_message_not_contain`, `logs_contain`, and `logs_not_contain` use substring matching against the collected output entries.
+- `error_expected: true` requires at least one runtime or validation error. If it is omitted, it behaves like `false`.
+
 Example:
 
 ```json
 {
   "expected_output": {
     "feature_result": true,
+    "feature_abort": false,
+    "feature_status": 0,
     "status_message_not_contain": ["Access denied"],
     "logs_contain": ["policy accepted"],
     "logs_not_contain": ["panic"],

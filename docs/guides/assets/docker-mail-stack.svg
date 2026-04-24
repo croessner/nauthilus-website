@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 820" role="img" aria-labelledby="title desc">
-  <title id="title">Docker-basierter Mail-Stack</title>
-  <desc id="desc">Docker-basierter Mail-Stack mit Postfix, pfxhttp, Nauthilus, Dovecot, Valkey und Lua-Backend.</desc>
+  <title id="title">Docker-based mail stack</title>
+  <desc id="desc">Docker-based mail stack with Postfix, pfxhttp, Nauthilus, Dovecot, Valkey, and a Lua backend.</desc>
   <defs>
     <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto-start-reverse">
       <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#2d607a"/>
@@ -23,7 +23,7 @@
   </defs>
 
   <rect class="bg" x="0" y="0" width="1240" height="820"/>
-  <text class="title" x="90" y="60">Docker-Stack mit Postfix, pfxhttp, Nauthilus und einem Dovecot</text>
+  <text class="title" x="90" y="60">Docker stack with Postfix, pfxhttp, Nauthilus, and Dovecot</text>
   <rect class="network" x="70" y="90" width="1100" height="660"/>
 
   <rect class="box" x="120" y="145" width="220" height="90"/>
@@ -35,21 +35,21 @@
 
   <rect class="box" x="120" y="575" width="220" height="104"/>
   <text class="label" x="230" y="628">Dovecot</text>
-  <text class="small" x="230" y="657">IMAP und LMTP</text>
+  <text class="small" x="230" y="657">IMAP and LMTP</text>
 
   <rect class="core" x="500" y="250" width="310" height="165"/>
   <text class="label-light" x="655" y="314">Nauthilus</text>
   <text class="small-light" x="655" y="348">Hooks, Cache, HTTP-API</text>
-  <text class="small-light" x="655" y="377">Auth- und Entscheidungslogik</text>
+  <text class="small-light" x="655" y="377">Auth and decision logic</text>
 
   <rect class="data" x="915" y="180" width="190" height="92"/>
   <text class="label" x="1010" y="236">Valkey</text>
-  <text class="small" x="1010" y="263">Cache und Status</text>
+  <text class="small" x="1010" y="263">Cache and state</text>
 
   <rect class="data" x="860" y="470" width="280" height="112"/>
-  <text class="label" x="1000" y="524">Lua-Backend</text>
-  <text class="small" x="1000" y="552">Workshop-Logik</text>
-  <text class="small" x="1000" y="576">und Account-Mapping</text>
+  <text class="label" x="1000" y="524">Lua backend</text>
+  <text class="small" x="1000" y="552">Tutorial logic</text>
+  <text class="small" x="1000" y="576">and account mapping</text>
 
   <path class="line" d="M 230 235 L 230 336"/>
   <path class="line" d="M 340 392 C 405 392 440 372 492 344"/>
@@ -60,10 +60,10 @@
   <path class="line-thin" d="M 340 190 C 455 190 520 176 610 246"/>
 
   <text class="note" x="370" y="290">Submission via pfxhttp-SASL</text>
-  <text class="note" x="432" y="362">Policy-Service und Maps</text>
-  <text class="note" x="420" y="520">IMAP-Auth gegen Nauthilus</text>
-  <text class="note" x="420" y="564">LMTP fuer testuser@example.test</text>
-  <text class="note" x="470" y="166">Transport-Map: Testuser zu LMTP</text>
-  <text class="note" x="474" y="192">alle anderen Empfaenger zu discard</text>
-  <text class="note" x="868" y="420">Lua prueft Benutzer und Mapping</text>
+  <text class="note" x="432" y="362">Policy service and maps</text>
+  <text class="note" x="420" y="520">IMAP auth through Nauthilus</text>
+  <text class="note" x="420" y="564">LMTP for testuser@example.test</text>
+  <text class="note" x="470" y="166">Transport map: testuser to LMTP</text>
+  <text class="note" x="474" y="192">all other recipients to discard</text>
+  <text class="note" x="868" y="420">Lua checks user and mapping</text>
 </svg>

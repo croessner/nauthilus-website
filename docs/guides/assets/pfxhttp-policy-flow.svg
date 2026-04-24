@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 760" role="img" aria-labelledby="title desc">
-  <title id="title">pfxhttp als Policy-, Hook- und SASL-Brücke</title>
-  <desc id="desc">Fluss von Postfix über pfxhttp zu Nauthilus-Hooks und optional zu OIDC-geschützten HTTP-Backends, inklusive Dovecot-SASL-Emulation für Submission.</desc>
+  <title id="title">pfxhttp as a policy, hook, and SASL bridge</title>
+  <desc id="desc">Flow from Postfix through pfxhttp to Nauthilus hooks and optional OIDC-protected HTTP backends, including Dovecot-SASL emulation for submission.</desc>
   <defs>
     <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto-start-reverse">
       <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#2d607a"/>
@@ -21,7 +21,7 @@
   </defs>
 
   <rect class="bg" x="0" y="0" width="1320" height="760"/>
-  <text class="title" x="80" y="60">pfxhttp zwischen Postfix, Nauthilus und HTTP-Backends</text>
+  <text class="title" x="80" y="60">pfxhttp between Postfix, Nauthilus, and HTTP backends</text>
 
   <rect class="box" x="90" y="285" width="200" height="100"/>
   <text class="label" x="190" y="345">Postfix</text>
@@ -32,17 +32,17 @@
 
   <rect class="core" x="705" y="255" width="270" height="150"/>
   <text class="label-light" x="840" y="325">Nauthilus</text>
-  <text class="small" x="840" y="360" fill="#e8f0f4">Hooks und Policy-Logik</text>
+  <text class="small" x="840" y="360" fill="#e8f0f4">Hooks and policy logic</text>
 
   <rect class="data" x="1060" y="105" width="220" height="100"/>
-  <text class="label" x="1170" y="165">Nauthilus-Hook</text>
+  <text class="label" x="1170" y="165">Nauthilus hook</text>
 
   <rect class="data" x="1060" y="300" width="220" height="100"/>
-  <text class="label" x="1170" y="355">HTTP-Backend</text>
-  <text class="small" x="1170" y="385">optional OIDC geschützt</text>
+  <text class="label" x="1170" y="355">HTTP backend</text>
+  <text class="small" x="1170" y="385">optionally OIDC-protected</text>
 
   <rect class="data" x="1060" y="525" width="220" height="100"/>
-  <text class="label" x="1170" y="585">Policy-Antwort</text>
+  <text class="label" x="1170" y="585">Policy response</text>
 
   <path class="line" d="M 290 335 L 388 335"/>
   <path class="line" d="M 615 335 L 698 335"/>
@@ -51,10 +51,10 @@
   <path class="line" d="M 1170 400 L 1170 518"/>
   <path class="line" d="M 1060 575 C 1015 540 970 495 925 415"/>
 
-  <text class="note" x="340" y="305">Policy, Map oder SASL-Auth</text>
-  <text class="note" x="655" y="305">HTTP-Anfrage</text>
-  <text class="note" x="1025" y="205">direkter Hook-Endpunkt</text>
+  <text class="note" x="340" y="305">Policy, map, or SASL auth</text>
+  <text class="note" x="655" y="305">HTTP request</text>
+  <text class="note" x="1025" y="205">direct hook endpoint</text>
   <text class="note" x="1020" y="325">Client Credentials</text>
-  <text class="note" x="935" y="610">DUNNO, REJECT, Map-Wert</text>
-  <text class="note" x="370" y="445">Dovecot-SASL-Emulation für Submission</text>
+  <text class="note" x="935" y="610">DUNNO, REJECT, map value</text>
+  <text class="note" x="370" y="445">Dovecot-SASL emulation for submission</text>
 </svg>

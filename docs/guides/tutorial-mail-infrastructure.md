@@ -16,8 +16,6 @@ This tutorial shows Nauthilus as a central decision point in a small mail stack.
 - LMTP delivery into Dovecot
 - IMAP verification after delivery
 
-![Nauthilus in the mail landscape](assets/nauthilus-mail-landschaft.svg)
-
 Nauthilus does not replace Postfix or Dovecot. It centralizes authentication, account mapping, policy logic, and hook-based integration so the mail components can ask one consistent service for decisions.
 
 ## What You Build
@@ -44,6 +42,8 @@ Demo account:
 - Username: `testuser`
 - Password: `testpassword`
 - Mail address: `testuser@example.test`
+
+The diagram shows the exact services used by this tutorial and the relevant request paths between them.
 
 ![Docker-based mail stack](assets/docker-mail-stack.svg)
 

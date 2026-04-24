@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 760" role="img" aria-labelledby="title desc">
+  <title id="title">pfxhttp als Policy-, Hook- und SASL-Brücke</title>
+  <desc id="desc">Fluss von Postfix über pfxhttp zu Nauthilus-Hooks und optional zu OIDC-geschützten HTTP-Backends, inklusive Dovecot-SASL-Emulation für Submission.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto-start-reverse">
+      <path d="M 0 0 L 7 3.5 L 0 7 z" fill="#2d607a"/>
+    </marker>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .box { fill: #ffffff; stroke: #2d607a; stroke-width: 3; rx: 18; ry: 18; }
+      .core { fill: #163b52; stroke: #163b52; stroke-width: 3; rx: 18; ry: 18; }
+      .data { fill: #fff6e8; stroke: #b36b00; stroke-width: 2.5; rx: 16; ry: 16; }
+      .line { stroke: #2d607a; stroke-width: 4; fill: none; marker-end: url(#arrow); stroke-linecap: round; stroke-linejoin: round; }
+      .dash { stroke: #8a5b00; stroke-width: 4; fill: none; stroke-dasharray: 12 10; marker-end: url(#arrow); stroke-linecap: round; stroke-linejoin: round; }
+      .label { font: 700 25px 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; fill: #163b52; text-anchor: middle; }
+      .label-light { font: 700 26px 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; fill: #ffffff; text-anchor: middle; }
+      .small { font: 500 18px 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; fill: #163b52; text-anchor: middle; }
+      .note { font: 500 18px 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; fill: #163b52; text-anchor: middle; paint-order: stroke fill; stroke: #f6f8fb; stroke-width: 8; stroke-linejoin: round; }
+      .title { font: 700 28px 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; fill: #163b52; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1320" height="760"/>
+  <text class="title" x="80" y="60">pfxhttp zwischen Postfix, Nauthilus und HTTP-Backends</text>
+
+  <rect class="box" x="90" y="285" width="200" height="100"/>
+  <text class="label" x="190" y="345">Postfix</text>
+
+  <rect class="box" x="395" y="285" width="220" height="100"/>
+  <text class="label" x="505" y="340">pfxhttp</text>
+  <text class="small" x="505" y="370">Policy, Maps, SASL</text>
+
+  <rect class="core" x="705" y="255" width="270" height="150"/>
+  <text class="label-light" x="840" y="325">Nauthilus</text>
+  <text class="small" x="840" y="360" fill="#e8f0f4">Hooks und Policy-Logik</text>
+
+  <rect class="data" x="1060" y="105" width="220" height="100"/>
+  <text class="label" x="1170" y="165">Nauthilus-Hook</text>
+
+  <rect class="data" x="1060" y="300" width="220" height="100"/>
+  <text class="label" x="1170" y="355">HTTP-Backend</text>
+  <text class="small" x="1170" y="385">optional OIDC geschützt</text>
+
+  <rect class="data" x="1060" y="525" width="220" height="100"/>
+  <text class="label" x="1170" y="585">Policy-Antwort</text>
+
+  <path class="line" d="M 290 335 L 388 335"/>
+  <path class="line" d="M 615 335 L 698 335"/>
+  <path class="line" d="M 975 285 C 1005 255 1025 230 1060 185"/>
+  <path class="dash" d="M 975 335 L 1053 350"/>
+  <path class="line" d="M 1170 400 L 1170 518"/>
+  <path class="line" d="M 1060 575 C 1015 540 970 495 925 415"/>
+
+  <text class="note" x="340" y="305">Policy, Map oder SASL-Auth</text>
+  <text class="note" x="655" y="305">HTTP-Anfrage</text>
+  <text class="note" x="1025" y="205">direkter Hook-Endpunkt</text>
+  <text class="note" x="1020" y="325">Client Credentials</text>
+  <text class="note" x="935" y="610">DUNNO, REJECT, Map-Wert</text>
+  <text class="note" x="370" y="445">Dovecot-SASL-Emulation für Submission</text>
+</svg>

@@ -1,34 +1,28 @@
 ---
 title: Password Nonce
-description: Configuration for password nonce in Nauthilus
+description: Configuration for storage.redis.password_nonce
 keywords: [Configuration, Password, Nonce]
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Password Nonce
 
-## Configuration Options
+The current path is:
 
-### server::redis::password_nonce
-_Default: ""_<br/>
-_required_
+- `storage.redis.password_nonce`
 
-This is a random string used to concatenate it with the password. The result will be hashed and truncated and
-is used in Redis. The password nonce must be at least 16 characters long and can contain alphanumeric characters and symbols, but no spaces.
+This is a required random string used when hashing password material for Redis-side logic. It must be long, random, and must not contain spaces.
 
-```mermaid
-flowchart LR
-  Password --> prep["Nonce\0Password"] --> SHA256 -->|truncate| bytes["Pseudo password"]
-```
-
-## Example Configuration
+## Example
 
 ```yaml
-server:
+storage:
   redis:
-    password_nonce: "some-random-string-used-for-password-hashing"
+    password_nonce: "replace-with-a-long-random-string"
 ```
 
-:::note
-The password_nonce is part of the Redis configuration, not a top-level configuration.
-:::
+Related setting:
+
+- `storage.redis.encryption_secret`
+
+Do not keep either value in plaintext dumps unless you explicitly use `-P`.

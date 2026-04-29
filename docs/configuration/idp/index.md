@@ -1,60 +1,74 @@
 ---
 sidebar_position: 1
-description: Native Identity Provider (OIDC + SAML2) overview and migration notes
-keywords: [Identity Provider, OIDC, SAML2, Migration]
+description: Identity configuration in config v2
+keywords: [Identity Provider, OIDC, SAML2, MFA]
 ---
 
-# Identity Provider (IdP)
+# Identity
 
-As of Nauthilus 1.12, Nauthilus ships a native Identity Provider with:
+Browser-facing identity settings now live entirely below `identity`.
 
-- OpenID Connect (OIDC) using the Authorization Code, Device Authorization, and Client Credentials grants
-- SAML 2.0 IdP
-
-This section documents configuration, endpoints and migration notes.
-
-> Migration note
->
-> Remove old OAuth2-specific settings from your configuration and add the new `idp.*` sections described here. Route OIDC/SAML traffic to the native endpoints (`/oidc/*`, `/saml/*`) plus shared frontend paths such as `/login`, `/logout`, and `/mfa/*`.
-
-## Components
-
-- OIDC endpoints: discovery, authorize, token, userinfo, introspection, JWKS, logout
-- SAML2 endpoints: metadata, SSO, SLO
-- Integrated consent UI and multi-factor authentication (TOTP, WebAuthn)
-
-## Configuration overview
-
-Top-level IdP section in the main configuration file:
+## Main Structure
 
 ```yaml
-idp:
-  remember_me_ttl: 720h
-  terms_of_service_url: "https://example.com/tos"
-  privacy_policy_url: "https://example.com/privacy"
-  password_forgotten_url: "https://example.com/forgot-password"
-  webauthn:
-    rp_display_name: "Nauthilus"
-    rp_id: "localhost"
-    rp_origins: ["https://localhost"]
-    authenticator_attachment: "platform"
-    resident_key: "preferred"
-    user_verification: "preferred"
-  oidc: { ... }
-  saml2: { ... }
+identity:
+  session: {}
+  frontend: {}
+  mfa: {}
+  oidc: {}
+  saml: {}
 ```
 
-- `remember_me_ttl` defines the global "remember me" session TTL for IdP logins.
-- `password_forgotten_url` adds an optional "Forgot password?" link on the login page.
-- For detailed OIDC configuration, see [OIDC](oidc.md).
-- For detailed SAML2 configuration, see [SAML2](saml2.md).
-- For customizing the user interface, see [Templates](templates.md).
-- For a complete reference of all new IdP settings, see [Reference](reference.md).
+This replaces the older split where IdP-related options were spread across `idp` and `server.frontend`.
 
-## Related
+## Sections
 
-- [OIDC (Authorization Code + Device Code + Client Credentials)](oidc.md)
-- [SAML2](saml2.md)
-- [Templates & Customization](templates.md)
-- [Reference (all IdP settings)](reference.md)
-- Release notes 1.12 (breaking changes)
+- `identity.session`: remember-me/session behavior
+- `identity.frontend`: templates, assets, links, localization, security headers
+- `identity.mfa`: TOTP and WebAuthn settings
+- `identity.oidc`: native OpenID Connect provider
+- `identity.saml`: native SAML IdP
+
+## Example
+
+```yaml
+identity:
+  session:
+    remember_me_ttl: 720h
+  frontend:
+    enabled: true
+    assets:
+      html_static_content_path: "/etc/nauthilus/static"
+      language_resources: "/etc/nauthilus/resources"
+    localization:
+      languages:
+        - "en"
+        - "de"
+      default_language: "en"
+    links:
+      terms_of_service_url: "https://example.com/tos"
+      privacy_policy_url: "https://example.com/privacy"
+      password_forgotten_url: "https://example.com/forgot-password"
+  mfa:
+    totp:
+      issuer: "Nauthilus"
+      skew: 1
+    webauthn:
+      rp_display_name: "Nauthilus"
+      rp_id: "idp.example.com"
+      rp_origins:
+        - "https://idp.example.com"
+  oidc:
+    enabled: true
+    issuer: "https://idp.example.com"
+  saml:
+    enabled: true
+    entity_id: "https://idp.example.com/saml"
+```
+
+## Related Pages
+
+- [OIDC](oidc.md)
+- [SAML](saml2.md)
+- [Reference](reference.md)
+- [Templates](templates.md)

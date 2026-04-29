@@ -60,8 +60,8 @@ When protection is active, the filter sets:
 Per-account unique IP metrics and attack heuristics work best with IP scoping to avoid counting IPv6 privacy addresses
 and large NAT pools as distinct clients. Nauthilus exposes scoping controls to Lua features in v1.10.0:
 
-- `lua.config.ip_scoping_v6_cidr` (e.g., `64`)
-- `lua.config.ip_scoping_v4_cidr` (e.g., `24`)
+- `auth.backends.lua.backend.default.ip_scoping_v6_cidr` (e.g., `64`)
+- `auth.backends.lua.backend.default.ip_scoping_v4_cidr` (e.g., `24`)
 
 See also: Lua API `nauthilus_misc.scoped_ip` below.
 

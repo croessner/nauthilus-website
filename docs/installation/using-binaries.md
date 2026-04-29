@@ -7,75 +7,64 @@ sidebar_position: 3
 
 # Using Binaries
 
-This guide explains how to install and configure Nauthilus using pre-compiled binary packages. This method is recommended for production environments where you want a straightforward installation process.
+This guide explains how to install and run Nauthilus from release binaries.
 
-## Binary Availability
+## Installation
 
-Nauthilus binaries are available for various platforms:
-
-- Linux (x86_64, ARM64)
-- FreeBSD (x86_64)
-- macOS (x86_64, ARM64)
-
-You can download the latest release from the [GitHub Releases page](https://github.com/croessner/nauthilus/releases).
-
-:::note
-If binaries are not yet available for your platform, you can [compile Nauthilus from source](/docs/installation/compiling) instead.
-:::
-
-## Installation Steps
-
-### 1. Download the Binary
+Download the release archive, unpack it, and install the server binary:
 
 ```bash
-# Example for Linux x86_64
 curl -LO https://github.com/croessner/nauthilus/releases/latest/download/nauthilus-linux-amd64.tar.gz
 tar -xzf nauthilus-linux-amd64.tar.gz
-```
-
-### 2. Move the Binary to a System Directory
-
-```bash
 sudo mv nauthilus /usr/local/sbin/
 sudo chmod +x /usr/local/sbin/nauthilus
 ```
 
-### 3. Create a Dedicated User (Recommended)
-
-For security reasons, it's recommended to run Nauthilus as a dedicated non-privileged user:
+Create a dedicated user and config directory:
 
 ```bash
 sudo useradd -r -s /bin/false nauthilus
-```
-
-### 4. Create Configuration Directory
-
-```bash
 sudo mkdir -p /etc/nauthilus
 sudo chown nauthilus:nauthilus /etc/nauthilus
 ```
 
-### 5. Create a Basic Configuration File
+## Minimal Config File
 
-Create a file at `/etc/nauthilus/nauthilus.yml` with your configuration. See the [Configuration Reference](/docs/configuration/server-configuration) for details.
+Create `/etc/nauthilus/nauthilus.yml`:
 
-## Systemd Integration
+```yaml
+runtime:
+  listen:
+    address: "127.0.0.1:9080"
 
-For Linux systems using systemd, you can set up Nauthilus as a service for automatic startup and management.
+observability:
+  log:
+    level: "info"
 
-### Create a Systemd Unit File
+storage:
+  redis:
+    primary:
+      address: "127.0.0.1:6379"
+    password_nonce: "replace-with-a-long-random-string"
 
-Create the file `/etc/systemd/system/nauthilus.service`:
+auth:
+  backends:
+    order:
+      - cache
+      - ldap
+```
+
+## Systemd Unit
 
 ```ini
 [Unit]
-Description=Central authentication server
-After=network.target nss-lookup.target syslog.target
+Description=Nauthilus authentication service
+After=network.target nss-lookup.target
 
 [Service]
 Type=simple
 EnvironmentFile=-/etc/sysconfig/nauthilus
-ExecStart=/usr/local/sbin/nauthilus
+ExecStart=/usr/local/sbin/nauthilus --config /etc/nauthilus/nauthilus.yml
 Restart=on-failure
 User=nauthilus
 Group=nauthilus
@@ -84,7 +73,7 @@ Group=nauthilus
 WantedBy=multi-user.target
 ```
 
-### Enable and Start the Service
+Enable and start it:
 
 ```bash
 sudo systemctl daemon-reload
@@ -92,53 +81,50 @@ sudo systemctl enable nauthilus
 sudo systemctl start nauthilus
 ```
 
-### Check Service Status
+## Useful Commands
+
+Validate configuration:
 
 ```bash
-sudo systemctl status nauthilus
+nauthilus --config /etc/nauthilus/nauthilus.yml --config-check
 ```
 
-## Configuration Options
-
-Nauthilus can be configured in multiple ways:
-
-1. **YAML Configuration File**: The primary method, using `/etc/nauthilus/nauthilus.yml`
-2. **Environment Variables**: As shown in the environment file above
-3. **Command-Line Flags**: For overriding specific settings
-
-See the [Configuration Reference](/docs/configuration/server-configuration) for a complete list of options.
-
-## Upgrading
-
-To upgrade Nauthilus to a newer version:
-
-1. Download the new binary
-2. Replace the existing binary
-3. Restart the service:
-   ```bash
-   sudo systemctl restart nauthilus
-   ```
-
-## Troubleshooting
-
-### Checking Logs
-
-View service logs:
+Show defaults:
 
 ```bash
-sudo journalctl -u nauthilus
+nauthilus -d
 ```
 
-### Common Issues
+Show only changed values:
 
-1. **Permission problems**: Ensure the nauthilus user has access to the configuration directory
-2. **Configuration errors**: Verify your configuration file syntax
-3. **Port conflicts**: Check if another service is using the same port
+```bash
+nauthilus -n --config /etc/nauthilus/nauthilus.yml
+```
+
+Show changed values including secrets:
+
+```bash
+nauthilus -n -P --config /etc/nauthilus/nauthilus.yml
+```
+
+## Configuration Sources
+
+Nauthilus can be configured with:
+
+1. a YAML/JSON/TOML/HCL/INI config file
+2. environment variables derived from canonical config-v2 paths
+3. command-line flags for loader behavior
+
+For example:
+
+```bash
+export NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS=127.0.0.1:6379
+export NAUTHILUS_OBSERVABILITY_LOG_LEVEL=debug
+```
 
 ## Next Steps
 
-After installation, you might want to:
-
-- [Configure authentication backends](/docs/configuration/database-backends)
-- [Set up monitoring](/docs/configuration/backend-server-monitoring)
-- [Configure brute force protection](/docs/configuration/brute-force)
+- [Configuration Overview](../configuration/index.md)
+- [Runtime, Observability, and Storage](/docs/configuration/server-configuration)
+- [Database Backends](/docs/configuration/database-backends)
+- [Brute Force Protection](/docs/configuration/brute-force)

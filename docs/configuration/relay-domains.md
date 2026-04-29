@@ -1,35 +1,33 @@
 ---
 title: Relay Domains
-description: Configuration for relay domains in Nauthilus
+description: Configuration for auth.controls.relay_domains
 keywords: [Configuration, Relay, Domains]
-sidebar_position: 6
+sidebar_position: 7
 ---
 
 # Relay Domains
 
-If the username equals to an email address, Nauthilus can split the login into the local and domain part. The latter is
-compared against a (currently) static list. If the domain is unknown, the client will be rejected.
+Relay-domain validation is configured under `auth.controls.relay_domains` and enabled by listing `relay_domains` in `auth.controls.enabled`.
 
-## Configuration Options
+## Current Paths
 
-### relay_domains::static
-_Default: empty list_
+- `auth.controls.relay_domains.static`
+- `auth.controls.relay_domains.allowlist`
 
-This key holds a list of domain names.
-
-```yaml
-relay_domains:
-  static:
-    - example.com
-    - foobar.org
-```
-
-## Example Configuration
+## Example
 
 ```yaml
-relay_domains:
-  static:
-    - domain1.tld
-    - domain2.tld
-    - domain3.tld
+auth:
+  controls:
+    enabled:
+      - relay_domains
+    relay_domains:
+      static:
+        - "example.com"
+        - "example.org"
+      allowlist:
+        admin@example.com: true
+        relay-bypass@example.org: true
 ```
+
+Use `static` for known relay domains and `allowlist` for explicit login exceptions.

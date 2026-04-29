@@ -473,7 +473,7 @@ Only "debug" and "session" from the common requests as well as "totp\_secret" (s
 
 ### Cache flush callback
 
-If `lua.config.cache_flush_script_path` is configured, Nauthilus executes a dedicated Lua callback during:
+If `auth.backends.lua.backend.default.cache_flush_script_path` is configured, Nauthilus executes a dedicated Lua callback during:
 
 - `DELETE /api/v1/cache/flush`
 - `DELETE /api/v1/cache/flush/async`
@@ -505,7 +505,7 @@ Common request fields are available. For cache flush calls, the following are gu
 
 - `request.username`: user name from the flush request payload
 - `request.session`: generated request GUID
-- `request.redis_prefix`: configured Redis prefix (`server.redis.prefix`)
+- `request.redis_prefix`: configured Redis prefix (`storage.redis.prefix`)
 
 ---
 

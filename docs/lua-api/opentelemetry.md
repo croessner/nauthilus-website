@@ -9,7 +9,7 @@ sidebar_position: 35
 
 This module allows Lua scripts to create and control OpenTelemetry spans, set attributes/events/status, use baggage, and inject/extract trace headers. The module is request‑scoped and becomes a no‑op when tracing is disabled in configuration.
 
-> Controlled by `server.insights.tracing.enabled`. When disabled, the module functions are present but do nothing.
+> Controlled by `observability.tracing.enabled`. When disabled, the module functions are present but do nothing.
 
 ## Loading
 

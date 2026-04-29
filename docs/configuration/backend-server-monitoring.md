@@ -1,67 +1,106 @@
 ---
-title: Backend Server Monitoring
-description: Configuration for backend server monitoring in Nauthilus
-keywords: [Configuration, Backend, Monitoring]
-sidebar_position: 7
+title: Backend Health Checks
+description: Configuration for auth.services.backend_health_checks
+keywords: [Configuration, Backend, Health Checks]
+sidebar_position: 9
 ---
 
-# Backend Server Monitoring
+# Backend Health Checks
 
-If you have turned on the feature **backend_server_monitoring**, Nauthilus is able to do liveness probes for backend servers.
-The result is updated every 20 seconds (hard-coded for now). This information can be used in Lua scripts. The initial idea was to
-chose a backend server for the Nginx-based authentication process. Other usecases are also possible, depending on your needs.
+Backend health checks are a service, not a control.
 
-## Configuration Options
+The current configuration lives under:
 
-### backend_server_monitoring::backend_servers
+- `auth.services.enabled`
+- `auth.services.backend_health_checks`
+- `auth.services.backend_health_checks.targets`
 
-This configuration block defines servers to be monitored.
-
-The following protocols can be used to monitor a backend server:
-
-* smtp
-* lmtp
-* pop3
-* imap
-* sieve
-* http
-
-Servers can have a lightweight check, where only the connection is tested.
-
-:::note
-A connect timeout of 5 seconds is used. Also for reading and writing to an established connection.
-:::
-
-If the HAproxy flag is set, this is checked as well.
-
-Having TLS settings for a backend, a handshake is done on top of the connection.
-
-:::warning
-We currently only support plain or TLS-on-connect connections. Only sieve has STARTTLS support 
-:::
-
-If deep checks are enabled, Nauthilus talks the configured protocol with each backend. Optionally, a givven test user and its password can
-be used to verify a successful connection to the backend. We recommend to have one test user for each backend to prevent
-technical problems with backend servers (for example index issues with Dovecot).
-
-:::note
-New in v1.10.7: Hostnames for backend servers may include a trailing dot (for example, "imap.example.org."). This prevents your system resolver from appending search domains from /etc/resolv.conf.
-:::
-
-## Example Configuration
+Enable the service with:
 
 ```yaml
-backend_server_monitoring:
-  backend_servers:
-    - protocol: imap
-      host: imap.example.org.
-      port: 993
-      deep_check: true
-      test_username: some_unique_test_user
-      test_password: some_password
-      tls: true
-      tls_skip_verify: true
-      haproxy_v2: true
+auth:
+  services:
+    enabled:
+      - backend_health_checks
 ```
 
-The settings should be self-explanatory.
+## Example
+
+```yaml
+auth:
+  services:
+    enabled:
+      - backend_health_checks
+    backend_health_checks:
+      connect_timeout: 2s
+      tls_timeout: 2s
+      deep_timeout: 5s
+      connect_interval: 30s
+      deep_interval: 2m
+      failure_threshold: 3
+      recovery_threshold: 2
+
+      targets:
+        - protocol: "imap"
+          host: "imap.example.org."
+          port: 993
+          deep_check: true
+          test_username: "healthcheck-user"
+          test_password: "healthcheck-password"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
+          connect_timeout: 1s
+          tls_timeout: 1s
+          deep_timeout: 10s
+```
+
+## Global Settings
+
+| Field | Default | Description |
+|---|---:|---|
+| `connect_timeout` | `5s` | Timeout for the TCP connect phase. |
+| `tls_timeout` | `5s` | Timeout for the TLS handshake when `tls: true` is configured on the target. |
+| `deep_timeout` | `5s` | Timeout for the protocol-level deep check. |
+| `connect_interval` | `10s` | Interval for connect probes. A connect probe verifies TCP, optional HAProxy v2 preface, and optional TLS only. |
+| `deep_interval` | `10s` | Interval for protocol-level deep checks. When this equals `connect_interval`, Nauthilus runs one combined probe to preserve the previous default traffic pattern. |
+| `failure_threshold` | `1` | Consecutive failed probes required before a backend is marked unhealthy. |
+| `recovery_threshold` | `1` | Consecutive successful probes required before a backend is marked healthy again. |
+
+## Target Settings
+
+Each target supports the existing connection fields:
+
+- `protocol`
+- `host`
+- `port`
+- `request_uri`
+- `test_username`
+- `test_password`
+- `deep_check`
+- `tls`
+- `tls_skip_verify`
+- `haproxy_v2`
+
+The timeout fields can also be set per target:
+
+- `connect_timeout`
+- `tls_timeout`
+- `deep_timeout`
+
+Per-target timeout values override the global backend-health-check timeout values for that target only.
+
+## Probe Phases
+
+Nauthilus separates backend checks into two phases:
+
+- connect phase: opens the TCP connection and performs optional HAProxy v2 and TLS setup
+- deep phase: performs the protocol-level login or request when `deep_check: true`
+
+A successful deep check also proves that the connect phase succeeded.
+
+## Notes
+
+- use `backend_health_checks`, not `backend_server_monitoring`
+- do not list it under `auth.controls.enabled`
+- hostnames may include a trailing dot when you want an explicit FQDN

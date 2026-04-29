@@ -1,38 +1,43 @@
 ---
-title: Cleartext Networks
-description: Configuration for cleartext networks in Nauthilus
-keywords: [Configuration, Cleartext, Networks]
-sidebar_position: 5
+title: TLS Enforcement / Cleartext Allowlist
+description: Configuration for auth.controls.tls_encryption.allow_cleartext_networks
+keywords: [Configuration, TLS, Cleartext, Networks]
+sidebar_position: 6
 ---
 
-# Cleartext Networks
+# TLS Enforcement / Cleartext Allowlist
 
-Nauthilus can check, if a remote client connected using TLS. This test will reject clients that do not communicate
-secured. The whitelist is for trusted local IPs and networks that are allowed to authenticate unencrypted.
+The TLS-enforcement control rejects unauthenticated cleartext connections except for explicitly trusted networks.
 
-:::note
-Connections from "localhost" are allways trusted unencrypted!
-:::
+The current path is:
 
-## Configuration Options
+- `auth.controls.tls_encryption.allow_cleartext_networks`
 
-### cleartext_networks
-_Default: empty list_
-
-IPs with an optional CIDR mask:
+Enable it with:
 
 ```yaml
-cleartext_networks:
-  - 127.0.0.0/8
-  - ::1
+auth:
+  controls:
+    enabled:
+      - tls_encryption
 ```
 
-## Example Configuration
+## Example
 
 ```yaml
-cleartext_networks:
-  - 127.0.0.0/8
-  - ::1
-  - 192.168.0.200
-  - 172.16.0.0/12
+auth:
+  controls:
+    enabled:
+      - tls_encryption
+    tls_encryption:
+      allow_cleartext_networks:
+        - 127.0.0.0/8
+        - ::1
+        - 192.168.0.0/16
+        - fd00::/8
 ```
+
+Notes:
+
+- localhost remains a natural candidate for the allowlist
+- old top-level `cleartext_networks` is no longer the public path

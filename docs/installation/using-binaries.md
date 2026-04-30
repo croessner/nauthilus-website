@@ -34,8 +34,9 @@ Create `/etc/nauthilus/nauthilus.yml`:
 
 ```yaml
 runtime:
-  listen:
-    address: "127.0.0.1:9080"
+  servers:
+    http:
+      address: "127.0.0.1:9080"
 
 observability:
   log:

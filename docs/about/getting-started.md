@@ -11,7 +11,7 @@ This guide introduces the current Nauthilus configuration model and gives you a 
 
 Nauthilus now uses five human-facing root sections:
 
-- `runtime`: listeners, HTTP behavior, outbound clients, process settings
+- `runtime`: inbound HTTP and gRPC servers, shared timeouts, outbound clients, process settings
 - `observability`: logs, profiling, tracing, metrics
 - `storage`: Redis
 - `auth`: request headers, backchannel auth, authentication pipeline, backends, controls, services
@@ -32,8 +32,9 @@ Create a minimal `nauthilus.yml`:
 
 ```yaml
 runtime:
-  listen:
-    address: "0.0.0.0:9080"
+  servers:
+    http:
+      address: "0.0.0.0:9080"
 
 observability:
   log:

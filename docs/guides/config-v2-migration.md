@@ -19,7 +19,7 @@ The migration is intentionally breaking:
 
 Config v2 reorganizes the file around human-facing concerns instead of implementation history:
 
-- `runtime`: process, listeners, HTTP runtime behavior, outbound clients
+- `runtime`: process, inbound HTTP and gRPC servers, shared timeouts, outbound clients
 - `observability`: logs, profiling, tracing, metrics
 - `storage`: Redis and related cache/storage behavior
 - `auth`: request model, backchannel auth, pipeline behavior, backends, controls, services
@@ -71,9 +71,10 @@ Removed legacy aliases include:
 
 | Legacy path | v2 path |
 |---|---|
-| `server.address` | `runtime.listen.address` |
-| `server.tls` | `runtime.listen.tls` |
-| `server.middlewares` | `runtime.http.middlewares` |
+| `server.address` | `runtime.servers.http.address` |
+| `server.tls` | `runtime.servers.http.tls` |
+| `server.middlewares` | `runtime.servers.http.middlewares` |
+| `server.timeouts` | `runtime.timeouts` |
 | `server.http_client` | `runtime.clients.http` |
 | `server.dns` | `runtime.clients.dns` |
 | `server.log` | `observability.log` |
@@ -140,8 +141,9 @@ Current:
 
 ```yaml
 runtime:
-  listen:
-    address: "[::]:9443"
+  servers:
+    http:
+      address: "[::]:9443"
 
 observability:
   log:
@@ -203,6 +205,8 @@ The helper currently also covers:
 - top-level `x-*` extension roots, which are preserved as-is
 - best-effort `x-*` anchor reuse in the generated YAML when equivalent subtrees still exist
 - legacy mapping order where the converted structure still allows it
+- legacy `server.address`, `server.tls`, and HTTP runtime settings into `runtime.servers.http`
+- legacy `server.timeouts` into shared `runtime.timeouts`
 
 Example:
 
@@ -217,6 +221,7 @@ python3 scripts/convert-config-v1-to-v2.py \
 Important limits:
 
 - current scope is single-file legacy YAML to single-file config-v2 YAML
+- the helper migrates legacy v1 roots; it does not rewrite already-v2 `runtime.listen` or `runtime.http` files
 - include tree refactoring is out of scope
 - unsupported legacy paths are reported for manual review instead of being silently guessed
 - comment preservation is out of scope

@@ -1,7 +1,7 @@
 ---
 title: Runtime, Observability, and Storage
-description: Runtime, observability, and Redis settings in config v2
-keywords: [Configuration, Runtime, Observability, Redis]
+description: Runtime, gRPC, observability, and Redis settings in config v2
+keywords: [Configuration, Runtime, gRPC, Observability, Redis]
 sidebar_position: 3
 ---
 
@@ -17,7 +17,7 @@ This page covers those sections.
 
 ## `runtime`
 
-`runtime` contains process settings, listeners, HTTP runtime behavior, and outbound client configuration.
+`runtime` contains process settings, inbound HTTP and gRPC servers, shared runtime timeouts, and outbound client configuration.
 
 ### Process
 
@@ -29,63 +29,106 @@ runtime:
     chroot: "/var/empty"
 ```
 
-### Listeners and TLS
+### HTTP Server and TLS
 
 ```yaml
 runtime:
-  listen:
-    address: "[::]:9443"
-    http3: true
-    haproxy_v2: false
-    trusted_proxies:
-      - "127.0.0.1"
-      - "::1"
-    tls:
-      enabled: true
-      cert: "/etc/nauthilus/tls.crt"
-      key: "/etc/nauthilus/tls.key"
-      ca_file: "/etc/nauthilus/ca.pem"
-      min_tls_version: "TLS1.3"
+  servers:
+    http:
+      address: "[::]:9443"
+      http3: true
+      haproxy_v2: false
+      trusted_proxies:
+        - "127.0.0.1"
+        - "::1"
+      tls:
+        enabled: true
+        cert: "/etc/nauthilus/tls.crt"
+        key: "/etc/nauthilus/tls.key"
+        ca_file: "/etc/nauthilus/ca.pem"
+        min_tls_version: "TLS1.3"
+        cipher_suites: []
 ```
+
+`min_tls_version` accepts `TLS1.2` and `TLS1.3`; unset values default to `TLS1.2`. `cipher_suites` only applies when TLS 1.2 is allowed. Nauthilus rejects TLS 1.3 cipher-suite names in this list because Go does not expose TLS 1.3 cipher-suite selection through `tls.Config.CipherSuites`. Leave the list empty when `min_tls_version: "TLS1.3"` is configured.
 
 ### HTTP Runtime
 
 ```yaml
 runtime:
-  http:
-    disabled_endpoints:
-      auth_basic: false
-      configuration: false
-    middlewares:
-      logging: true
-      limit: true
-      recovery: true
-      trusted_proxies: true
-      request_decompression: true
-      response_compression: true
-      metrics: true
-      rate: true
-    compression:
-      enabled: true
-    keep_alive:
-      enabled: true
-      timeout: 30s
-      max_idle_connections: 100
-      max_idle_connections_per_host: 10
-    rate_limit:
-      per_second: 200
-      burst: 400
-    timeouts:
-      redis_read: 1s
-      redis_write: 1s
-      ldap_search: 30s
-      ldap_bind: 30s
-      ldap_modify: 30s
-      lua_backend: 30s
-      lua_script: 30s
+  servers:
+    http:
+      disabled_endpoints:
+        auth_header: false
+        auth_json: false
+        auth_cbor: false
+        auth_basic: false
+        auth_nginx: false
+        auth_jwt: false
+        custom_hooks: false
+        configuration: false
+      middlewares:
+        logging: true
+        limit: true
+        recovery: true
+        trusted_proxies: true
+        request_decompression: true
+        response_compression: true
+        metrics: true
+        rate: true
+      compression:
+        enabled: true
+      keep_alive:
+        enabled: true
+        timeout: 30s
+        max_idle_connections: 100
+        max_idle_connections_per_host: 10
+      rate_limit:
+        per_second: 200
+        burst: 400
 ```
 
-`runtime.http.timeouts.singleflight_work` is part of the dump/reference surface but should not be used for new configurations.
+### gRPC Auth Service
+
+The gRPC AuthService runs on a separate optional listener. It exposes the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener.
+
+```yaml
+runtime:
+  servers:
+    grpc:
+      auth:
+        enabled: true
+        address: "127.0.0.1:9444"
+        tls:
+          enabled: false
+          cert: ""
+          key: ""
+          client_ca: ""
+          min_tls_version: "TLS1.2"
+          require_client_cert: false
+```
+
+The listener defaults to loopback. Plaintext gRPC is only valid on loopback addresses; non-loopback listeners require TLS. `min_tls_version` accepts `TLS1.2` and `TLS1.3` and defaults to `TLS1.2`. The gRPC listener always uses HTTP/2 ALPN and does not expose configurable cipher suites.
+
+Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings. See [gRPC Auth API](../grpc-api.md) for the service contract.
+
+### Shared Runtime Timeouts
+
+Timeouts are shared by HTTP and gRPC authentication paths.
+
+```yaml
+runtime:
+  timeouts:
+    redis_read: 1s
+    redis_write: 2s
+    ldap_search: 3s
+    ldap_bind: 3s
+    ldap_modify: 5s
+    lua_backend: 5s
+    lua_script: 30s
+```
+
+`runtime.timeouts.singleflight_work` is deprecated and ignored; do not use it for new configurations.
 
 ### Outbound Clients
 
@@ -100,11 +143,15 @@ runtime:
       proxy: "http://proxy.example.com:8080"
       tls:
         skip_verify: false
+        min_tls_version: "TLS1.2"
+        cipher_suites: []
     dns:
       resolver: "192.0.2.53"
       timeout: 5s
       resolve_client_ip: false
 ```
+
+Outbound HTTP client TLS uses the same `min_tls_version` and `cipher_suites` validation rules as the inbound HTTP server TLS block: TLS 1.3 cipher-suite names are rejected, and `cipher_suites` must be empty when the minimum version is `TLS1.3`.
 
 ## `observability`
 

@@ -60,7 +60,7 @@ Unknown keys, type errors, and validation failures are now reported against cano
 
 Examples of canonical paths:
 
-- `runtime.listen.address`
+- `runtime.servers.http.address`
 - `storage.redis.primary.address`
 - `auth.controls.brute_force.protocols`
 - `identity.frontend.assets.html_static_content_path`
@@ -85,8 +85,9 @@ Examples of canonical paths:
 
 ```yaml
 runtime:
-  listen:
-    address: "127.0.0.1:9080"
+  servers:
+    http:
+      address: "127.0.0.1:9080"
 
 observability:
   log:

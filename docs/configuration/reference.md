@@ -24,7 +24,10 @@ Examples:
 
 | YAML path | Environment variable |
 |---|---|
-| `runtime.listen.address` | `NAUTHILUS_RUNTIME_LISTEN_ADDRESS` |
+| `runtime.servers.http.address` | `NAUTHILUS_RUNTIME_SERVERS_HTTP_ADDRESS` |
+| `runtime.servers.grpc.auth.address` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTH_ADDRESS` |
+| `runtime.servers.grpc.auth.tls.min_tls_version` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTH_TLS_MIN_TLS_VERSION` |
+| `runtime.timeouts.lua_script` | `NAUTHILUS_RUNTIME_TIMEOUTS_LUA_SCRIPT` |
 | `observability.log.level` | `NAUTHILUS_OBSERVABILITY_LOG_LEVEL` |
 | `storage.redis.primary.address` | `NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS` |
 | `auth.request.headers.username` | `NAUTHILUS_AUTH_REQUEST_HEADERS_USERNAME` |

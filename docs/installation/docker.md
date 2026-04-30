@@ -49,8 +49,9 @@ Create a minimal `nauthilus.yml` next to it:
 
 ```yaml
 runtime:
-  listen:
-    address: "0.0.0.0:9080"
+  servers:
+    http:
+      address: "0.0.0.0:9080"
 
 observability:
   log:
@@ -94,7 +95,7 @@ Examples:
 
 ```yaml
 environment:
-  NAUTHILUS_RUNTIME_LISTEN_ADDRESS: "0.0.0.0:9080"
+  NAUTHILUS_RUNTIME_SERVERS_HTTP_ADDRESS: "0.0.0.0:9080"
   NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS: "redis:6379"
   NAUTHILUS_STORAGE_REDIS_PASSWORD_NONCE: "${PASSWORD_NONCE}"
   NAUTHILUS_AUTH_BACKCHANNEL_BASIC_AUTH_USERNAME: "${BASIC_AUTH_USERNAME}"
@@ -109,12 +110,13 @@ Direct TLS in Nauthilus:
 
 ```yaml
 runtime:
-  listen:
-    address: "0.0.0.0:9443"
-    tls:
-      enabled: true
-      cert: "/etc/nauthilus/tls.crt"
-      key: "/etc/nauthilus/tls.key"
+  servers:
+    http:
+      address: "0.0.0.0:9443"
+      tls:
+        enabled: true
+        cert: "/etc/nauthilus/tls.crt"
+        key: "/etc/nauthilus/tls.key"
 ```
 
 Mount the files:

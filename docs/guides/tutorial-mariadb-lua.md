@@ -142,8 +142,9 @@ The important difference from the OpenLDAP tutorial is `auth.backends.lua.backen
 runtime:
   instance_name: "workshop-mariadb-lua"
 
-  listen:
-    address: "0.0.0.0:8080"
+  servers:
+    http:
+      address: "0.0.0.0:8080"
 
 observability:
   log:

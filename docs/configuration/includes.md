@@ -80,8 +80,9 @@ observability:
 
 ```yaml
 runtime:
-  listen:
-    address: "[::]:9443"
+  servers:
+    http:
+      address: "[::]:9443"
 ```
 
 `config/storage.yaml`:
@@ -104,7 +105,7 @@ patch:
 
 Effective result:
 
-- `runtime.listen.address = "[::]:9443"`
+- `runtime.servers.http.address = "[::]:9443"`
 - `storage.redis.primary.address = "redis:6379"`
 - `observability.log.level = "debug"`
 

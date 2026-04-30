@@ -32,57 +32,69 @@ runtime:
     run_as_group: "nauthilus"
     chroot: "/var/empty"
 
-  listen:
-    address: "0.0.0.0:8080"
-    http3: false
-    haproxy_v2: false
-    trusted_proxies:
-      - "127.0.0.1"
-      - "::1"
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+      http3: false
+      haproxy_v2: false
+      trusted_proxies:
+        - "127.0.0.1"
+        - "::1"
 
-    tls:
-      enabled: false
-      skip_verify: false
-      min_tls_version: "TLS1.2"
-      cert: ""
-      key: ""
-      ca_file: ""
+      tls:
+        enabled: false
+        skip_verify: false
+        min_tls_version: "TLS1.2"
+        cert: ""
+        key: ""
+        ca_file: ""
 
-  http:
-    disabled_endpoints: {}
+      disabled_endpoints: {}
 
-    middlewares:
-      logging: true
-      limit: true
-      recovery: true
-      trusted_proxies: true
-      request_decompression: true
-      response_compression: true
-      metrics: true
-      rate: true
+      middlewares:
+        logging: true
+        limit: true
+        recovery: true
+        trusted_proxies: true
+        request_decompression: true
+        response_compression: true
+        metrics: true
+        rate: true
 
-    compression:
-      enabled: false
+      compression:
+        enabled: false
 
-    keep_alive:
-      enabled: true
-      timeout: 30s
-      max_idle_connections: 100
-      max_idle_connections_per_host: 10
+      keep_alive:
+        enabled: true
+        timeout: 30s
+        max_idle_connections: 100
+        max_idle_connections_per_host: 10
 
-    rate_limit:
-      per_second: 0
-      burst: 0
+      rate_limit:
+        per_second: 0
+        burst: 0
 
-    timeouts:
-      redis_read: 1s
-      redis_write: 1s
-      ldap_search: 30s
-      ldap_bind: 30s
-      ldap_modify: 30s
-      singleflight_work: 5s
-      lua_backend: 30s
-      lua_script: 30s
+    grpc:
+      auth:
+        enabled: false
+        address: "127.0.0.1:9444"
+
+        tls:
+          enabled: false
+          cert: ""
+          key: ""
+          client_ca: ""
+          min_tls_version: "TLS1.2"
+          require_client_cert: false
+
+  timeouts:
+    redis_read: 1s
+    redis_write: 2s
+    ldap_search: 3s
+    ldap_bind: 3s
+    ldap_modify: 5s
+    lua_backend: 5s
+    lua_script: 30s
 
   clients:
     http:

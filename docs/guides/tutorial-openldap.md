@@ -143,8 +143,9 @@ This file is the main learning target. It shows the current root sections:
 runtime:
   instance_name: "workshop-openldap"
 
-  listen:
-    address: "0.0.0.0:8080"
+  servers:
+    http:
+      address: "0.0.0.0:8080"
 
 observability:
   log:

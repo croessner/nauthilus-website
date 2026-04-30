@@ -238,8 +238,9 @@ This configuration enables three important pieces:
 runtime:
   instance_name: "workshop-mail"
 
-  listen:
-    address: "0.0.0.0:8080"
+  servers:
+    http:
+      address: "0.0.0.0:8080"
 
   clients:
     dns:

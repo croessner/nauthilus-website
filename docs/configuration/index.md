@@ -74,6 +74,7 @@ Examples of canonical paths:
 - [Relay Domains](relay-domains.md): `auth.controls.relay_domains`
 - [Backend Health Checks](backend-server-monitoring.md): `auth.services.backend_health_checks`
 - [Brute Force Protection](brute-force.md): `auth.controls.brute_force`
+- [Auth Policy Reference](auth-policy.md): `auth.policy`
 - [Password Nonce](password-nonce.md): `storage.redis.password_nonce`
 - [Environment, Validation, and Dumps](reference.md)
 - [Database Backends](database-backends/index.md)

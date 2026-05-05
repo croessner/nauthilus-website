@@ -7,7 +7,7 @@ sidebar_position: 7
 
 # Lua Backend
 
-Config v2 separates Lua credential verification from Lua policy execution.
+Config v2 separates Lua credential verification from Lua control and extension points.
 
 ## Two Lua Areas
 
@@ -17,7 +17,7 @@ Credential verification:
 - `auth.backends.lua.backend.named_backends`
 - `auth.backends.lua.backend.search`
 
-Policy and extension points:
+Controls and extension points:
 
 - `auth.controls.lua.controls`
 - `auth.controls.lua.filters`
@@ -68,23 +68,13 @@ auth:
       controls:
         - name: "geoip"
           script_path: "/etc/nauthilus/lua/controls/geoip.lua"
-          when_authenticated: true
-          when_unauthenticated: true
-          when_no_auth: false
         - name: "policy_gate"
           script_path: "/etc/nauthilus/lua/controls/policy_gate.lua"
-          depends_on:
-            - "geoip"
-          when_authenticated: true
-          when_unauthenticated: true
-          when_no_auth: false
       filters:
         - name: "idp_context"
           script_path: "/etc/nauthilus/lua/filters/idp_context.lua"
         - name: "idp_policy"
           script_path: "/etc/nauthilus/lua/filters/idp_policy.lua"
-          depends_on:
-            - "idp_context"
       actions:
         - type: "brute_force"
           name: "telegram"
@@ -97,43 +87,33 @@ auth:
             - "nauthilus:admin"
 ```
 
-## Dependency Ordering with depends_on
+## Scheduling with Auth Policy
 
-`depends_on` is available on Lua controls and Lua filters:
-
-- `auth.controls.lua.controls[*].depends_on`
-- `auth.controls.lua.filters[*].depends_on`
-
-It is a list of script names from the same list. A control can depend on another control. A filter can depend on another filter. Dependencies are not shared between the control and filter lists.
+Lua controls and Lua filters are scheduled through `auth.policy.checks`. Use the check plan to select the operation, optional auth-state guard, and start order.
 
 ```yaml
 auth:
-  controls:
-    lua:
-      controls:
-        - name: "geoip"
-          script_path: "/etc/nauthilus/lua/controls/geoip.lua"
-          when_authenticated: true
-          when_unauthenticated: true
-          when_no_auth: false
-        - name: "policy_gate"
-          script_path: "/etc/nauthilus/lua/controls/policy_gate.lua"
-          depends_on:
-            - "geoip"
-          when_authenticated: true
-          when_unauthenticated: true
-          when_no_auth: false
+  policy:
+    checks:
+      - name: "lua_control_geoip"
+        type: "lua.control"
+        stage: "pre_auth"
+        operations: ["authenticate", "lookup_identity"]
+        config_ref: "auth.controls.lua.controls.geoip"
+        output: "checks.lua_control_geoip"
+
+      - name: "lua_control_policy_gate"
+        type: "lua.control"
+        stage: "pre_auth"
+        operations: ["authenticate", "lookup_identity"]
+        after: ["lua_control_geoip"]
+        config_ref: "auth.controls.lua.controls.policy_gate"
+        output: "checks.lua_control_policy_gate"
 ```
 
-Nauthilus builds deterministic dependency levels from these names. Scripts in the same level can run in parallel. A dependent script runs only after all scripts it depends on have completed and their request-local Lua context changes have been merged.
+Use `operations` for request operation scope, `run_if.auth_state` for authenticated or unauthenticated scheduling, and `after` for check ordering.
 
-The configuration is validated during startup:
-
-- script names must be unique within the list
-- dependencies must reference existing names in the same list
-- a script cannot depend on itself
-- dependency cycles are rejected
-- the dependency must be runnable in all request modes required by the dependent script
+For the full migration workflow, see [Auth Policy Configuration Guide](../../guides/auth-policy-configuration.md). For the complete policy schema, see [Auth Policy Reference](../auth-policy.md).
 
 ## Hook Authorization
 

@@ -387,6 +387,24 @@ auth:
       recovery_threshold: 1
       targets: []
 
+  policy:
+    mode: "enforce"
+    default_policy: "standard_auth"
+    registry_scripts: []
+
+    sets:
+      networks: {}
+      time_windows: {}
+
+    report:
+      enabled: false
+      include_fsm: true
+      include_checks: true
+      include_attributes: false
+
+    checks: []
+    policies: []
+
 identity:
   session:
     remember_me_ttl: 0s

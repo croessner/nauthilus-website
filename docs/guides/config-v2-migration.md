@@ -107,6 +107,21 @@ Removed legacy aliases include:
 | `idp.oidc` | `identity.oidc` |
 | `idp.saml2` | `identity.saml` |
 
+## Policy Scheduling in Converted Output
+
+Current Nauthilus uses `auth.policy` for auth decision scheduling and decision selection. Converted output expresses execution goals through policy checks:
+
+| Scheduling goal | Generated policy location |
+|---|---|
+| Run for identity lookup | `auth.policy.checks[*].operations`, usually by adding `lookup_identity` |
+| Run only after successful backend authentication | `auth.policy.checks[*].run_if.auth_state: authenticated` |
+| Run only before or after failed authentication | `auth.policy.checks[*].run_if.auth_state: unauthenticated` |
+| Start one check after another check | `auth.policy.checks[*].after` |
+
+Lua controls and filters now keep only their script identity and script path. Policy checks reference those scripts through `config_ref`, for example `auth.controls.lua.controls.geoip` or `auth.controls.lua.filters.billing_lock`.
+
+See [Auth Policy Configuration Guide](auth-policy-configuration.md) for a manual migration walkthrough and [Auth Policy Reference](../configuration/auth-policy.md) for the complete schema.
+
 ## Example
 
 Legacy:
@@ -207,6 +222,9 @@ The helper currently also covers:
 - legacy mapping order where the converted structure still allows it
 - legacy `server.address`, `server.tls`, and HTTP runtime settings into `runtime.servers.http`
 - legacy `server.timeouts` into shared `runtime.timeouts`
+- generation of target `auth.policy` checks and policies for Lua scheduling behavior
+- conversion of source scheduler flags into `operations` and `run_if.auth_state`
+- conversion of source Lua ordering lists into policy check `after` dependencies
 
 Example:
 

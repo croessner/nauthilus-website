@@ -9,7 +9,7 @@ sidebar_position: 13
 Available since Nauthilus version 1.8.9.
 
 The `nauthilus_cache` module provides a process-wide in-memory cache that can be accessed from any Lua script
-(feature, backend, filter, action). Use it to store and reuse data across requests, aggregate values for batched
+(environment source, backend, subject source, action). Use it to store and reuse data across requests, aggregate values for batched
 processing, or implement simple counters. Entries are thread-safe and can optionally expire via TTL.
 
 ```lua

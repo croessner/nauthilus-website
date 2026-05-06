@@ -850,7 +850,7 @@ JSON example:
 ### `soft_whitelist`
 
 Fields:
-- `entries` object (`map[string][]string`), key format in mock: `<feature>:<username>`
+- `entries` object (`map[string][]string`), key format in mock: `<environment>:<username>`
 - `expected_calls` common format
 
 Supported `expected_calls.method` values:

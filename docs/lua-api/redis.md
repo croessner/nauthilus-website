@@ -1805,7 +1805,7 @@ Redis Cluster users: PFMERGE requires all keys (dest and sources) to hash to the
 ## nauthilus_redis.redis_pipeline (since 1.8.8)
 
 Execute multiple Redis commands in a single network round-trip using pipelining. This significantly reduces latency for
-Lua hooks/filters that otherwise would perform many individual Redis operations.
+Lua hooks and subject sources that otherwise would perform many individual Redis operations.
 
 ### Syntax
 

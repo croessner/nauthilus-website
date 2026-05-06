@@ -6,7 +6,7 @@ sidebar_position: 3
 ---
 # Backend server monitoring
 
-If the feature **backend\_server\_monitoring** is turned on, the following functions are available in **subject sources**:
+If backend health checks are enabled, the following functions are available in **subject sources**:
 
 ```lua
 local nauthilus_backend = require("nauthilus_backend")

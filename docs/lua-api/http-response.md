@@ -269,7 +269,7 @@ response headers as follows:
 ```lua
 local nauthilus_http_response = require("nauthilus_http_response")
 
--- within your filter logic after detecting protection mode
+-- within your subject source logic after detecting protection mode
 pcall(function()
   nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection", "stepup")
   nauthilus_http_response.set_http_response_header("X-Nauthilus-Protection-Reason", "uniq24,fail24")

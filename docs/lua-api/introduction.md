@@ -11,8 +11,8 @@ what happens with an incoming authentication request.
 
 ## Authentication workflow
 
-An incoming authentication request first enters the **brute\_force** check. After that it continues with the **features**
-pipeline. After that has past, it continues to process the request in a **password backend**. When the final result for the
+An incoming authentication request first enters the **brute\_force** check. After that it continues with the **environment**
+stage. After that has passed, it continues to process the request in a **password backend**. When the final result for the
 request was obtained, it passes **subject sources**.
 
 Subject sources may change the backend result in one or the other way (accepting a formerly rejected message or vice versa). This
@@ -27,7 +27,7 @@ Nauthilus distinguishes synchronous Lua actions from Lua POST-Actions.
 
 Synchronous Lua actions are configured with action types such as `brute_force`, `lua`, `tls_encryption`, `relay_domains`, and `rbl`. In policy-authoritative paths, the selected policy decision dispatches them through the registered obligation `auth.obligation.lua_action.dispatch` and Nauthilus waits for the action before the request continues.
 
-The triggering check or feature only emits facts. The action runs only when the selected decision includes the dispatch obligation. This keeps reports, observe-mode comparisons, and mutable side effects aligned with the same policy decision.
+The triggering check, environment control, or environment source only emits facts. The action runs only when the selected decision includes the dispatch obligation. This keeps reports, observe-mode comparisons, and mutable side effects aligned with the same policy decision.
 
 Lua POST-Actions use the `post` action type. They run after the request-time decision context is known and must not change the final decision, response marker, response message, or FSM terminal state. In `auth.policy` authoritative paths, POST-Action enqueueing is requested through the registered obligation `auth.obligation.lua_post_action.enqueue`. Brute-force counter and learning updates are requested through `auth.obligation.brute_force.update`.
 
@@ -200,7 +200,7 @@ result from a backend.
 You can also use subject sources to retrieve additional information from databases or LDAP and add additional attributes to the remaining result.
 This is useful for setups, where Nauthilus may also take the role of a Dovecot proxy. Users may get routed to different
 mail stores upon successful authentication. For this, you may retrieve the current backend server list with servers that have been
-checked as being alive with the **backend\_server\_monitoring** feature and select nominate it for the current client request.
+checked as being alive by backend health checks and select one for the current client request.
 
 :::info
 Subject sources never affect caching! This is important, because otherwise valid credentials might result in storing them in the
@@ -255,13 +255,13 @@ The following request fields are supported
 | local\_ip                | string | always   | -                                                                 |
 | local\_port              | string | always   | -                                                                 |
 | username                 | string | always   | -                                                                 |
-| account                  | string | maybe    | Filter and post actions                                           |
+| account                  | string | maybe    | Subject and post actions                                          |
 | unique\_user\_id         | string | maybe    | Used with OIDC subject                                            |
 | display\_name            | string | maybe    | -                                                                 |
 | password                 | string | always   | -                                                                 |
 | protocol                 | string | always   | -                                                                 |
 | brute\_force\_bucket     | string | maybe    | Available in conjunction with brute-force-actions                 |
-| feature                  | string | maybe    | In actions, if a feature has triggered                            |
+| environment              | string | maybe    | In actions, if an environment source or control has triggered     |
 | status\_message          | string | always   | Current status message returned to client, if auth request failed |
 | ssl                      | string | maybe    | HAproxy: %[ssl\_fc]                                               |
 | ssl\_session\_id         | string | maybe    | HAproxy: %[ssl\_fc\_session\_id,hex]                              |
@@ -330,8 +330,8 @@ It must return three values: the trigger state, an abort flag for remaining pre-
 |-----------------------------------------|-----------------------------------------------------------------|-------|---------------|
 | nauthilus_builtin.ENVIRONMENT\_TRIGGER\_NO  | The environment source has not been triggered                              | false | trigger       |
 | nauthilus_builtin.ENVIRONMENT\_TRIGGER\_YES | The environment source has been triggered and the request must be rejected | true  | trigger       |
-| nauthilus_builtin.ENVIRONMENT\_ABORT\_NO   | Process other built-in features                                 | false | skip\_flag    |
-| nauthilus_builtin.ENVIRONMENT\_ABORT\_YES  | After finishing the script, skip all other built-in features    | true  | skip\_flag    |
+| nauthilus_builtin.ENVIRONMENT\_ABORT\_NO   | Process other environment controls and sources                  | false | skip\_flag    |
+| nauthilus_builtin.ENVIRONMENT\_ABORT\_YES  | After finishing the script, skip all other environment controls and sources | true  | skip\_flag    |
 | nauthilus_builtin.ENVIRONMENT\_RESULT\_OK   | The script finished without errors                              | 0     | failure\_info |
 | nauthilus_builtin.ENVIRONMENT\_RESULT\_FAIL | Something went wrong while executing the script                 | 1     | failure\_info |
 

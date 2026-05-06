@@ -724,7 +724,7 @@ Action scripts remain configured under `auth.policy.obligation_targets.lua.actio
 | Argument | Required | Meaning |
 |---|---|---|
 | `action` | yes | One of `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`. |
-| `feature` | no | Stable feature or check name for feature-specific reports and learning context. It is most useful with `action: lua`. |
+| `environment` | no | Stable environment control or source name for environment-specific reports and learning context. It is most useful with `action: lua`. |
 | `wait` | no | Boolean, defaults to `true`. The current runtime preserves synchronous wait behavior; use `true` or omit it. |
 
 The built-in `standard_auth` policy attaches synchronous action obligations where earlier releases ran configured actions directly:
@@ -735,7 +735,7 @@ The built-in `standard_auth` policy attaches synchronous action obligations wher
 | TLS-required temporary failure | `auth.obligation.lua_action.dispatch` with `action: tls_encryption`. |
 | Unknown relay-domain denial | `auth.obligation.lua_action.dispatch` with `action: relay_domains`. |
 | RBL threshold denial | `auth.obligation.lua_action.dispatch` with `action: rbl`. |
-| Lua environment source trigger denial | `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <check>`. |
+| Lua environment source trigger denial | `auth.obligation.lua_action.dispatch` with `action: lua` and `environment: <check>`. |
 
 The built-in `standard_auth` policy attaches all mutable brute-force side effects to the `standard_brute_force_deny` decision:
 
@@ -1033,7 +1033,7 @@ Rules with `requires` need the named check result to be present with status `ok`
 | 60 | `standard_rbl_error_tempfail` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` |  |
 | 70 | `standard_rbl_reject` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.threshold_reached == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligation: `auth.obligation.lua_action.dispatch` with `action: rbl`. |
 | 80 | `standard_lua_environment_<script>_error` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` | Generated once per Lua environment source check result. |
-| 90 | `standard_lua_environment_<script>_trigger` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.environment.<script>.triggered` when selected. Obligation: `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <script>`. |
+| 90 | `standard_lua_environment_<script>_trigger` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.environment.<script>.triggered` when selected. Obligation: `auth.obligation.lua_action.dispatch` with `action: lua` and `environment: <script>`. |
 | 100 | `standard_lua_environment_<script>_abort` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.abort == true` | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Sets `control.skip_remaining_stage_checks: true`. |
 | 110 | `implicit_pre_auth_pass` | `authenticate`, `lookup_identity` | none | no pre-auth terminal or abort rule matched | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Internal pass decision added by `standard_auth`. |
 

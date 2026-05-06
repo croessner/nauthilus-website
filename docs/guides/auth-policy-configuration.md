@@ -627,7 +627,7 @@ The script definitions stay under `auth.policy.obligation_targets.lua.actions`. 
 | Synchronous Lua action | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl` | `auth.obligation.lua_action.dispatch` |
 | Lua POST-Action | `post` | `auth.obligation.lua_post_action.enqueue` |
 
-Use `auth.obligation.lua_action.dispatch` with `args.action` set to one of `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`. For `action: lua`, also pass `args.feature` when you need feature-specific reports or learning context. The optional `args.wait` defaults to `true`; the current runtime preserves synchronous wait behavior.
+Use `auth.obligation.lua_action.dispatch` with `args.action` set to one of `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`. For `action: lua`, also pass `args.environment` when you need environment-specific reports or learning context. The optional `args.wait` defaults to `true`; the current runtime preserves synchronous wait behavior.
 
 For example, a custom RBL rejection that should keep the configured synchronous RBL action must say so:
 

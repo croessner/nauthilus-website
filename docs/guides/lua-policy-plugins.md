@@ -45,7 +45,7 @@ policy_facts.status_message("geoip", "Policy violation")
 
 All attributes below are registered by `lua-plugins.d/policy/registry.lua`.
 
-### Feature Plugins
+### Environment Source Plugins
 
 | Plugin | Attribute | Type | Meaning |
 |---|---|---:|---|
@@ -75,7 +75,7 @@ All attributes below are registered by `lua-plugins.d/policy/registry.lua`.
 
 `lua.plugin.blocklist.matched` carries a public `status_message` detail when it is emitted.
 
-### Filter Plugins
+### Subject Source Plugins
 
 | Plugin | Attribute | Type | Meaning |
 |---|---|---:|---|

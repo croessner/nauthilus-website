@@ -89,7 +89,7 @@ nauthilus_policy.register_attribute({
 })
 ```
 
-Filter script:
+Subject source script:
 
 ```lua
 local nauthilus_policy = require("nauthilus_policy")

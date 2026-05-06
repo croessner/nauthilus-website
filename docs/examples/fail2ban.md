@@ -6,7 +6,7 @@ sidebar_position: 4
 ---
 # Fail2Ban
 
-You can easily use fail2ban with nauthilus. This especially interesting, if you use the "rbl" feature.
+You can easily use fail2ban with nauthilus. This is especially interesting if you use the "rbl" environment control.
 
 ## Example log line for RBL
 

@@ -17,7 +17,7 @@ This module allows Lua scripts to create and control OpenTelemetry spans, set at
 local otel = require("nauthilus_opentelemetry")
 ```
 
-## Feature detection
+## Capability detection
 
 ```lua
 if not otel.is_enabled() then

@@ -1,13 +1,13 @@
 ---
-title: Account Protection Filter
+title: Account Protection Subject Source
 description: Progressive backoff and Step-Up signaling with optional enforcement for per-account protection in Nauthilus
-keywords: [Security, Filters, Account Protection, CAPTCHA, Step-Up]
+keywords: [Security, Subject Sources, Account Protection, CAPTCHA, Step-Up]
 sidebar_position: 30
 ---
 
-# Account Protection (Lua Filter)
+# Account Protection (Lua Subject Source)
 
-The Account Protection filter protects individual accounts under suspicious activity. It applies a progressive delay (backoff) and signals Step-Up/Challenge to frontends. Starting with v1.10.0, enforcement is disabled by default (dry-run): requests are not blocked unless explicitly enabled.
+The Account Protection subject source protects individual accounts under suspicious activity. It applies a progressive delay (backoff) and signals Step-Up/Challenge to frontends. Starting with v1.10.0, enforcement is disabled by default (dry-run): requests are not blocked unless explicitly enabled.
 
 ## What it does
 
@@ -21,7 +21,7 @@ The Account Protection filter protects individual accounts under suspicious acti
 
 ## Headers and Redis keys
 
-When protection is active, the filter sets:
+When protection is active, the subject source sets:
 
 - HTTP headers (for HTTP/OIDC flows):
   - `X-Nauthilus-Protection: stepup`
@@ -53,7 +53,7 @@ When protection is active, the filter sets:
 | Name                     | Default | Description                                                                                         |
 |--------------------------|---------|-----------------------------------------------------------------------------------------------------|
 | `PROTECT_ENFORCE_REJECT` | false   | If `true`, unauthenticated requests are rejected while under protection. If `false` (or unset), the |
-|                          |         | filter runs in dry‑run: applies delay and Step‑Up hints, but does not block pre‑auth.               |
+|                          |         | subject source runs in dry‑run: applies delay and Step‑Up hints, but does not block pre‑auth.       |
 
 ### Scoped IP normalization (cluster-wide dedup)
 
@@ -81,7 +81,7 @@ In dry‑run, prefer showing a CAPTCHA/MFA step based on headers without hard-bl
 
 ## Lua API and metrics
 
-- Prometheus counters incremented by the filter:
+- Prometheus counters incremented by the subject source:
   - `security_stepup_challenges_issued_total`
   - `security_slow_attack_suspicions_total`
 

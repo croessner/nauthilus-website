@@ -7,7 +7,7 @@ sidebar_position: 13
 
 # Neural
 
-The neural-network feature described by older Nauthilus documentation is not part of the current public configuration model.
+The neural-network capability described by older Nauthilus documentation is not part of the current public configuration model.
 
 ## Status
 

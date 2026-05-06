@@ -130,7 +130,7 @@ auth:
       enabled: true
 ```
 
-Related request-header propagation for filters/logging lives at:
+Related request-header propagation for subject sources/logging lives at:
 
 - `auth.request.headers.oidc_cid`
 

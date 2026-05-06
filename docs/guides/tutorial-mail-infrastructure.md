@@ -252,7 +252,7 @@ observability:
     color: true
     level: "debug"
     debug_modules:
-      - "feature"
+      - "environment"
 
 storage:
   redis:

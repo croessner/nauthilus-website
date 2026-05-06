@@ -25,7 +25,7 @@ Important:
 - `cache` should remain first
 - LDAP config lives under `auth.backends.ldap`
 - Lua backend config lives under `auth.backends.lua.backend`
-- Lua controls/actions/filters/hooks live under `auth.controls.lua`
+- Lua policy scripts live under `auth.policy.attribute_sources.lua` and `auth.policy.obligation_targets.lua`; hooks live under `auth.controls.lua.hooks`
 
 ## Topics
 

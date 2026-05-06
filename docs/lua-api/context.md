@@ -1,13 +1,13 @@
 ---
 title: Context
-description: Shared Lua context between features, backend, filters and actions
+description: Shared Lua context between environment sources, backend, subject sources and actions
 keywords: [Lua]
 sidebar_position: 4
 ---
 # Context
 
 :::note Concurrency since 1.8.9
-Starting with Nauthilus v1.8.9, Lua features and filters execute in parallel. The shared request context remains available across scripts, but there is no deterministic order of reads/writes between scripts. Prefer idempotent updates or namespaced keys to avoid conflicts, and do not rely on one feature running before another.
+Starting with Nauthilus v1.8.9, Lua environment and subject sources execute in parallel. The shared request context remains available across scripts, but there is no deterministic order of reads/writes between scripts. Prefer idempotent updates or namespaced keys to avoid conflicts, and do not rely on one source running before another.
 :::
 
 ```lua

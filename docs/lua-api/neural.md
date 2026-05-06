@@ -20,7 +20,9 @@ The neural-network feature described by older Nauthilus documentation is not par
 Use the supported controls and services instead:
 
 - `auth.controls.brute_force`
-- `auth.controls.lua`
+- `auth.policy.attribute_sources.lua`
+- `auth.policy.obligation_targets.lua`
+- `auth.controls.lua.hooks`
 - `auth.services.backend_health_checks`
 
 If you are migrating an older setup, treat previous neural-related docs as historical material rather than current configuration guidance.

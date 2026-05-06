@@ -327,11 +327,6 @@ auth:
         named_backends: {}
         search: []
 
-      actions: []
-      controls: []
-      filters: []
-      hooks: []
-
   controls:
     enabled: []
 
@@ -369,9 +364,6 @@ auth:
       pw_history_for_known_accounts: false
 
     lua:
-      actions: []
-      controls: []
-      filters: []
       hooks: []
 
   services:
@@ -392,6 +384,15 @@ auth:
     default_policy: "standard_auth"
     registry_scripts: []
     attribute_exports: []
+
+    attribute_sources:
+      lua:
+        environment: []
+        subject: []
+
+    obligation_targets:
+      lua:
+        actions: []
 
     sets:
       networks: {}

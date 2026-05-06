@@ -13,9 +13,9 @@ what happens with an incoming authentication request.
 
 An incoming authentication request first enters the **brute\_force** check. After that it continues with the **features**
 pipeline. After that has past, it continues to process the request in a **password backend**. When the final result for the
-request was obtained, it passes **filters**.
+request was obtained, it passes **subject sources**.
 
-Filters may change the backend result in one or the other way (accepting a formely rejected message or vice versa). This
+Subject sources may change the backend result in one or the other way (accepting a formerly rejected message or vice versa). This
 is especially useful for other remote services that can influence the authentication process.
 
 After all this has finished, it is possible to do some **post actions**, which are run independent
@@ -43,11 +43,11 @@ sequenceDiagram
     participant Policy as Policy decision
     participant Obligations
     participant Backend
-    participant Filters
+    participant Subjects as Subject sources
     participant Post as POST-Actions
     User->>Request: Wants to authenticate
     activate Request
-    Note over Request,Filters:A Lua context is created. Scripts can share data with set, get, and delete operations.
+    Note over Request,Subjects:A Lua context is created. Scripts can share data with set, get, and delete operations.
     Request->>Checks: Collect pre-auth facts
     activate Checks
     Checks->>Policy: Evaluate selected decision
@@ -66,17 +66,17 @@ sequenceDiagram
     end
     deactivate Policy
     activate Backend
-    Backend->>Filters: Give pre-result to the filters
+    Backend->>Subjects: Give pre-result to the subject sources
     deactivate Backend
-    activate Filters
-    Filters->>Policy: Evaluate final decision
+    activate Subjects
+    Subjects->>Policy: Evaluate final decision
     activate Policy
     alt Selected decision has POST-Action obligation
     Policy->>Post: auth.obligation.lua_post_action.enqueue
     end
     Policy-->>Request: Return final response
     deactivate Policy
-    deactivate Filters
+    deactivate Subjects
     deactivate Request
 ```
 
@@ -128,7 +128,7 @@ This is the list of modules that are currently available:
 | [nauthilus\_ldap](/docs/lua-api/ldap)                     | LDAP related functions                                                                 |
 | [nauthilus\_backend](/docs/lua-api/backend)               | Backend related functions                                                              |
 | [nauthilus\_http_request](/docs/lua-api/http)             | HTTP request header functions                                                          |
-| [nauthilus\_http_response](/docs/lua-api/http-response)   | HTTP response functions (headers, status, body; Filters/Features MUST NOT send a body) |
+| [nauthilus\_http_response](/docs/lua-api/http-response)   | HTTP response functions (headers, status, body; environment/subject sources MUST NOT send a body) |
 | [nauthilus\_prometheus](/docs/lua-api/prometheus)         | Prometheus metrics functions                                                           |
 | [nauthilus\_soft\_whitelist](/docs/lua-api/softwhitelist) | Soft whitelist functions                                                               |
 | [nauthilus\_brute\_force](/docs/lua-api/bruteforce)       | Brute force prevention functions                                                       |
@@ -168,45 +168,42 @@ Whenever a brute froce attack is recognized, **action**s may be called. The requ
 finished. Actions are processed by a central action worker. No results are returned to the regular request, so actions
 in general do their own logging!
 
-Also, **features** may call actions if they were triggered. The request is waiting to finish all actions by the worker
-process.
+Lua actions run only when the selected policy decision dispatches the corresponding obligation. Synchronous actions wait for the worker to finish.
 
-### Features
+### Environment Sources
 
-Besides the well known features geoip, rbl, tls\_encryption and relay\_domains, a new feature has been integrated: lua. This
-feature is processed before all other features (in fact, you might replace all these features with pure Lua...). Lua-features
-are executed in parallel starting with v1.8.9. As soon as any feature has triggered, the request will reject the authentication process after all features have finished, and the results are aggregated.
+Lua environment sources run in the pre-auth phase alongside built-in checks such as geoip, rbl, tls\_encryption and relay\_domains. They are useful when the environment context itself should decide whether the request may continue. Lua environment sources
+are executed in parallel starting with v1.8.9. As soon as any environment source has triggered, the request will reject the authentication process after all environment sources have finished, and the results are aggregated.
 
 :::note Version change in 1.8.9
-Since version 1.8.9, Lua features and filters are executed in parallel. Nauthilus waits for all scripts to finish and then aggregates their results:
-- Features: triggered=true if any script reports FEATURE_TRIGGER_YES; abort flag is set if any script requests FEATURES_ABORT_YES; the first error aborts the whole operation; the first status_message set is used.
-- Filters: an action is taken if any filter requests it; backend_result attributes from multiple filters are merged (later keys overwrite earlier ones); remove-attributes are unioned; the first error aborts; the first status_message set is used.
+Since version 1.8.9, Lua environment and subject sources are executed in parallel. Nauthilus waits for all scripts to finish and then aggregates their results:
+- Environment sources: triggered=true if any script reports ENVIRONMENT_TRIGGER_YES; abort flag is set if any script requests ENVIRONMENT_ABORT_YES; the first error aborts the whole operation; the first status_message set is used.
+- Subject sources: an action is taken if any subject source requests it; backend_result attributes from multiple subject sources are merged (later keys overwrite earlier ones); remove-attributes are unioned; the first error aborts; the first status_message set is used.
 Each script runs with its own Lua state and per-script timeout. Do not rely on execution order between scripts.
 :::
-Furthermore, Lua features can set a flag to bypass all built-in features.
+Lua environment sources can return an abort flag to skip remaining built-in pre-auth checks.
 
 ### Lua backend
 
-A new backend has been implemented. It can be used for all features that Nauthilus currently supports: Checking passwords,
-running different modes (no-auth, list-accounts), adding TOTP...
+The Lua backend can be used for password checks and request modes such as no-auth, list-accounts, and TOTP-aware flows.
 
 The backend can accept a request or reject it. It has full access to all meta information that are delivered from the
 incoming request.
 
-### Filters
+### Subject Sources
 
 There may exist remote services that may be contacted after the main backend authentication proccess returned its first  
 result. Think of something like GeoIP service or some IP white/blacklisting. Even a request that might have authenticated
-correctly may be rejected to a policy violation from such a service. Therefor filters have the power to overwrite the
+correctly may be rejected to a policy violation from such a service. Therefor subject sources have the power to overwrite the
 result from a backend.
 
-You can also use filters to retrieve additional information from databases or LDAP and add additional attributes to the remaining result.
+You can also use subject sources to retrieve additional information from databases or LDAP and add additional attributes to the remaining result.
 This is useful for setups, where Nauthilus may also take the role of a Dovecot proxy. Users may get routed to different
 mail stores upon successful authentication. For this, you may retrieve the current backend server list with servers that have been
 checked as being alive with the **backend\_server\_monitoring** feature and select nominate it for the current client request.
 
 :::info
-Filters never affect caching! This is important, because otherwise valid credentials might result in storing them in the
+Subject sources never affect caching! This is important, because otherwise valid credentials might result in storing them in the
 negative password cache or vice versa for invalid credentials.
 :::
 
@@ -311,67 +308,65 @@ TLS-related values may be retrieved from Nginx and as a fallback tried to be ret
 It is always a good idea to check the value of a request field, before using it.
 :::
 
-### Features
+### Environment Sources
 
-A Lua feature script must provide the following function:
+A Lua environment source script must provide the following function:
 
 ```lua
 ---@param request table
----@return number, number, number
-function nauthilus_call_feature(request)
-  return trigger, skip_flag, failure_info -- See details below
+---@return boolean, boolean, number
+function nauthilus_call_environment(request)
+  return triggered, abort, result -- See details below
 end
 ```
 
 :::important
-It must return three values: The trigger state, a flag that indicates, if other features shall be skipped and a third value
-which is an indicator for errors that occurred in the script itself.
+It must return three values: the trigger state, an abort flag for remaining pre-auth checks, and the script result status.
 :::
 
 #### Constants for the returned result
 
 | Constant                                | Meaning                                                         | Value | Category      |
 |-----------------------------------------|-----------------------------------------------------------------|-------|---------------|
-| nauthilus_builtin.FEATURE\_TRIGGER\_NO  | The feature has not been triggered                              | false | trigger       |
-| nauthilus_builtin.FEATURE\_TRIGGER\_YES | The feature has been triggered and the request must be rejected | true  | trigger       |
-| nauthilus_builtin.FEATURES\_ABORT\_NO   | Process other built-in features                                 | false | skip\_flag    |
-| nauthilus_builtin.FEATURES\_ABORT\_YES  | After finishing the script, skip all other built-in features    | true  | skip\_flag    |
-| nauthilus_builtin.FEATURE\_RESULT\_OK   | The script finished without errors                              | 0     | failure\_info |
-| nauthilus_builtin.FEATURE\_RESULT\_FAIL | Something went wrong while executing the script                 | 1     | failure\_info |
+| nauthilus_builtin.ENVIRONMENT\_TRIGGER\_NO  | The environment source has not been triggered                              | false | trigger       |
+| nauthilus_builtin.ENVIRONMENT\_TRIGGER\_YES | The environment source has been triggered and the request must be rejected | true  | trigger       |
+| nauthilus_builtin.ENVIRONMENT\_ABORT\_NO   | Process other built-in features                                 | false | skip\_flag    |
+| nauthilus_builtin.ENVIRONMENT\_ABORT\_YES  | After finishing the script, skip all other built-in features    | true  | skip\_flag    |
+| nauthilus_builtin.ENVIRONMENT\_RESULT\_OK   | The script finished without errors                              | 0     | failure\_info |
+| nauthilus_builtin.ENVIRONMENT\_RESULT\_FAIL | Something went wrong while executing the script                 | 1     | failure\_info |
 
 ### Request fields
 
 Only common request fields are present.
 
-### Filters
+### Subject Sources
 
-A Lua filter script must provide the following function:
+A Lua subject source script must provide the following function:
 
 ```lua
 ---@param request table
----@return number, number, number
-function nauthilus_call_filter(request)
+---@return boolean, number
+function nauthilus_call_subject(request)
   if request.authenticated then
     -- do something
   end
 
-  return filter_action, failure_info -- See details below
+  return subject_action, result -- See details below
 end
 ```
 
 :::important
-It must return three values: The trigger state, a flag that indicates, if other features shall be skipped and a third value
-which is an indicator for errors that occurred in the script itself.
+It must return two values: the subject action and the script result status.
 :::
 
 #### Constants for the returned result
 
 | Constant                                 | Meaning                                         | Value | Category       |
 |------------------------------------------|-------------------------------------------------|-------|----------------|
-| nauthilus_builtin.FILTER\_ACCEPT         | The request must be accepted                    | false | filter\_action |
-| nauthilus_builtin.FILTER\_REJECT         | The request has to be rejected                  | true  | filter\_action |
-| nauthilus_builtin.FILTER\_RESULT\_OK     | The script finished without errors              | 0     | filter\_info   |
-| nauthilus_builtin.FILTER\_RESULT\_FAIL   | Something went wrong while executing the script | 1     | filter\_info   |
+| nauthilus_builtin.SUBJECT\_ACCEPT         | The request must be accepted                    | false | subject\_action |
+| nauthilus_builtin.SUBJECT\_REJECT         | The request has to be rejected                  | true  | subject\_action |
+| nauthilus_builtin.SUBJECT\_RESULT\_OK     | The script finished without errors              | 0     | subject\_info   |
+| nauthilus_builtin.SUBJECT\_RESULT\_FAIL   | Something went wrong while executing the script | 1     | subject\_info   |
 
 ### Request fields
 
@@ -510,7 +505,7 @@ Common request fields are available. For cache flush calls, the following are gu
 
 ## UserData object backend\_result
 
-The **nauthilus\_backend\_result** object can be initialized in the Lua backend and in Lua filters. The following methods exist:
+The **nauthilus\_backend\_result** object can be initialized in the Lua backend and in Lua subject sources. The following methods exist:
 
 ### backend
 
@@ -525,9 +520,9 @@ The **nauthilus\_backend\_result** object can be initialized in the Lua backend 
 | display\_name\_field    | Set or get the display name field, which must have been added to the result attributes       |
 | attributes              | Set or get the result attributes as a Lua table                                              |
 
-### filters
+### subject sources
 
-Filters only have an "attributes" method. While Lua backends do return a **nauthlus\_backend\_result** directly, filters can only
+Subject sources only have an "attributes" method. While Lua backends do return a **nauthlus\_backend\_result** directly, subject sources can only
 apply it with a Lua function called "nauthilus_backend.apply\_backend\_result(backend\_result\_object)".
 
 Attributes can not overwrite existing attributes!

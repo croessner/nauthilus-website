@@ -48,7 +48,7 @@ go run ./server --test-lua <script.lua> --test-callback <type> [--test-mock <fix
 
 Flags:
 - `--test-lua`: path to Lua script
-- `--test-callback`: one of `filter|feature|action|backend|hook|cache_flush`
+- `--test-callback`: one of `subject|environment|action|backend|hook|cache_flush`
 - `--test-mock`: optional JSON fixture file
 
 Exit codes:
@@ -58,21 +58,21 @@ Exit codes:
 ## Callback contract
 
 Required global Lua functions by callback type:
-- `filter`: `nauthilus_call_filter(request)` -> `action, result`
-- `feature`: `nauthilus_call_feature(request)` -> `triggered, abort, result`
+- `subject`: `nauthilus_call_subject(request)` -> `action, result`
+- `environment`: `nauthilus_call_environment(request)` -> `triggered, abort, result`
 - `action`: `nauthilus_call_action(request)` -> boolean, integer, or `nil`
 - `backend`: `nauthilus_backend_verify_password(request)` -> `result, table|userdata`
 - `hook`: `nauthilus_run_hook()` -> any (test runtime stores boolean-like result as action result)
 - `cache_flush`: `nauthilus_cache_flush(request)` -> table, string|nil
 
-Filter return semantics:
-- `action`: boolean (`nauthilus_builtin.FILTER_ACCEPT` or `nauthilus_builtin.FILTER_REJECT`)
-- `result`: integer (`nauthilus_builtin.FILTER_RESULT_OK` or `nauthilus_builtin.FILTER_RESULT_FAIL`)
+Subject source return semantics:
+- `action`: boolean (`nauthilus_builtin.SUBJECT_ACCEPT` or `nauthilus_builtin.SUBJECT_REJECT`)
+- `result`: integer (`nauthilus_builtin.SUBJECT_RESULT_OK` or `nauthilus_builtin.SUBJECT_RESULT_FAIL`)
 
-Feature return semantics:
-- `triggered`: boolean (`nauthilus_builtin.FEATURE_TRIGGER_NO` or `nauthilus_builtin.FEATURE_TRIGGER_YES`)
-- `abort`: boolean (`nauthilus_builtin.FEATURES_ABORT_NO` or `nauthilus_builtin.FEATURES_ABORT_YES`)
-- `result`: integer (`nauthilus_builtin.FEATURE_RESULT_OK` or `nauthilus_builtin.FEATURE_RESULT_FAIL`)
+Environment source return semantics:
+- `triggered`: boolean (`nauthilus_builtin.ENVIRONMENT_TRIGGER_NO` or `nauthilus_builtin.ENVIRONMENT_TRIGGER_YES`)
+- `abort`: boolean (`nauthilus_builtin.ENVIRONMENT_ABORT_NO` or `nauthilus_builtin.ENVIRONMENT_ABORT_YES`)
+- `result`: integer (`nauthilus_builtin.ENVIRONMENT_RESULT_OK` or `nauthilus_builtin.ENVIRONMENT_RESULT_FAIL`)
 
 Action return semantics:
 - boolean: used directly
@@ -1072,11 +1072,11 @@ Assertions:
 ## `expected_output` reference
 
 Fields:
-- `filter_result` int
-- `filter_action` bool
-- `feature_result` bool
-- `feature_abort` bool
-- `feature_status` int
+- `subject_result` int
+- `subject_rejected` bool
+- `environment_triggered` bool
+- `environment_abort` bool
+- `environment_result` int
 - `action_result` bool
 - `backend_result` bool
 - `backend_return_code` int
@@ -1105,9 +1105,9 @@ Example:
 ```json
 {
   "expected_output": {
-    "feature_result": true,
-    "feature_abort": false,
-    "feature_status": 0,
+    "environment_triggered": true,
+    "environment_abort": false,
+    "environment_result": 0,
     "status_message_not_contain": ["Access denied"],
     "logs_contain": ["policy accepted"],
     "logs_not_contain": ["panic"],
@@ -1118,34 +1118,34 @@ Example:
 
 ## Full end-to-end example
 
-Lua script (`example_feature.lua`):
+Lua script (`example_environment.lua`):
 
 ```lua
 local ctx = require("nauthilus_context")
 local redis = require("nauthilus_redis")
 
-function nauthilus_call_feature(request)
+function nauthilus_call_environment(request)
   local user = ctx.context_get("username") or request.username
   local key = "tenant:" .. user
   local tenant, err = redis.redis_get("default", key)
 
   if err ~= nil then
     nauthilus_builtin.custom_log_add("tenant_error", tostring(err))
-    return false
+    return nauthilus_builtin.ENVIRONMENT_TRIGGER_NO, nauthilus_builtin.ENVIRONMENT_ABORT_NO, nauthilus_builtin.ENVIRONMENT_RESULT_FAIL
   end
 
   if tenant == nil then
     nauthilus_builtin.custom_log_add("tenant_status", "missing")
-    return false
+    return nauthilus_builtin.ENVIRONMENT_TRIGGER_NO, nauthilus_builtin.ENVIRONMENT_ABORT_NO, nauthilus_builtin.ENVIRONMENT_RESULT_OK
   end
 
   nauthilus_builtin.custom_log_add("tenant_status", "found")
   nauthilus_builtin.custom_log_add("tenant_value", tostring(tenant))
-  return true
+  return nauthilus_builtin.ENVIRONMENT_TRIGGER_YES, nauthilus_builtin.ENVIRONMENT_ABORT_NO, nauthilus_builtin.ENVIRONMENT_RESULT_OK
 end
 ```
 
-Fixture (`example_feature_test.json`):
+Fixture (`example_environment_test.json`):
 
 ```json
 {
@@ -1166,7 +1166,7 @@ Fixture (`example_feature_test.json`):
     ]
   },
   "expected_output": {
-    "feature_result": true,
+    "environment_triggered": true,
     "logs_contain": ["tenant_status: found", "tenant_value: acme"],
     "error_expected": false
   }
@@ -1176,7 +1176,7 @@ Fixture (`example_feature_test.json`):
 Run:
 
 ```bash
-go run ./server --test-lua example_feature.lua --test-callback feature --test-mock example_feature_test.json
+go run ./server --test-lua example_environment.lua --test-callback environment --test-mock example_environment_test.json
 ```
 
 ## Plugin regression suite
@@ -1200,8 +1200,8 @@ Run all plugin tests:
 set -euo pipefail
 
 ./scripts/run-lua-plugin-tests.sh
-go run ./server --test-lua testdata/lua/example_filter.lua --test-callback filter --test-mock testdata/lua/filter_test.json
-go run ./server --test-lua testdata/lua/example_feature.lua --test-callback feature --test-mock testdata/lua/feature_test.json
+go run ./server --test-lua testdata/lua/example_subject.lua --test-callback subject --test-mock testdata/lua/subject_test.json
+go run ./server --test-lua testdata/lua/example_environment.lua --test-callback environment --test-mock testdata/lua/environment_test.json
 go run ./server --test-lua testdata/lua/example_action.lua --test-callback action --test-mock testdata/lua/action_test.json
 go run ./server --test-lua testdata/lua/example_backend.lua --test-callback backend --test-mock testdata/lua/backend_test.json
 go run ./server --test-lua testdata/lua/example_hook.lua --test-callback hook --test-mock testdata/lua/hook_test.json

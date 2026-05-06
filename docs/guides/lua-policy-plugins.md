@@ -103,8 +103,8 @@ All attributes below are registered by `lua-plugins.d/policy/registry.lua`.
 | `idp_policy.lua` | `lua.plugin.idp_policy.oidc_cid` | string | OIDC client identifier evaluated by the plugin. |
 | `idp_policy.lua` | `lua.plugin.idp_policy.grant_type` | string | OIDC grant type evaluated by the plugin. |
 | `idp_policy.lua` | `lua.plugin.idp_policy.status_message` | string | Client-visible IdP policy message. |
-| `monitoring.lua` | `lua.plugin.director.backend_server` | string | Backend server selected by the director filter. |
-| `soft_delay.lua` | `lua.plugin.soft_delay.risky` | bool | Whether the soft-delay filter considered the request risky. |
+| `monitoring.lua` | `lua.plugin.director.backend_server` | string | Backend server selected by the director subject source. |
+| `soft_delay.lua` | `lua.plugin.soft_delay.risky` | bool | Whether the soft-delay subject source considered the request risky. |
 | `soft_delay.lua` | `lua.plugin.soft_delay.applied_ms` | number | Delay applied in milliseconds. |
 
 `lua.plugin.account_protection.active`, `lua.plugin.geoip.rejected`, and `lua.plugin.idp_policy.rejected` carry a public `status_message` detail when emitted with a client-visible message.
@@ -118,17 +118,17 @@ auth:
       - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
 
     checks:
-      - name: lua_filter_geoip
-        type: lua.filter
-        stage: auth_filters
+      - name: lua_subject_geoip
+        type: lua.subject
+        stage: subject_analysis
         operations: [authenticate]
-        config_ref: auth.controls.lua.filters.geoip
+        config_ref: auth.policy.attribute_sources.lua.subject.geoip
 
     policies:
       - name: deny_geoip_rejection
         stage: auth_decision
         operations: [authenticate]
-        require_checks: [lua_filter_geoip]
+        require_checks: [lua_subject_geoip]
         if:
           attribute: lua.plugin.geoip.rejected
           is: true
@@ -150,7 +150,7 @@ Register the attribute:
 ```lua
 nauthilus_policy.register_attribute({
   id = "lua.plugin.example.risky",
-  stage = "auth_filters",
+  stage = "subject_analysis",
   operations = { "authenticate" },
   category = "environment",
   type = "bool",

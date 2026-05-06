@@ -11,7 +11,7 @@ sidebar_position: 21
 local nauthilus_policy = require("nauthilus_policy")
 ```
 
-The `nauthilus_policy` module is available to request-time Lua controls and filters. It emits Lua-owned custom attributes into the active policy decision context.
+The `nauthilus_policy` module is available to request-time Lua environment and subject sources. It emits Lua-owned custom attributes into the active policy decision context.
 
 Registry scripts also use the global `nauthilus_policy.register_attribute(...)` function during policy snapshot compilation. Runtime plugins use the module function documented here.
 
@@ -73,7 +73,7 @@ Registry script:
 ```lua
 nauthilus_policy.register_attribute({
   id = "lua.plugin.geoip.rejected",
-  stage = "auth_filters",
+  stage = "subject_analysis",
   operations = { "authenticate" },
   category = "environment",
   type = "bool",

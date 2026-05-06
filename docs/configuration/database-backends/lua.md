@@ -1,13 +1,13 @@
 ---
 title: Lua Backend
-description: Lua backend and Lua control configuration in config v2
+description: Lua backend and Lua policy extension configuration in config v2
 keywords: [Configuration, Lua, Backend]
 sidebar_position: 7
 ---
 
 # Lua Backend
 
-Config v2 separates Lua credential verification from Lua control and extension points.
+Config v2 separates Lua credential verification from Lua policy extension points.
 
 ## Two Lua Areas
 
@@ -17,11 +17,11 @@ Credential verification:
 - `auth.backends.lua.backend.named_backends`
 - `auth.backends.lua.backend.search`
 
-Controls and extension points:
+Policy extension points:
 
-- `auth.controls.lua.controls`
-- `auth.controls.lua.filters`
-- `auth.controls.lua.actions`
+- `auth.policy.attribute_sources.lua.environment`
+- `auth.policy.attribute_sources.lua.subject`
+- `auth.policy.obligation_targets.lua.actions`
 - `auth.controls.lua.hooks`
 
 This split is intentional: backend verification and control logic are different concerns.
@@ -57,7 +57,7 @@ auth:
             cache_name: "identity"
 ```
 
-## Lua Controls Example
+## Lua Policy Extension Example
 
 ```yaml
 auth:
@@ -65,52 +65,59 @@ auth:
     enabled:
       - lua
     lua:
-      controls:
-        - name: "geoip"
-          script_path: "/etc/nauthilus/lua/controls/geoip.lua"
-        - name: "policy_gate"
-          script_path: "/etc/nauthilus/lua/controls/policy_gate.lua"
-      filters:
-        - name: "idp_context"
-          script_path: "/etc/nauthilus/lua/filters/idp_context.lua"
-        - name: "idp_policy"
-          script_path: "/etc/nauthilus/lua/filters/idp_policy.lua"
-      actions:
-        - type: "brute_force"
-          name: "telegram"
-          script_path: "/etc/nauthilus/lua/actions/telegram.lua"
       hooks:
         - http_location: "status"
           http_method: "GET"
           script_path: "/etc/nauthilus/lua/hooks/status.lua"
           scopes:
             - "nauthilus:admin"
+
+  policy:
+    attribute_sources:
+      lua:
+        environment:
+          - name: "geoip"
+            script_path: "/etc/nauthilus/lua/environment/geoip.lua"
+          - name: "policy_gate"
+            script_path: "/etc/nauthilus/lua/environment/policy_gate.lua"
+        subject:
+          - name: "idp_context"
+            script_path: "/etc/nauthilus/lua/subject/idp_context.lua"
+          - name: "idp_policy"
+            script_path: "/etc/nauthilus/lua/subject/idp_policy.lua"
+
+    obligation_targets:
+      lua:
+        actions:
+          - type: "brute_force"
+            name: "telegram"
+            script_path: "/etc/nauthilus/lua/actions/telegram.lua"
 ```
 
 The `actions` entries define reusable scripts. Request-time dispatch is selected by the active policy decision, not by the action definition itself. Synchronous actions use `auth.obligation.lua_action.dispatch` with `action` set to `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`; Lua POST-Actions use `auth.obligation.lua_post_action.enqueue` for `type: "post"` actions.
 
 ## Scheduling with Auth Policy
 
-Lua controls and Lua filters are scheduled through `auth.policy.checks`. Use the check plan to select the operation, optional auth-state guard, and start order.
+Lua environment and subject sources are scheduled through `auth.policy.checks`. Use the check plan to select the operation, optional auth-state guard, and start order.
 
 ```yaml
 auth:
   policy:
     checks:
-      - name: "lua_control_geoip"
-        type: "lua.control"
+      - name: "lua_environment_geoip"
+        type: "lua.environment"
         stage: "pre_auth"
         operations: ["authenticate", "lookup_identity"]
-        config_ref: "auth.controls.lua.controls.geoip"
-        output: "checks.lua_control_geoip"
+        config_ref: "auth.policy.attribute_sources.lua.environment.geoip"
+        output: "checks.lua_environment_geoip"
 
-      - name: "lua_control_policy_gate"
-        type: "lua.control"
+      - name: "lua_environment_policy_gate"
+        type: "lua.environment"
         stage: "pre_auth"
         operations: ["authenticate", "lookup_identity"]
-        after: ["lua_control_geoip"]
-        config_ref: "auth.controls.lua.controls.policy_gate"
-        output: "checks.lua_control_policy_gate"
+        after: ["lua_environment_geoip"]
+        config_ref: "auth.policy.attribute_sources.lua.environment.policy_gate"
+        output: "checks.lua_environment_policy_gate"
 ```
 
 Use `operations` for request operation scope, `run_if.auth_state` for authenticated or unauthenticated scheduling, and `after` for check ordering.

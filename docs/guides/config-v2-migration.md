@@ -59,7 +59,7 @@ Removed legacy aliases include:
 |---|---|
 | `server` | split across `runtime`, `observability`, `storage`, `auth`, `identity` |
 | `ldap` | `auth.backends.ldap` |
-| `lua` | split across `auth.backends.lua.backend` and `auth.controls.lua` |
+| `lua` | split across `auth.backends.lua.backend`, `auth.policy.attribute_sources.lua`, `auth.policy.obligation_targets.lua`, and `auth.controls.lua.hooks` |
 | `idp` | `identity` |
 | `realtime_blackhole_lists` | `auth.controls.rbl` |
 | `relay_domains` | `auth.controls.relay_domains` |
@@ -95,9 +95,9 @@ Removed legacy aliases include:
 | `lua.config` | `auth.backends.lua.backend.default` |
 | `lua.optional_backends` | `auth.backends.lua.backend.named_backends` |
 | `lua.search` | `auth.backends.lua.backend.search` |
-| `lua.actions` | `auth.controls.lua.actions` |
-| `lua.controls` | `auth.controls.lua.controls` |
-| `lua.filters` | `auth.controls.lua.filters` |
+| `lua.actions` | `auth.policy.obligation_targets.lua.actions` |
+| `lua.features` | `auth.policy.attribute_sources.lua.environment` |
+| `lua.filters` | `auth.policy.attribute_sources.lua.subject` |
 | `lua.custom_hooks` | `auth.controls.lua.hooks` |
 | `idp.remember_me_ttl` | `identity.session.remember_me_ttl` |
 | `server.frontend` | `identity.frontend` |
@@ -106,6 +106,37 @@ Removed legacy aliases include:
 | `idp.webauthn` | `identity.mfa.webauthn` |
 | `idp.oidc` | `identity.oidc` |
 | `idp.saml2` | `identity.saml` |
+
+## Lua Policy Rename for Versions Before 3.0.0
+
+Nauthilus 3.0.0 makes the Lua policy terminology a hard cut. The left column below describes the published pre-3.0 surface, as documented for the last stable 2.1 line. It does not include intermediate development names.
+
+| Before 3.0.0, published 2.1 surface | 3.0.0 and newer |
+|---|---|
+| `lua.features` | `auth.policy.attribute_sources.lua.environment` |
+| `lua.filters` | `auth.policy.attribute_sources.lua.subject` |
+| `lua.actions` | `auth.policy.obligation_targets.lua.actions` |
+| `lua.custom_hooks` | `auth.controls.lua.hooks` |
+| `lua.features[*].when_authenticated`, `when_unauthenticated`, `when_no_auth` | generated `auth.policy.checks[*].run_if.auth_state` and `operations` |
+| `lua.filters[*].when_authenticated`, `when_unauthenticated`, `when_no_auth` | generated `auth.policy.checks[*].run_if.auth_state` and `operations` |
+| `lua.config.feature_vm_pool_size` | `auth.backends.lua.backend.default.environment_vm_pool_size` |
+| `lua.config.filter_vm_pool_size` | `auth.backends.lua.backend.default.subject_vm_pool_size` |
+| `lua-plugins.d/features` | `lua-plugins.d/environment` |
+| `lua-plugins.d/filters` | `lua-plugins.d/subject` |
+
+Policy checks themselves are new in the 3.0 target model, so the pre-3.0 side has no check-type or policy-stage rows.
+
+Lua entry points and result constants changed with the same hard cut:
+
+| Before 3.0.0 | 3.0.0 and newer |
+|---|---|
+| `nauthilus_call_feature(request)` | `nauthilus_call_environment(request)` |
+| `nauthilus_call_filter(request)` | `nauthilus_call_subject(request)` |
+| `FEATURE_TRIGGER_*` | `ENVIRONMENT_TRIGGER_*` |
+| `FEATURES_ABORT_*` | `ENVIRONMENT_ABORT_*` |
+| `FEATURE_RESULT_*` | `ENVIRONMENT_RESULT_*` |
+| `FILTER_ACCEPT`, `FILTER_REJECT` | `SUBJECT_ACCEPT`, `SUBJECT_REJECT` |
+| `FILTER_RESULT_*` | `SUBJECT_RESULT_*` |
 
 ## Policy Scheduling in Converted Output
 
@@ -118,7 +149,7 @@ Current Nauthilus uses `auth.policy` for auth decision scheduling and decision s
 | Run only before or after failed authentication | `auth.policy.checks[*].run_if.auth_state: unauthenticated` |
 | Start one check after another check | `auth.policy.checks[*].after` |
 
-Lua controls and filters now keep only their script identity and script path. Policy checks reference those scripts through `config_ref`, for example `auth.controls.lua.controls.geoip` or `auth.controls.lua.filters.billing_lock`.
+Lua environment and subject sources now keep only their script identity and script path. Policy checks reference those scripts through `config_ref`, for example `auth.policy.attribute_sources.lua.environment.geoip` or `auth.policy.attribute_sources.lua.subject.billing_lock`.
 
 See [Auth Policy Configuration Guide](auth-policy-configuration.md) for a manual migration walkthrough and [Auth Policy Reference](../configuration/auth-policy.md) for the complete schema.
 
@@ -215,7 +246,7 @@ The helper currently also covers:
 
 - optional LDAP pools
 - optional Lua backends
-- legacy `server.features` and `lua.features` aliases
+- legacy `server.features` aliases and published pre-3.0 `lua.features` entries
 - legacy dotted keys such as `server.oidc_auth.enabled`
 - top-level `x-*` extension roots, which are preserved as-is
 - best-effort `x-*` anchor reuse in the generated YAML when equivalent subtrees still exist
@@ -224,7 +255,6 @@ The helper currently also covers:
 - legacy `server.timeouts` into shared `runtime.timeouts`
 - generation of target `auth.policy` checks and policies for Lua scheduling behavior
 - conversion of source scheduler flags into `operations` and `run_if.auth_state`
-- conversion of source Lua ordering lists into policy check `after` dependencies
 
 Example:
 

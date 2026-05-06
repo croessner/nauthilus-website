@@ -184,8 +184,8 @@ auth:
           package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
           backend_number_of_workers: 8
           action_number_of_workers: 8
-          feature_vm_pool_size: 8
-          filter_vm_pool_size: 8
+          environment_vm_pool_size: 8
+          subject_vm_pool_size: 8
           hook_vm_pool_size: 8
 
         search:

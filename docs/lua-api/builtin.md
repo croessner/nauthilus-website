@@ -9,7 +9,7 @@ sidebar_position: 2
 ## nauthilus\_builtin.status\_message\_set
 
 :::note Since 1.8.9
-When multiple Lua features/filters run in parallel and set a status message, Nauthilus uses the first non-empty message encountered during aggregation. Do not rely on ordering between scripts.
+When multiple Lua environment/subject sources run in parallel and set a status message, Nauthilus uses the first non-empty message encountered during aggregation. Do not rely on ordering between scripts.
 ::: 
 
 Sets a custom status message to be returned when a client request is rejected.
@@ -61,7 +61,7 @@ nauthilus_builtin.custom_log_add("login_source", "mobile_app")
 ```
 
 ::::note
-In **features**, **backend**, and **filters**, logs are added to the final result log line. In **actions**, logging is appended to the **action** log line because actions may run asynchronously after the main request has closed.
+In **environment sources**, **backend**, and **subject sources**, logs are added to the final result log line. In **actions**, logging is appended to the **action** log line because actions may run asynchronously after the main request has closed.
 
 You can call this function multiple times, even with the same key-value pairs. Logs cannot be removed once set.
 ::::

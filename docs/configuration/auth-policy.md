@@ -9,7 +9,7 @@ sidebar_position: 8
 
 `auth.policy` is the declarative decision layer for Nauthilus authentication. It decides from typed facts, not from ad-hoc mechanism flags.
 
-The policy layer is the only target scheduler for auth controls, backend facts, Lua controls, Lua filters, identity lookup, and account listing. Lua and built-in mechanisms still produce facts, but `auth.policy.checks` decides which facts are part of a request plan and `auth.policy.policies` decides how those facts become a final effect.
+The policy layer is the only target scheduler for auth controls, backend facts, Lua environment sources, Lua subject sources, identity lookup, and account listing. Lua and built-in mechanisms still produce facts, but `auth.policy.checks` decides which facts are part of a request plan and `auth.policy.policies` decides how those facts become a final effect.
 
 ## Placement and Authority
 
@@ -22,7 +22,7 @@ auth:
 
 There is no separate policy root. The supported configuration surface is `auth.policy`. The built-in default policy set is named `standard_auth`. When no custom policy rules are configured, `standard_auth` preserves the default Nauthilus authentication behavior through the same policy engine.
 
-Lua controls and Lua filters define script entries. Their execution operation, auth-state guard, and start order are defined by `auth.policy.checks`.
+Lua environment and subject sources define script entries. Their execution operation, auth-state guard, and start order are defined by `auth.policy.checks`.
 
 `checks` and `policies` have separate authority boundaries. You may configure checks only to control fact collection, Lua script operation scope, auth-state guards, and start order while `standard_auth` remains the decision authority. A stage and operation become custom-authoritative only when matching rules exist in `auth.policy.policies`.
 
@@ -35,6 +35,15 @@ auth:
     default_policy: standard_auth
     registry_scripts: []
     attribute_exports: []
+
+    attribute_sources:
+      lua:
+        environment: []
+        subject: []
+
+    obligation_targets:
+      lua:
+        actions: []
 
     sets:
       networks: {}
@@ -56,6 +65,9 @@ auth:
 | `default_policy` | string | `standard_auth` | Built-in default policy set. This is currently the only built-in default-policy name. |
 | `registry_scripts` | list of paths | `[]` | Lua scripts that register additional policy attributes during snapshot build. |
 | `attribute_exports` | list | `[]` | Opt-in backend/AuthState attributes that become policy-visible subject facts. |
+| `attribute_sources.lua.environment` | list | `[]` | Lua environment sources that run in `pre_auth` and can emit environment facts before the subject identity is known. |
+| `attribute_sources.lua.subject` | list | `[]` | Lua subject sources that run in `subject_analysis` and can evaluate or enrich subject facts after backend identity material exists. |
+| `obligation_targets.lua.actions` | list | `[]` | Reusable Lua action scripts selected through policy obligations. |
 | `sets.networks` | map | `{}` | Named reusable IP/CIDR sets for policy conditions. |
 | `sets.time_windows` | map | `{}` | Named local-time windows for policy conditions. |
 | `report.enabled` | bool | `false` | Enables optional redacted policy decision reports. This does not affect enforcement, logs, metrics, traces, or client responses. |
@@ -85,22 +97,31 @@ auth:
   policy:
     mode: enforce
     default_policy: standard_auth
-    checks:
-      - name: lua_control_geoip
-        type: lua.control
-        stage: pre_auth
-        operations: [authenticate, lookup_identity]
-        config_ref: auth.controls.lua.controls.geoip
 
-      - name: lua_control_policy_gate
-        type: lua.control
+    attribute_sources:
+      lua:
+        environment:
+          - name: geoip
+            script_path: /etc/nauthilus/lua/environment/geoip.lua
+          - name: policy_gate
+            script_path: /etc/nauthilus/lua/environment/policy_gate.lua
+
+    checks:
+      - name: lua_environment_geoip
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        after: [lua_control_geoip]
-        config_ref: auth.controls.lua.controls.policy_gate
+        config_ref: auth.policy.attribute_sources.lua.environment.geoip
+
+      - name: lua_environment_policy_gate
+        type: lua.environment
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        after: [lua_environment_geoip]
+        config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
 ```
 
-In this shape, the check plan decides which Lua controls run and in which order. `standard_auth` still decides the final result from the emitted facts. Add `auth.policy.policies` only when you want custom decision rules.
+In this shape, the check plan decides which Lua environment sources run and in which order. `standard_auth` still decides the final result from the emitted facts. Add `auth.policy.policies` only when you want custom decision rules.
 
 For a Lua script family, configured checks own that family's schedule for the active operation and stage. Scripts without a matching check do not run in that request plan. If no checks exist for that script family, Nauthilus uses the built-in default scheduling for that family.
 
@@ -194,9 +215,9 @@ Caller authentication, backchannel credentials, gRPC scopes, malformed requests,
 
 | Stage | Purpose |
 |---|---|
-| `pre_auth` | Brute force, Lua controls, TLS enforcement, relay domains, and RBL before backend auth. |
+| `pre_auth` | Brute force, Lua environment sources, TLS enforcement, relay domains, and RBL before backend auth. |
 | `auth_backend` | Backend authentication or identity lookup facts. |
-| `auth_filters` | Lua filter facts after backend evaluation. |
+| `subject_analysis` | Lua subject source facts after backend evaluation. |
 | `account_provider` | Account-list provider facts for `list_accounts`. |
 | `auth_decision` | Final permit, deny, or temporary failure decision. |
 
@@ -238,13 +259,13 @@ auth:
 | `builtin.tls_encryption` | `pre_auth` | `authenticate`, `lookup_identity` | `auth.controls.tls_encryption` |
 | `builtin.relay_domains` | `pre_auth` | `authenticate` | `auth.controls.relay_domains` |
 | `builtin.rbl` | `pre_auth` | `authenticate`, `lookup_identity` | `auth.controls.rbl` |
-| `lua.control` | `pre_auth` | `authenticate` | `auth.controls.lua.controls.<name>` |
+| `lua.environment` | `pre_auth` | `authenticate` | `auth.policy.attribute_sources.lua.environment.<name>` |
 | `backend.ldap` | `auth_backend` | `authenticate`, `lookup_identity` | `auth.backends.ldap` |
 | `backend.lua` | `auth_backend` | `authenticate`, `lookup_identity` | `auth.backends.lua.backend` |
-| `lua.filter` | `auth_filters` | `authenticate` | `auth.controls.lua.filters.<name>` |
+| `lua.subject` | `subject_analysis` | `authenticate` | `auth.policy.attribute_sources.lua.subject.<name>` |
 | `backend.account_provider` | `account_provider` | `list_accounts` | `auth.backends` |
 
-Lua controls and Lua filters are singular check types. Use one check per named script. Aggregate check types such as `lua.controls` or `lua.filters` are invalid.
+Lua environment and subject sources are singular check types. Use one check per named script. Aggregate check types such as `lua.environments` or `lua.subjects` are invalid.
 
 ## Design Lineage
 
@@ -284,7 +305,7 @@ Two names often look abstract at first:
 
 ## Request Attributes
 
-Policies do not read the Lua `request` table or Go request structs directly. They can only use registered policy attributes. Some attributes happen to describe the current request and use the `request.*` prefix, but they are a stable policy surface, not a 1:1 copy of fields available to Lua features, filters, actions, or backends.
+Policies do not read the Lua `request` table or Go request structs directly. They can only use registered policy attributes. Some attributes happen to describe the current request and use the `request.*` prefix, but they are a stable policy surface, not a 1:1 copy of fields available to Lua environment sources, subject sources, actions, or backends.
 
 Built-in request attributes are:
 
@@ -303,7 +324,7 @@ if:
   cidr_contains: "@network.trusted_clients"
 ```
 
-Hostname-style request fields such as the Lua `request.client_host` value are not built-in policy attributes today. If a feature, filter, or backend needs such a value in policy decisions, expose it deliberately: register a Lua-owned policy attribute with `auth.policy.registry_scripts` and emit it with the Lua policy module, or export a selected backend result field with `auth.policy.attribute_exports`.
+Hostname-style request fields such as the Lua `request.client_host` value are not built-in policy attributes today. If an environment source, subject source, or backend needs such a value in policy decisions, expose it deliberately: register a Lua-owned policy attribute with `auth.policy.registry_scripts` and emit it with the Lua policy module, or export a selected backend result field with `auth.policy.attribute_exports`.
 
 ### Lua Check Scheduling
 
@@ -321,30 +342,30 @@ Example:
 
 ```yaml
 auth:
-  controls:
-    lua:
-      controls:
-        - name: geoip
-          script_path: /etc/nauthilus/lua/controls/geoip.lua
-        - name: policy_gate
-          script_path: /etc/nauthilus/lua/controls/policy_gate.lua
-
   policy:
-    checks:
-      - name: lua_control_geoip
-        type: lua.control
-        stage: pre_auth
-        operations: [authenticate, lookup_identity]
-        config_ref: auth.controls.lua.controls.geoip
-        output: checks.lua_control_geoip
+    attribute_sources:
+      lua:
+        environment:
+          - name: geoip
+            script_path: /etc/nauthilus/lua/environment/geoip.lua
+          - name: policy_gate
+            script_path: /etc/nauthilus/lua/environment/policy_gate.lua
 
-      - name: lua_control_policy_gate
-        type: lua.control
+    checks:
+      - name: lua_environment_geoip
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        after: [lua_control_geoip]
-        config_ref: auth.controls.lua.controls.policy_gate
-        output: checks.lua_control_policy_gate
+        config_ref: auth.policy.attribute_sources.lua.environment.geoip
+        output: checks.lua_environment_geoip
+
+      - name: lua_environment_policy_gate
+        type: lua.environment
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        after: [lua_environment_geoip]
+        config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
+        output: checks.lua_environment_policy_gate
 ```
 
 ## Policies
@@ -622,7 +643,7 @@ then:
   response_marker: auth.response.fail
   response_message:
     from: attribute_detail
-    attribute: auth.lua.filter.billing_lock.rejected
+    attribute: auth.lua.subject.billing_lock.rejected
     detail: status_message
     fallback: "Invalid login or password"
 ```
@@ -693,10 +714,10 @@ Nauthilus has two Lua side-effect surfaces with similar names but different runt
 
 | Surface | Config action type | Runtime timing | Policy relationship |
 |---|---|---|---|
-| Synchronous Lua actions | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, `rbl` in `auth.controls.lua.actions` | Dispatched and waited for before the request continues. | Policy-owned through `auth.obligation.lua_action.dispatch`. |
-| Lua POST-Actions | `post` in `auth.controls.lua.actions` | Enqueued after the request-time decision context is known. | Policy-owned through `auth.obligation.lua_post_action.enqueue`. |
+| Synchronous Lua actions | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, `rbl` in `auth.policy.obligation_targets.lua.actions` | Dispatched and waited for before the request continues. | Policy-owned through `auth.obligation.lua_action.dispatch`. |
+| Lua POST-Actions | `post` in `auth.policy.obligation_targets.lua.actions` | Enqueued after the request-time decision context is known. | Policy-owned through `auth.obligation.lua_post_action.enqueue`. |
 
-Action scripts remain configured under `auth.controls.lua.actions`; policy does not define script code. The selected policy decision decides whether a configured synchronous action runs. A triggered brute-force, Lua, TLS, relay-domain, or RBL fact does not dispatch a synchronous action by itself.
+Action scripts remain configured under `auth.policy.obligation_targets.lua.actions`; policy does not define script code. The selected policy decision decides whether a configured synchronous action runs. A triggered brute-force, Lua, TLS, relay-domain, or RBL fact does not dispatch a synchronous action by itself.
 
 `auth.obligation.lua_action.dispatch` accepts these arguments:
 
@@ -714,7 +735,7 @@ The built-in `standard_auth` policy attaches synchronous action obligations wher
 | TLS-required temporary failure | `auth.obligation.lua_action.dispatch` with `action: tls_encryption`. |
 | Unknown relay-domain denial | `auth.obligation.lua_action.dispatch` with `action: relay_domains`. |
 | RBL threshold denial | `auth.obligation.lua_action.dispatch` with `action: rbl`. |
-| Lua control trigger denial | `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <check>`. |
+| Lua environment source trigger denial | `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <check>`. |
 
 The built-in `standard_auth` policy attaches all mutable brute-force side effects to the `standard_brute_force_deny` decision:
 
@@ -821,7 +842,7 @@ Policies select response markers, not raw HTTP status codes, headers, gRPC statu
 
 ### Response Message Reminder
 
-If `response_message` is omitted or `from: default`, Nauthilus uses the default message from the response marker. `attribute_detail` is valid only for a registered string detail with `sensitivity: public` and `purpose: response_message`. Generated Lua control and Lua filter decision attributes expose `status_message` this way.
+If `response_message` is omitted or `from: default`, Nauthilus uses the default message from the response marker. `attribute_detail` is valid only for a registered string detail with `sensitivity: public` and `purpose: response_message`. Generated Lua environment source and Lua subject source decision attributes expose `status_message` this way.
 
 ### Obligation and Advice Registry
 
@@ -939,16 +960,16 @@ The `<list>` segment is derived from `auth.controls.rbl.lists[].name` with the s
 
 Per-list RBL attributes carry internal details: `list`, `list_id`, `host`, `query`, `return_code`, `reason_code`, `ip_family`, `listed`, `error`, `allow_failure`, and `weight`.
 
-For each configured Lua control check, Nauthilus also registers:
+For each configured Lua environment source check, Nauthilus also registers:
 
-- `auth.lua.control.<name>.triggered`
-- `auth.lua.control.<name>.abort`
-- `auth.lua.control.<name>.error`
+- `auth.lua.environment.<name>.triggered`
+- `auth.lua.environment.<name>.abort`
+- `auth.lua.environment.<name>.error`
 
-For each configured Lua filter check, Nauthilus also registers:
+For each configured Lua subject source check, Nauthilus also registers:
 
-- `auth.lua.filter.<name>.rejected`
-- `auth.lua.filter.<name>.error`
+- `auth.lua.subject.<name>.rejected`
+- `auth.lua.subject.<name>.error`
 
 Lua trigger/reject attributes include an optional public `status_message` detail that policies can select as a response message.
 
@@ -968,7 +989,7 @@ Example registry script:
 ```lua
 nauthilus_policy.register_attribute({
   id = "lua.billing.account_locked",
-  stage = "auth_filters",
+  stage = "subject_analysis",
   operations = { "authenticate" },
   category = "subject",
   type = "bool",
@@ -1011,12 +1032,12 @@ Rules with `requires` need the named check result to be present with status `ok`
 | 50 | `standard_relay_domain_reject` | `authenticate` | `relay_domains` | `auth.relay_domain.present == true` and `auth.relay_domain.known == false` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligation: `auth.obligation.lua_action.dispatch` with `action: relay_domains`. |
 | 60 | `standard_rbl_error_tempfail` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` |  |
 | 70 | `standard_rbl_reject` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.threshold_reached == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligation: `auth.obligation.lua_action.dispatch` with `action: rbl`. |
-| 80 | `standard_lua_control_<script>_error` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` | Generated once per Lua control check result. |
-| 90 | `standard_lua_control_<script>_trigger` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.control.<script>.triggered` when selected. Obligation: `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <script>`. |
-| 100 | `standard_lua_control_<script>_abort` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.abort == true` | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Sets `control.skip_remaining_stage_checks: true`. |
+| 80 | `standard_lua_environment_<script>_error` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` | Generated once per Lua environment source check result. |
+| 90 | `standard_lua_environment_<script>_trigger` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.environment.<script>.triggered` when selected. Obligation: `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <script>`. |
+| 100 | `standard_lua_environment_<script>_abort` | active operation: `authenticate` or `lookup_identity` | emitted Lua environment source check | `auth.lua.environment.<script>.abort == true` | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Sets `control.skip_remaining_stage_checks: true`. |
 | 110 | `implicit_pre_auth_pass` | `authenticate`, `lookup_identity` | none | no pre-auth terminal or abort rule matched | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Internal pass decision added by `standard_auth`. |
 
-The `<script>` placeholder is derived from emitted Lua attributes such as `auth.lua.control.geoip.triggered`. This keeps hand-written check names valid as long as the check points to the named Lua script through `config_ref`.
+The `<script>` placeholder is derived from emitted Lua attributes such as `auth.lua.environment.geoip.triggered`. This keeps hand-written check names valid as long as the check points to the named Lua script through `config_ref`.
 
 ### Final Auth-Decision Rules
 
@@ -1025,8 +1046,8 @@ The `<script>` placeholder is derived from emitted Lua attributes such as `auth.
 | 200 | `standard_backend_tempfail` | `authenticate`, `lookup_identity` | none | `auth.backend.tempfail == true` | `tempfail` | `auth.fsm.event.auth_tempfail` | `auth.response.tempfail` |  |
 | 210 | `standard_empty_username` | `authenticate`, `lookup_identity` | none | `auth.backend.empty_username == true` | `tempfail` | `auth.fsm.event.auth_empty_user` | `auth.response.tempfail` |  |
 | 220 | `standard_empty_password` | `authenticate` | none | `auth.backend.empty_password == true` | `deny` | `auth.fsm.event.auth_empty_pass` | `auth.response.fail` |  |
-| 230 | `standard_lua_filter_<script>_error` | active operation: `authenticate` or `lookup_identity` | emitted Lua filter check | `auth.lua.filter.<script>.error == true` | `tempfail` | `auth.fsm.event.auth_tempfail` | `auth.response.tempfail` | Generated once per Lua filter check result. |
-| 240 | `standard_lua_filter_<script>_reject` | active operation: `authenticate` or `lookup_identity` | emitted Lua filter check | `auth.lua.filter.<script>.rejected == true` | `deny` | `auth.fsm.event.auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.filter.<script>.rejected` when selected. |
+| 230 | `standard_lua_subject_<script>_error` | active operation: `authenticate` or `lookup_identity` | emitted Lua subject source check | `auth.lua.subject.<script>.error == true` | `tempfail` | `auth.fsm.event.auth_tempfail` | `auth.response.tempfail` | Generated once per Lua subject source check result. |
+| 240 | `standard_lua_subject_<script>_reject` | active operation: `authenticate` or `lookup_identity` | emitted Lua subject source check | `auth.lua.subject.<script>.rejected == true` | `deny` | `auth.fsm.event.auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.subject.<script>.rejected` when selected. |
 | 250 | `standard_auth_success` | `authenticate` | none | `auth.authenticated == true` | `permit` | `auth.fsm.event.auth_permit` | `auth.response.ok` |  |
 | 260 | `standard_auth_failure` | `authenticate` | none | `auth.authenticated == false` | `deny` | `auth.fsm.event.auth_deny` | `auth.response.fail` |  |
 | 300 | `standard_lookup_identity_success` | `lookup_identity` | none | `auth.identity.found == true` | `permit` | `auth.fsm.event.auth_permit` | `auth.response.ok` |  |

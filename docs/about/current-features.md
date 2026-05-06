@@ -20,7 +20,7 @@ sidebar_position: 2
 - RBL checks
 - relay-domain validation
 - TLS enforcement with cleartext allowlists
-- Lua controls and filters
+- Lua environment and subject sources
 
 ## Services and Observability
 

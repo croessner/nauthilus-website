@@ -301,8 +301,8 @@ auth:
           package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
           backend_number_of_workers: 8
           action_number_of_workers: 8
-          feature_vm_pool_size: 8
-          filter_vm_pool_size: 8
+          environment_vm_pool_size: 8
+          subject_vm_pool_size: 8
           hook_vm_pool_size: 8
 
         search:
@@ -319,10 +319,6 @@ auth:
       - "lua"
 
     lua:
-      filters:
-        - name: "backend_health_checks"
-          script_path: "/usr/app/lua-plugins.d/filters/monitoring.lua"
-
       hooks:
         - http_location: "postfix/socket-map"
           http_method: "POST"
@@ -331,6 +327,13 @@ auth:
         - http_location: "postfix/policy"
           http_method: "POST"
           script_path: "/etc/nauthilus/lua/postfix_policy.lua"
+
+  policy:
+    attribute_sources:
+      lua:
+        subject:
+          - name: "backend_health_checks"
+            script_path: "/usr/app/lua-plugins.d/subject/monitoring.lua"
 
   services:
     enabled:

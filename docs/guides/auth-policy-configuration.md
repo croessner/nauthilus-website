@@ -19,13 +19,14 @@ A policy-controlled Lua setup has two parts. First, define the script entries:
 
 ```yaml
 auth:
-  controls:
-    lua:
-      controls:
-        - name: geoip
-          script_path: /etc/nauthilus/lua/controls/geoip.lua
-        - name: policy_gate
-          script_path: /etc/nauthilus/lua/controls/policy_gate.lua
+  policy:
+    attribute_sources:
+      lua:
+        environment:
+          - name: geoip
+            script_path: /etc/nauthilus/lua/environment/geoip.lua
+          - name: policy_gate
+            script_path: /etc/nauthilus/lua/environment/policy_gate.lua
 ```
 
 Then define when and in which order the scripts run:
@@ -34,20 +35,20 @@ Then define when and in which order the scripts run:
 auth:
   policy:
     checks:
-      - name: lua_control_geoip
-        type: lua.control
+      - name: lua_environment_geoip
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        config_ref: auth.controls.lua.controls.geoip
-        output: checks.lua_control_geoip
+        config_ref: auth.policy.attribute_sources.lua.environment.geoip
+        output: checks.lua_environment_geoip
 
-      - name: lua_control_policy_gate
-        type: lua.control
+      - name: lua_environment_policy_gate
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        after: [lua_control_geoip]
-        config_ref: auth.controls.lua.controls.policy_gate
-        output: checks.lua_control_policy_gate
+        after: [lua_environment_geoip]
+        config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
+        output: checks.lua_environment_policy_gate
 ```
 
 Decisions live in `auth.policy.policies`:
@@ -59,9 +60,9 @@ auth:
       - name: deny_policy_gate
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        require_checks: [lua_control_policy_gate]
+        require_checks: [lua_environment_policy_gate]
         if:
-          attribute: auth.lua.control.policy_gate.triggered
+          attribute: auth.lua.environment.policy_gate.triggered
           is: true
         then:
           decision: deny
@@ -69,7 +70,7 @@ auth:
           response_marker: auth.response.fail
           response_message:
             from: attribute_detail
-            attribute: auth.lua.control.policy_gate.triggered
+            attribute: auth.lua.environment.policy_gate.triggered
             detail: status_message
             fallback: "Invalid login or password"
 ```
@@ -81,8 +82,8 @@ Think in three layers.
 Mechanism configuration defines what exists:
 
 ```yaml
-auth.controls.lua.controls
-auth.controls.lua.filters
+auth.policy.attribute_sources.lua.environment
+auth.policy.attribute_sources.lua.subject
 auth.controls.brute_force
 auth.controls.rbl
 auth.backends.ldap
@@ -263,44 +264,44 @@ auth:
     default_policy: standard_auth
 
     checks:
-      - name: lua_control_geoip
-        type: lua.control
+      - name: lua_environment_geoip
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        config_ref: auth.controls.lua.controls.geoip
+        config_ref: auth.policy.attribute_sources.lua.environment.geoip
 
-      - name: lua_control_policy_gate
-        type: lua.control
+      - name: lua_environment_policy_gate
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        after: [lua_control_geoip]
-        config_ref: auth.controls.lua.controls.policy_gate
+        after: [lua_environment_geoip]
+        config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
 
-      - name: lua_filter_context_seed
-        type: lua.filter
-        stage: auth_filters
+      - name: lua_subject_context_seed
+        type: lua.subject
+        stage: subject_analysis
         run_if:
           auth_state: authenticated
-        config_ref: auth.controls.lua.filters.context_seed
+        config_ref: auth.policy.attribute_sources.lua.subject.context_seed
 
-      - name: lua_filter_billing_lock
-        type: lua.filter
-        stage: auth_filters
-        after: [lua_filter_context_seed]
+      - name: lua_subject_billing_lock
+        type: lua.subject
+        stage: subject_analysis
+        after: [lua_subject_context_seed]
         run_if:
           auth_state: authenticated
-        config_ref: auth.controls.lua.filters.billing_lock
+        config_ref: auth.policy.attribute_sources.lua.subject.billing_lock
 ```
 
 The check plan is authoritative for the configured Lua script family in the active operation and stage. A script without a matching check does not run in that request plan. If you configure no checks for a Lua script family, Nauthilus uses the built-in default scheduling for that family.
 
-For Lua controls and filters, `standard_auth` maps the generated Lua facts to the built-in result:
+For Lua environment and subject sources, `standard_auth` maps the generated Lua facts to the built-in result:
 
-- `auth.lua.control.<name>.error` selects a temporary failure.
-- `auth.lua.control.<name>.triggered` selects a deny.
-- `auth.lua.control.<name>.abort` skips the remaining pre-auth checks for that stage.
-- `auth.lua.filter.<name>.error` selects a temporary failure.
-- `auth.lua.filter.<name>.rejected` selects a deny.
+- `auth.lua.environment.<name>.error` selects a temporary failure.
+- `auth.lua.environment.<name>.triggered` selects a deny.
+- `auth.lua.environment.<name>.abort` skips the remaining pre-auth checks for that stage.
+- `auth.lua.subject.<name>.error` selects a temporary failure.
+- `auth.lua.subject.<name>.rejected` selects a deny.
 
 ## Policy Scheduling Goals
 
@@ -322,9 +323,9 @@ For Lua controls and filters, `standard_auth` maps the generated Lua facts to th
 
 Do not use `require_checks` as a scheduler. It never causes a check to run.
 
-## Step 1: Define Lua Mechanism Blocks
+## Step 1: Define Lua Attribute Sources
 
-Keep only the script identity and script path on controls and filters.
+Keep only the script identity and script path on environment and subject sources.
 
 ```yaml
 auth:
@@ -332,18 +333,19 @@ auth:
     enabled:
       - lua
 
-    lua:
-      controls:
-        - name: geoip
-          script_path: /etc/nauthilus/lua/controls/geoip.lua
-        - name: policy_gate
-          script_path: /etc/nauthilus/lua/controls/policy_gate.lua
-
-      filters:
-        - name: context_seed
-          script_path: /etc/nauthilus/lua/filters/context_seed.lua
-        - name: billing_lock
-          script_path: /etc/nauthilus/lua/filters/billing_lock.lua
+  policy:
+    attribute_sources:
+      lua:
+        environment:
+          - name: geoip
+            script_path: /etc/nauthilus/lua/environment/geoip.lua
+          - name: policy_gate
+            script_path: /etc/nauthilus/lua/environment/policy_gate.lua
+        subject:
+          - name: context_seed
+            script_path: /etc/nauthilus/lua/subject/context_seed.lua
+          - name: billing_lock
+            script_path: /etc/nauthilus/lua/subject/billing_lock.lua
 ```
 
 These entries do not decide when they run. The policy check plan does.
@@ -404,23 +406,23 @@ auth:
         config_ref: auth.controls.tls_encryption
         output: checks.tls_encryption
 
-      - name: lua_control_geoip
-        type: lua.control
+      - name: lua_environment_geoip
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        config_ref: auth.controls.lua.controls.geoip
-        output: checks.lua_control_geoip
+        config_ref: auth.policy.attribute_sources.lua.environment.geoip
+        output: checks.lua_environment_geoip
 
-      - name: lua_control_policy_gate
-        type: lua.control
+      - name: lua_environment_policy_gate
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        after: [lua_control_geoip]
-        config_ref: auth.controls.lua.controls.policy_gate
-        output: checks.lua_control_policy_gate
+        after: [lua_environment_geoip]
+        config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
+        output: checks.lua_environment_policy_gate
 ```
 
-The check name can be your own stable name. The converter uses names such as `lua_control_<script>` and `lua_filter_<script>` because they are predictable.
+The check name can be your own stable name. The converter uses names such as `lua_environment_<script>` and `lua_subject_<script>` because they are predictable.
 
 ## Step 4: Select Operations
 
@@ -567,7 +569,7 @@ then:
   response_marker: auth.response.fail
   response_message:
     from: attribute_detail
-    attribute: auth.lua.filter.billing_lock.rejected
+    attribute: auth.lua.subject.billing_lock.rejected
     detail: status_message
     fallback: "Invalid login or password"
 ```
@@ -618,7 +620,7 @@ That skips remaining checks in the current pre-auth stage. It does not permit th
 
 Do not treat every Lua side effect as an implicit mechanism behavior. Synchronous Lua action dispatch and Lua POST-Action enqueueing are policy-owned obligations in policy-authoritative paths.
 
-The script definitions stay under `auth.controls.lua.actions`. The selected policy decision decides whether an existing action runs:
+The script definitions stay under `auth.policy.obligation_targets.lua.actions`. The selected policy decision decides whether an existing action runs:
 
 | Action surface | Config action type | Obligation |
 |---|---|---|
@@ -669,13 +671,14 @@ First define the scripts:
 
 ```yaml
 auth:
-  controls:
-    lua:
-      filters:
-        - name: context_seed
-          script_path: /etc/nauthilus/lua/filters/context_seed.lua
-        - name: billing_lock
-          script_path: /etc/nauthilus/lua/filters/billing_lock.lua
+  policy:
+    attribute_sources:
+      lua:
+        subject:
+          - name: context_seed
+            script_path: /etc/nauthilus/lua/subject/context_seed.lua
+          - name: billing_lock
+            script_path: /etc/nauthilus/lua/subject/billing_lock.lua
 ```
 
 Then define the check order:
@@ -684,33 +687,33 @@ Then define the check order:
 auth:
   policy:
     checks:
-      - name: lua_filter_context_seed
-        type: lua.filter
-        stage: auth_filters
+      - name: lua_subject_context_seed
+        type: lua.subject
+        stage: subject_analysis
         run_if:
           auth_state: authenticated
-        config_ref: auth.controls.lua.filters.context_seed
-        output: checks.lua_filter_context_seed
+        config_ref: auth.policy.attribute_sources.lua.subject.context_seed
+        output: checks.lua_subject_context_seed
 
-      - name: lua_filter_billing_lock
-        type: lua.filter
-        stage: auth_filters
-        after: [lua_filter_context_seed]
+      - name: lua_subject_billing_lock
+        type: lua.subject
+        stage: subject_analysis
+        after: [lua_subject_context_seed]
         run_if:
           auth_state: authenticated
-        config_ref: auth.controls.lua.filters.billing_lock
-        output: checks.lua_filter_billing_lock
+        config_ref: auth.policy.attribute_sources.lua.subject.billing_lock
+        output: checks.lua_subject_billing_lock
 ```
 
 `after` references check names, not script names. Dependencies must be scheduler-compatible: the dependency must be in the same stage and must cover the dependent check's operations and auth-state guard.
 
-## Step 7: Write Policies for Pre-Auth Controls
+## Step 7: Write Policies for Pre-Auth Environment Sources
 
-A Lua control can emit generated attributes:
+A Lua environment source can emit generated attributes:
 
-- `auth.lua.control.<name>.triggered`
-- `auth.lua.control.<name>.abort`
-- `auth.lua.control.<name>.error`
+- `auth.lua.environment.<name>.triggered`
+- `auth.lua.environment.<name>.abort`
+- `auth.lua.environment.<name>.error`
 
 Use those attributes in policies.
 
@@ -718,24 +721,24 @@ Use those attributes in policies.
 auth:
   policy:
     policies:
-      - name: geoip_control_error
+      - name: geoip_environment_error
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        require_checks: [lua_control_geoip]
+        require_checks: [lua_environment_geoip]
         if:
-          attribute: auth.lua.control.geoip.error
+          attribute: auth.lua.environment.geoip.error
           is: true
         then:
           decision: tempfail
           reason: geoip_error
           response_marker: auth.response.tempfail
 
-      - name: geoip_control_deny
+      - name: geoip_environment_deny
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        require_checks: [lua_control_geoip]
+        require_checks: [lua_environment_geoip]
         if:
-          attribute: auth.lua.control.geoip.triggered
+          attribute: auth.lua.environment.geoip.triggered
           is: true
         then:
           decision: deny
@@ -743,20 +746,20 @@ auth:
           response_marker: auth.response.fail
           response_message:
             from: attribute_detail
-            attribute: auth.lua.control.geoip.triggered
+            attribute: auth.lua.environment.geoip.triggered
             detail: status_message
             fallback: "Invalid login or password"
 ```
 
-For a Lua control that aborts later pre-auth checks but does not deny:
+For a Lua environment source that aborts later pre-auth checks but does not deny:
 
 ```yaml
-- name: geoip_control_abort
+- name: geoip_environment_abort
   stage: pre_auth
   operations: [authenticate, lookup_identity]
-  require_checks: [lua_control_geoip]
+  require_checks: [lua_environment_geoip]
   if:
-    attribute: auth.lua.control.geoip.abort
+    attribute: auth.lua.environment.geoip.abort
     is: true
   then:
     decision: neutral
@@ -767,7 +770,7 @@ For a Lua control that aborts later pre-auth checks but does not deny:
 
 Do not use `permit` in `pre_auth`. Pre-auth controls can deny, tempfail, or let the request continue.
 
-## Step 8: Write Policies for Backend and Lua Filters
+## Step 8: Write Policies for Backend and Lua Subject Sources
 
 Backends produce final auth facts:
 
@@ -777,10 +780,10 @@ Backends produce final auth facts:
 - `auth.backend.empty_username`
 - `auth.backend.empty_password`
 
-Lua filters produce generated attributes:
+Lua subject sources produce generated attributes:
 
-- `auth.lua.filter.<name>.rejected`
-- `auth.lua.filter.<name>.error`
+- `auth.lua.subject.<name>.rejected`
+- `auth.lua.subject.<name>.error`
 
 Example:
 
@@ -788,22 +791,22 @@ Example:
 auth:
   policy:
     policies:
-      - name: billing_filter_error
+      - name: billing_subject_error
         stage: auth_decision
-        require_checks: [lua_filter_billing_lock]
+        require_checks: [lua_subject_billing_lock]
         if:
-          attribute: auth.lua.filter.billing_lock.error
+          attribute: auth.lua.subject.billing_lock.error
           is: true
         then:
           decision: tempfail
-          reason: billing_filter_error
+          reason: billing_subject_error
           response_marker: auth.response.tempfail
 
-      - name: billing_filter_reject
+      - name: billing_subject_reject
         stage: auth_decision
-        require_checks: [lua_filter_billing_lock]
+        require_checks: [lua_subject_billing_lock]
         if:
-          attribute: auth.lua.filter.billing_lock.rejected
+          attribute: auth.lua.subject.billing_lock.rejected
           is: true
         then:
           decision: deny
@@ -811,7 +814,7 @@ auth:
           response_marker: auth.response.fail
           response_message:
             from: attribute_detail
-            attribute: auth.lua.filter.billing_lock.rejected
+            attribute: auth.lua.subject.billing_lock.rejected
             detail: status_message
             fallback: "Invalid login or password"
 
@@ -1176,9 +1179,9 @@ This example expresses a common setup explicitly:
 
 - brute force blocks normal password auth
 - TLS is required for password auth and identity lookup
-- two Lua controls run before backend auth, with one ordered after the other
+- two Lua environment sources run before backend auth, with one ordered after the other
 - LDAP backend facts decide final auth and lookup behavior
-- two Lua filters run after successful backend auth, ordered through `after`
+- two Lua subject sources run after successful backend auth, ordered through `after`
 - account listing is permitted only when the account provider completes
 
 ```yaml
@@ -1204,19 +1207,6 @@ auth:
       allow_cleartext_networks:
         - 127.0.0.0/8
 
-    lua:
-      controls:
-        - name: geoip
-          script_path: /etc/nauthilus/lua/controls/geoip.lua
-        - name: policy_gate
-          script_path: /etc/nauthilus/lua/controls/policy_gate.lua
-
-      filters:
-        - name: context_seed
-          script_path: /etc/nauthilus/lua/filters/context_seed.lua
-        - name: billing_lock
-          script_path: /etc/nauthilus/lua/filters/billing_lock.lua
-
   backends:
     order: [cache, ldap]
     ldap:
@@ -1229,6 +1219,19 @@ auth:
     mode: enforce
     default_policy: standard_auth
     registry_scripts: []
+
+    attribute_sources:
+      lua:
+        environment:
+          - name: geoip
+            script_path: /etc/nauthilus/lua/environment/geoip.lua
+          - name: policy_gate
+            script_path: /etc/nauthilus/lua/environment/policy_gate.lua
+        subject:
+          - name: context_seed
+            script_path: /etc/nauthilus/lua/subject/context_seed.lua
+          - name: billing_lock
+            script_path: /etc/nauthilus/lua/subject/billing_lock.lua
 
     report:
       enabled: false
@@ -1250,20 +1253,20 @@ auth:
         config_ref: auth.controls.tls_encryption
         output: checks.tls_encryption
 
-      - name: lua_control_geoip
-        type: lua.control
+      - name: lua_environment_geoip
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        config_ref: auth.controls.lua.controls.geoip
-        output: checks.lua_control_geoip
+        config_ref: auth.policy.attribute_sources.lua.environment.geoip
+        output: checks.lua_environment_geoip
 
-      - name: lua_control_policy_gate
-        type: lua.control
+      - name: lua_environment_policy_gate
+        type: lua.environment
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        after: [lua_control_geoip]
-        config_ref: auth.controls.lua.controls.policy_gate
-        output: checks.lua_control_policy_gate
+        after: [lua_environment_geoip]
+        config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
+        output: checks.lua_environment_policy_gate
 
       - name: ldap_backend
         type: backend.ldap
@@ -1272,22 +1275,22 @@ auth:
         config_ref: auth.backends.ldap
         output: checks.ldap_backend
 
-      - name: lua_filter_context_seed
-        type: lua.filter
-        stage: auth_filters
+      - name: lua_subject_context_seed
+        type: lua.subject
+        stage: subject_analysis
         run_if:
           auth_state: authenticated
-        config_ref: auth.controls.lua.filters.context_seed
-        output: checks.lua_filter_context_seed
+        config_ref: auth.policy.attribute_sources.lua.subject.context_seed
+        output: checks.lua_subject_context_seed
 
-      - name: lua_filter_billing_lock
-        type: lua.filter
-        stage: auth_filters
-        after: [lua_filter_context_seed]
+      - name: lua_subject_billing_lock
+        type: lua.subject
+        stage: subject_analysis
+        after: [lua_subject_context_seed]
         run_if:
           auth_state: authenticated
-        config_ref: auth.controls.lua.filters.billing_lock
-        output: checks.lua_filter_billing_lock
+        config_ref: auth.policy.attribute_sources.lua.subject.billing_lock
+        output: checks.lua_subject_billing_lock
 
       - name: account_provider
         type: backend.account_provider
@@ -1325,9 +1328,9 @@ auth:
       - name: policy_gate_deny
         stage: pre_auth
         operations: [authenticate, lookup_identity]
-        require_checks: [lua_control_policy_gate]
+        require_checks: [lua_environment_policy_gate]
         if:
-          attribute: auth.lua.control.policy_gate.triggered
+          attribute: auth.lua.environment.policy_gate.triggered
           is: true
         then:
           decision: deny
@@ -1335,7 +1338,7 @@ auth:
           response_marker: auth.response.fail
           response_message:
             from: attribute_detail
-            attribute: auth.lua.control.policy_gate.triggered
+            attribute: auth.lua.environment.policy_gate.triggered
             detail: status_message
             fallback: "Invalid login or password"
 
@@ -1352,9 +1355,9 @@ auth:
 
       - name: billing_lock_deny
         stage: auth_decision
-        require_checks: [lua_filter_billing_lock]
+        require_checks: [lua_subject_billing_lock]
         if:
-          attribute: auth.lua.filter.billing_lock.rejected
+          attribute: auth.lua.subject.billing_lock.rejected
           is: true
         then:
           decision: deny
@@ -1362,7 +1365,7 @@ auth:
           response_marker: auth.response.fail
           response_message:
             from: attribute_detail
-            attribute: auth.lua.filter.billing_lock.rejected
+            attribute: auth.lua.subject.billing_lock.rejected
             detail: status_message
             fallback: "Invalid login or password"
 
@@ -1449,7 +1452,7 @@ This is a template. Keep only the checks and rules that match the mechanisms in 
 
 ## Custom Lua Attributes
 
-Generated Lua control and filter attributes are enough for trigger, abort, reject, error, and status-message behavior. Use a registry script when Lua needs to expose custom facts.
+Generated Lua environment and subject source attributes are enough for trigger, abort, reject, error, and status-message behavior. Use a registry script when Lua needs to expose custom facts.
 
 Policy registry script:
 
@@ -1488,7 +1491,7 @@ Policy:
 - name: deny_high_risk
   stage: pre_auth
   operations: [authenticate, lookup_identity]
-  require_checks: [lua_control_geoip]
+  require_checks: [lua_environment_geoip]
   if:
     attribute: lua.risk.high
     is: true
@@ -1529,7 +1532,7 @@ nauthilus -d
 
 ## Troubleshooting
 
-Unknown keys on Lua control or filter entries:
+Unknown keys on Lua environment or subject source entries:
 
 - Keep Lua script entries to their supported fields such as `name` and `script_path`.
 - Express operation scope, auth-state scheduling, and start order in `auth.policy.checks`.

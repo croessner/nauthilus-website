@@ -23,11 +23,11 @@ Lua backend:
 - `auth.backends.lua.backend.named_backends.*`
 - `auth.backends.lua.backend.search`
 
-Lua controls and filters:
+Lua environment and subject sources:
 
-- `auth.controls.lua.controls`
-- `auth.controls.lua.filters`
-- `auth.controls.lua.actions`
+- `auth.policy.attribute_sources.lua.environment`
+- `auth.policy.attribute_sources.lua.subject`
+- `auth.policy.obligation_targets.lua.actions`
 - `auth.controls.lua.hooks`
 
 ## LDAP: Small Stable Starting Point
@@ -102,7 +102,7 @@ Lua:
 
 ## Scoped IPs in Lua
 
-When Lua features aggregate client IPs, use scoped identifiers instead of raw addresses if privacy-address churn or NAT noise distorts the data.
+When Lua environment sources aggregate client IPs, use scoped identifiers instead of raw addresses if privacy-address churn or NAT noise distorts the data.
 
 Current config paths:
 

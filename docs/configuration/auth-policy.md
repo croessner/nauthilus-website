@@ -638,6 +638,7 @@ Registered obligations:
 | ID | What it does |
 |---|---|
 | `auth.obligation.brute_force.update` | Updates brute-force counters, toleration, and learning state. |
+| `auth.obligation.lua_action.dispatch` | Dispatches an existing configured synchronous Lua action selected by the policy decision. |
 | `auth.obligation.lua_post_action.enqueue` | Enqueues an existing Lua POST-Action after the request-time decision is known. |
 
 Example:
@@ -647,6 +648,9 @@ then:
   decision: deny
   obligations:
     - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_action.dispatch
+      args:
+        action: brute_force
     - id: auth.obligation.lua_post_action.enqueue
       args:
         action: brute_force
@@ -685,34 +689,34 @@ This control does not skip final `auth_decision`. It only stops remaining checks
 
 ### Lua Actions and POST-Actions
 
-Nauthilus has two Lua side-effect surfaces with similar names but different policy semantics.
+Nauthilus has two Lua side-effect surfaces with similar names but different runtime timing.
 
 | Surface | Config action type | Runtime timing | Policy relationship |
 |---|---|---|---|
-| Synchronous Lua actions | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, `rbl` in `auth.controls.lua.actions` | Dispatched by the mechanism that triggered them and waited for before the request continues. | Current compatibility behavior. They are not policy checks, obligations, or advice in the current implementation. |
-| Lua POST-Actions | `post` in `auth.controls.lua.actions` | Enqueued after the request-time decision context is known. | Policy-owned in policy-authoritative paths through `auth.obligation.lua_post_action.enqueue`. |
+| Synchronous Lua actions | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, `rbl` in `auth.controls.lua.actions` | Dispatched and waited for before the request continues. | Policy-owned through `auth.obligation.lua_action.dispatch`. |
+| Lua POST-Actions | `post` in `auth.controls.lua.actions` | Enqueued after the request-time decision context is known. | Policy-owned through `auth.obligation.lua_post_action.enqueue`. |
 
-Synchronous Lua actions are still started automatically by the corresponding mechanism. For example:
+Action scripts remain configured under `auth.controls.lua.actions`; policy does not define script code. The selected policy decision decides whether a configured synchronous action runs. A triggered brute-force, Lua, TLS, relay-domain, or RBL fact does not dispatch a synchronous action by itself.
 
-- a triggered Lua control can dispatch the `lua` action;
-- TLS enforcement can dispatch the `tls_encryption` action;
-- relay-domain rejection can dispatch the `relay_domains` action;
-- an RBL hit can dispatch the `rbl` action;
-- brute-force detection can dispatch the `brute_force` action.
+`auth.obligation.lua_action.dispatch` accepts these arguments:
 
-This is compatibility behavior from the first policy-layer rollout, not the clean long-term policy ownership model. A synchronous action can run because a mechanism observed a trigger before the final YAML policy decision has owned the side effect. That preserves existing deployments, but it is less explicit than policy-owned enforcement work.
+| Argument | Required | Meaning |
+|---|---|---|
+| `action` | yes | One of `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`. |
+| `feature` | no | Stable feature or check name for feature-specific reports and learning context. It is most useful with `action: lua`. |
+| `wait` | no | Boolean, defaults to `true`. The current runtime preserves synchronous wait behavior; use `true` or omit it. |
 
-For new policy-driven side effects, prefer registered obligations. A stricter future model should expose synchronous action dispatch as a registered obligation and attach it to selected policy decisions, so reports, observe mode, and side effects all describe the same decision path. `advice` should not execute actions.
+The built-in `standard_auth` policy attaches synchronous action obligations where earlier releases ran configured actions directly:
 
-Brute force has both mechanism-owned and policy-owned side effects:
-
-| Side effect | Current owner |
+| Triggering condition | Synchronous action obligation |
 |---|---|
-| Synchronous `brute_force` Lua action | Brute-force evaluator. |
-| Brute-force counter, toleration, and learning update | `auth.obligation.brute_force.update` when policy enforcement owns the decision; legacy fallback otherwise. |
-| Lua POST-Action after a brute-force denial | `auth.obligation.lua_post_action.enqueue` when policy enforcement owns the decision; legacy fallback otherwise. |
+| Brute-force denial | `auth.obligation.lua_action.dispatch` with `action: brute_force`. |
+| TLS-required temporary failure | `auth.obligation.lua_action.dispatch` with `action: tls_encryption`. |
+| Unknown relay-domain denial | `auth.obligation.lua_action.dispatch` with `action: relay_domains`. |
+| RBL threshold denial | `auth.obligation.lua_action.dispatch` with `action: rbl`. |
+| Lua control trigger denial | `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <check>`. |
 
-The built-in `standard_auth` policy attaches both obligations to the `standard_brute_force_deny` decision:
+The built-in `standard_auth` policy attaches all mutable brute-force side effects to the `standard_brute_force_deny` decision:
 
 ```yaml
 then:
@@ -721,16 +725,19 @@ then:
   response_marker: auth.response.fail
   obligations:
     - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_action.dispatch
+      args:
+        action: brute_force
     - id: auth.obligation.lua_post_action.enqueue
       args:
         action: brute_force
 ```
 
-For custom policies, add these obligations explicitly when you want the same policy-owned side effects. Without them, a custom terminal policy decision can deny or tempfail without scheduling the POST-Action or updating brute-force counters through the policy obligation path.
+For custom policies, add these obligations explicitly when you want the same policy-owned side effects. Without them, a custom terminal policy decision can deny or tempfail without dispatching the synchronous Lua action, scheduling the POST-Action, or updating brute-force counters through the policy obligation path.
 
 There is no `post_decision` policy stage. POST-Actions are enforcement follow-up work requested by obligations after a decision has been selected. A POST-Action must not change the already selected `decision`, FSM terminal state, `response_marker`, or `response_message`.
 
-In `mode: observe`, custom obligations are diagnostic only: custom POST-Action enqueueing, brute-force updates, learning updates, and other mutable side effects are not executed.
+In `mode: observe`, custom obligations are diagnostic only: custom synchronous Lua action dispatch, POST-Action enqueueing, brute-force updates, learning updates, and other mutable side effects are not executed.
 
 ### FSM Event Markers
 
@@ -821,6 +828,7 @@ If `response_message` is omitted or `from: default`, Nauthilus uses the default 
 | ID | Kind | Purpose |
 |---|---|---|
 | `auth.obligation.brute_force.update` | obligation | Update brute-force counters, toleration, and learning state. |
+| `auth.obligation.lua_action.dispatch` | obligation | Dispatch an existing configured synchronous Lua action after decision selection. |
 | `auth.obligation.lua_post_action.enqueue` | obligation | Enqueue an existing Lua post-action after decision selection. |
 | `auth.advice.audit_reason` | advice | Add sanitized audit context. |
 
@@ -997,14 +1005,14 @@ Rules with `requires` need the named check result to be present with status `ok`
 | Order | Rule name | Operations | Requires | Condition | Effect | FSM marker | Response marker | Extra |
 |---:|---|---|---|---|---|---|---|---|
 | 10 | `standard_brute_force_error_tempfail` | `authenticate` | `brute_force` | `auth.brute_force.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` |  |
-| 20 | `standard_brute_force_deny` | `authenticate` | `brute_force` | `auth.brute_force.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligations: `auth.obligation.brute_force.update`, `auth.obligation.lua_post_action.enqueue` with `action: brute_force`. |
-| 30 | `standard_tls_enforcement` | `authenticate`, `lookup_identity` | `tls_encryption` | `auth.tls.secure == false` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail.no_tls` |  |
+| 20 | `standard_brute_force_deny` | `authenticate` | `brute_force` | `auth.brute_force.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligations: `auth.obligation.brute_force.update`; `auth.obligation.lua_action.dispatch` with `action: brute_force`; `auth.obligation.lua_post_action.enqueue` with `action: brute_force`. |
+| 30 | `standard_tls_enforcement` | `authenticate`, `lookup_identity` | `tls_encryption` | `auth.tls.secure == false` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail.no_tls` | Obligation: `auth.obligation.lua_action.dispatch` with `action: tls_encryption`. |
 | 40 | `standard_relay_domain_error_tempfail` | `authenticate` | `relay_domains` | `auth.relay_domain.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` |  |
-| 50 | `standard_relay_domain_reject` | `authenticate` | `relay_domains` | `auth.relay_domain.present == true` and `auth.relay_domain.known == false` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` |  |
+| 50 | `standard_relay_domain_reject` | `authenticate` | `relay_domains` | `auth.relay_domain.present == true` and `auth.relay_domain.known == false` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligation: `auth.obligation.lua_action.dispatch` with `action: relay_domains`. |
 | 60 | `standard_rbl_error_tempfail` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` |  |
-| 70 | `standard_rbl_reject` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.threshold_reached == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` |  |
+| 70 | `standard_rbl_reject` | `authenticate`, `lookup_identity` | `rbl` | `auth.rbl.threshold_reached == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Obligation: `auth.obligation.lua_action.dispatch` with `action: rbl`. |
 | 80 | `standard_lua_control_<script>_error` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.error == true` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | `auth.response.tempfail` | Generated once per Lua control check result. |
-| 90 | `standard_lua_control_<script>_trigger` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.control.<script>.triggered` when selected. |
+| 90 | `standard_lua_control_<script>_trigger` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.triggered == true` | `deny` | `auth.fsm.event.pre_auth_deny` | `auth.response.fail` | Uses public `status_message` detail from `auth.lua.control.<script>.triggered` when selected. Obligation: `auth.obligation.lua_action.dispatch` with `action: lua` and `feature: <script>`. |
 | 100 | `standard_lua_control_<script>_abort` | active operation: `authenticate` or `lookup_identity` | emitted Lua control check | `auth.lua.control.<script>.abort == true` | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Sets `control.skip_remaining_stage_checks: true`. |
 | 110 | `implicit_pre_auth_pass` | `authenticate`, `lookup_identity` | none | no pre-auth terminal or abort rule matched | `neutral` | `auth.fsm.event.pre_auth_ok` | none | Internal pass decision added by `standard_auth`. |
 
@@ -1147,7 +1155,7 @@ In `mode: observe`, `standard_auth` remains the production decision. Custom poli
 | `response_message_match` | Whether sanitized rendered response messages match. |
 | `obligations_match` | Whether planned obligations match. |
 
-Observe mode deliberately does not execute custom obligations, Lua POST-Action enqueueing, brute-force counter updates, learning updates, or other custom mutable side effects.
+Observe mode deliberately does not execute custom obligations, synchronous Lua action dispatch, Lua POST-Action enqueueing, brute-force counter updates, learning updates, or other custom mutable side effects.
 
 ### Report Example
 

@@ -87,6 +87,8 @@ auth:
             - "nauthilus:admin"
 ```
 
+The `actions` entries define reusable scripts. Request-time dispatch is selected by the active policy decision, not by the action definition itself. Synchronous actions use `auth.obligation.lua_action.dispatch` with `action` set to `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`; Lua POST-Actions use `auth.obligation.lua_post_action.enqueue` for `type: "post"` actions.
+
 ## Scheduling with Auth Policy
 
 Lua controls and Lua filters are scheduled through `auth.policy.checks`. Use the check plan to select the operation, optional auth-state guard, and start order.

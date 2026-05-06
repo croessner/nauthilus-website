@@ -108,6 +108,29 @@ Use these when a policy needs to distinguish "bucket pressure exists" from "the 
 
 Normalized bucket identifiers must be unique. If two bucket names normalize to the same policy segment, the policy snapshot fails validation. For the full attribute list and YAML examples, see [Auth Policy Reference](auth-policy.md) and [Auth Policy Configuration Guide](../guides/auth-policy-configuration.md).
 
+## Policy-Owned Side Effects
+
+`builtin.brute_force` emits read-only policy facts. Mutable side effects are owned by the selected policy decision.
+
+The built-in `standard_auth` brute-force denial includes these obligations:
+
+```yaml
+then:
+  decision: deny
+  reason: brute_force_reject
+  response_marker: auth.response.fail
+  obligations:
+    - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_action.dispatch
+      args:
+        action: brute_force
+    - id: auth.obligation.lua_post_action.enqueue
+      args:
+        action: brute_force
+```
+
+If a custom policy replaces the built-in brute-force denial, add the same obligations when you want parity with the default behavior. Without them, the policy can still deny or tempfail, but it will not update brute-force state, dispatch the synchronous `brute_force` Lua action, or enqueue the matching POST-Action. In `mode: observe`, Nauthilus reports planned obligations but does not execute mutable side effects.
+
 ## Notes
 
 - `ip_allowlist` is the current canonical name.

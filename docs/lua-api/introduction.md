@@ -25,13 +25,13 @@ of all other steps in the whole pipeline and therefore can not influence the fin
 
 Nauthilus distinguishes synchronous Lua actions from Lua POST-Actions.
 
-Synchronous Lua actions are configured with action types such as `brute_force`, `lua`, `tls_encryption`, `relay_domains`, and `rbl`. They are mechanism-owned compatibility behavior in the current implementation: when the corresponding brute-force check or pre-auth feature triggers, Nauthilus dispatches the matching action and waits for it before the request continues. These actions are not policy checks, policy `advice`, or generic user-defined `obligations`.
+Synchronous Lua actions are configured with action types such as `brute_force`, `lua`, `tls_encryption`, `relay_domains`, and `rbl`. In policy-authoritative paths, the selected policy decision dispatches them through the registered obligation `auth.obligation.lua_action.dispatch` and Nauthilus waits for the action before the request continues.
 
-This is not the clean long-term policy ownership model. A stricter policy-owned model should represent synchronous action dispatch as a registered obligation on the selected policy decision, so side effects happen because the policy selected them, not merely because a mechanism observed a trigger.
+The triggering check or feature only emits facts. The action runs only when the selected decision includes the dispatch obligation. This keeps reports, observe-mode comparisons, and mutable side effects aligned with the same policy decision.
 
 Lua POST-Actions use the `post` action type. They run after the request-time decision context is known and must not change the final decision, response marker, response message, or FSM terminal state. In `auth.policy` authoritative paths, POST-Action enqueueing is requested through the registered obligation `auth.obligation.lua_post_action.enqueue`. Brute-force counter and learning updates are requested through `auth.obligation.brute_force.update`.
 
-Observe-mode policy evaluation never executes custom obligations, so it does not enqueue custom POST-Actions or mutate brute-force state.
+Observe-mode policy evaluation reports planned custom obligations but never executes them, so it does not dispatch synchronous Lua actions, enqueue custom POST-Actions, or mutate brute-force state.
 
 In the following sequence diagram you can see the processing of the request in more detail.
 
@@ -39,58 +39,45 @@ In the following sequence diagram you can see the processing of the request in m
 sequenceDiagram
     actor User
     participant Request
-    participant Brute force check
-    participant Features
-    participant Actions
+    participant Checks as Policy checks
+    participant Policy as Policy decision
+    participant Obligations
     participant Backend
     participant Filters
-    participant Finished
+    participant Post as POST-Actions
     User->>Request: Wants to authenticate
     activate Request
-    Note over Request,Filters:A Lua context is created: All scripts can manipulate this context with set, get and delete operations.  
-    Request->>Brute force check:Does user triger a brute froce rule?
-    activate Brute force check
-    alt Brute force attack detected
-    activate Actions
-    Brute force check->>Actions:Do some actions
-    loop Action pipeline
-    Actions->>Actions: Run all action one after another
+    Note over Request,Filters:A Lua context is created. Scripts can share data with set, get, and delete operations.
+    Request->>Checks: Collect pre-auth facts
+    activate Checks
+    Checks->>Policy: Evaluate selected decision
+    deactivate Checks
+    activate Policy
+    alt Selected decision has a synchronous Lua action obligation
+    Policy->>Obligations: auth.obligation.lua_action.dispatch
+    activate Obligations
+    Obligations->>Obligations: Run the configured action and wait
+    deactivate Obligations
     end
-    Actions->>Finished:Request was rejected
-    deactivate Actions
-    else No brute force attack detected
-    Brute force check->>Features:Request continues
-    deactivate Brute force check
+    alt Pre-auth terminal decision
+    Policy-->>Request: Return deny or tempfail response
+    else Request continues
+    Policy->>Backend: Run the main authentication process
     end
-    activate Features
-    loop Features pipeline
-    Features->>Features:Run all features in parallel (since v1.8.9)
-    end
-    alt Some featured was triggered
-    activate Actions
-    Features->>Actions:Do some actions
-    loop Action pipeline
-      Actions->>Actions:Run all action one after another
-    end
-    Actions->>Finished:Request was rejected
-    deactivate Actions
-    else No featured triggered
-    Features->>Backend:Do the main authentication process
-    deactivate Features
-    end
+    deactivate Policy
     activate Backend
-    Backend->>Filters:Give pre-result to the filters
+    Backend->>Filters: Give pre-result to the filters
     deactivate Backend
     activate Filters
-    Filters->>Finished:The result is accept or reject 
-    Filters-->>Actions:Post actions run in background, while the request was already processed
+    Filters->>Policy: Evaluate final decision
+    activate Policy
+    alt Selected decision has POST-Action obligation
+    Policy->>Post: auth.obligation.lua_post_action.enqueue
+    end
+    Policy-->>Request: Return final response
+    deactivate Policy
     deactivate Filters
     deactivate Request
-    activate Actions
-    loop Post action pipeline
-    Actions->>Actions:Run all action one after another
-    end
-    deactivate Actions
 ```
 
 ## Additional things to know
@@ -112,7 +99,7 @@ Lua scripts can modify the final log line by adding key-value pairs from each sc
 
 ## Configuration
 
-For the configuration, please have a look for the [configuration file](/docs/configuration/index.md) document.
+For the configuration, please have a look at the [configuration file](../configuration/index.md) document.
 
 ---
 

@@ -531,7 +531,7 @@ Use the `then` keys this way:
 | `response_message` | You need a specific client-visible message inside the selected response class. |
 | `fsm_event_marker` | You need a specific FSM path such as `auth.fsm.event.auth_empty_pass`; otherwise the normal marker is derived from stage and decision. |
 | `outcome_marker` | You need a stable namespaced outcome label for reports or tooling. |
-| `obligations` | The selected decision must run registered enforcement work, such as brute-force updates or Lua POST-Action enqueueing. |
+| `obligations` | The selected decision must run registered enforcement work, such as synchronous Lua action dispatch, brute-force updates, or Lua POST-Action enqueueing. |
 | `advice` | You want non-binding context for reporting or follow-up handling. |
 | `control.skip_remaining_stage_checks` | A neutral pre-auth decision should stop later pre-auth checks without granting success. |
 
@@ -582,6 +582,9 @@ then:
   reason: brute_force_reject
   obligations:
     - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_action.dispatch
+      args:
+        action: brute_force
     - id: auth.obligation.lua_post_action.enqueue
       args:
         action: brute_force
@@ -613,24 +616,31 @@ That skips remaining checks in the current pre-auth stage. It does not permit th
 
 ## Understand Actions and POST-Actions
 
-Do not treat every Lua side effect as a policy obligation.
+Do not treat every Lua side effect as an implicit mechanism behavior. Synchronous Lua action dispatch and Lua POST-Action enqueueing are policy-owned obligations in policy-authoritative paths.
 
-Nauthilus still has mechanism-owned synchronous Lua actions. These are the action types configured under `auth.controls.lua.actions` for `brute_force`, `lua`, `tls_encryption`, `relay_domains`, and `rbl`. They run when the corresponding mechanism triggers, and the runtime waits for them. They are not selected by `then`, they are not `advice`, and they are not generic user-defined obligations in the current implementation.
+The script definitions stay under `auth.controls.lua.actions`. The selected policy decision decides whether an existing action runs:
 
-This is useful for compatibility, but it is not the cleanest long-term policy model. For a fully policy-owned model, synchronous action dispatch should become a registered obligation selected by the winning policy rule. That would avoid hidden side effects when a mechanism observes a trigger but the policy later chooses a different outcome.
+| Action surface | Config action type | Obligation |
+|---|---|---|
+| Synchronous Lua action | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl` | `auth.obligation.lua_action.dispatch` |
+| Lua POST-Action | `post` | `auth.obligation.lua_post_action.enqueue` |
 
-Lua POST-Actions are different. The `post` action type is follow-up work after a request-time decision. In policy-authoritative paths, schedule it with:
+Use `auth.obligation.lua_action.dispatch` with `args.action` set to one of `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`. For `action: lua`, also pass `args.feature` when you need feature-specific reports or learning context. The optional `args.wait` defaults to `true`; the current runtime preserves synchronous wait behavior.
+
+For example, a custom RBL rejection that should keep the configured synchronous RBL action must say so:
 
 ```yaml
 then:
   decision: deny
-  reason: blocked_by_policy
+  reason: rbl_reject
   response_marker: auth.response.fail
   obligations:
-    - id: auth.obligation.lua_post_action.enqueue
+    - id: auth.obligation.lua_action.dispatch
+      args:
+        action: rbl
 ```
 
-For brute-force denials, also add the brute-force update obligation if your custom policy replaces the built-in rule:
+For brute-force denials, add all three side-effect obligations if your custom policy replaces the built-in rule:
 
 ```yaml
 then:
@@ -639,14 +649,17 @@ then:
   response_marker: auth.response.fail
   obligations:
     - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_action.dispatch
+      args:
+        action: brute_force
     - id: auth.obligation.lua_post_action.enqueue
       args:
         action: brute_force
 ```
 
-This mirrors the built-in `standard_auth` brute-force denial. The synchronous `brute_force` Lua action can still be dispatched by the brute-force evaluator itself; the obligations above cover policy-owned counter/learning updates and POST-Action enqueueing.
+This mirrors the built-in `standard_auth` brute-force denial. Without these obligations, a custom policy can still deny or tempfail, but it will not dispatch the synchronous Lua action, update brute-force state, or enqueue the POST-Action.
 
-In `mode: observe`, custom policy obligations are not executed. That keeps observe mode safe: no custom POST-Action enqueueing, no custom brute-force counter updates, and no custom learning side effects.
+In `mode: observe`, custom policy obligations are reported but not executed. That keeps observe mode safe: no custom synchronous Lua action dispatch, no custom POST-Action enqueueing, no custom brute-force counter updates, and no custom learning side effects.
 
 ## Step 6: Define Start Order with `after`
 

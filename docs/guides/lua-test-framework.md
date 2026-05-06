@@ -148,7 +148,7 @@ Rules:
 
 Scope:
 - `expected_calls` only works for functions that the Lua test runner instruments explicitly.
-- In practice, that means the mocked or wrapped module APIs documented on this page, for example `nauthilus_context`, `nauthilus_redis`, `nauthilus_backend`, `nauthilus_http_request`, `nauthilus_http_response`, `nauthilus_util`, `nauthilus_cache`, the dedicated `db` mock, and the wrapped HTTP client module.
+- In practice, that means the mocked or wrapped module APIs documented on this page, for example `nauthilus_context`, `nauthilus_redis`, `nauthilus_backend`, `nauthilus_policy`, `nauthilus_http_request`, `nauthilus_http_response`, `nauthilus_util`, `nauthilus_cache`, the dedicated `db` mock, and the wrapped HTTP client module.
 - Arbitrary self-written Lua helper functions are not tracked.
 - Standard library calls such as `string.*`, `table.*`, `math.*`, or generic `require(...)` modules are not tracked unless the test runner exposes a dedicated mock or wrapper for that module.
 - Use the per-module "Supported `expected_calls.method` values" lists below as the authoritative source. If a function is not listed there, it is not observable via `expected_calls`.
@@ -1005,6 +1005,53 @@ JSON example:
     "entries": {"tenant:alice": "acme"},
     "expected_calls": [
       {"method": "cache_get", "arg_contains": "tenant:alice"}
+    ]
+  }
+}
+```
+
+### `policy`
+
+The test runtime provides a fixture-aware mock for `require("nauthilus_policy")`.
+
+Fields:
+- `expected_calls` common format
+
+Supported `expected_calls.method` values:
+- `emit_attribute`
+
+The policy mock records calls to `emit_attribute(...)`. It does not build or validate a real `auth.policy` snapshot. Use production/config tests for registry ownership, stage, operation, and type validation. In Lua test fixtures, use `expected_calls` to assert that a script emits the expected policy fact.
+
+The `arg_contains` value is matched against a stable string built from the emitted table:
+
+- `id=<attribute-id>`
+- `value=<value>`
+- `details.<name>=<value>` for each detail, sorted by detail name
+
+Lua example:
+
+```lua
+local policy = require("nauthilus_policy")
+
+policy.emit_attribute({
+  id = "lua.plugin.geoip.rejected",
+  value = true,
+  details = {
+    status_message = "Policy violation",
+  },
+})
+```
+
+JSON example:
+
+```json
+{
+  "policy": {
+    "expected_calls": [
+      {
+        "method": "emit_attribute",
+        "arg_contains": "id=lua.plugin.geoip.rejected value=true details.status_message=Policy violation"
+      }
     ]
   }
 }

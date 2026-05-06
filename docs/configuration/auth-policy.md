@@ -34,6 +34,7 @@ auth:
     mode: enforce
     default_policy: standard_auth
     registry_scripts: []
+    attribute_exports: []
 
     sets:
       networks: {}
@@ -54,12 +55,13 @@ auth:
 | `mode` | string | `enforce` | `enforce` applies selected policies; `observe` compares custom policy output against `standard_auth` without changing production output. |
 | `default_policy` | string | `standard_auth` | Built-in default policy set. This is currently the only built-in default-policy name. |
 | `registry_scripts` | list of paths | `[]` | Lua scripts that register additional policy attributes during snapshot build. |
+| `attribute_exports` | list | `[]` | Opt-in backend/AuthState attributes that become policy-visible subject facts. |
 | `sets.networks` | map | `{}` | Named reusable IP/CIDR sets for policy conditions. |
 | `sets.time_windows` | map | `{}` | Named local-time windows for policy conditions. |
-| `report.enabled` | bool | `false` | Enables optional decision reports. |
-| `report.include_fsm` | bool | `true` | Includes FSM marker and terminal-state material in reports. |
-| `report.include_checks` | bool | `true` | Includes check results in reports. |
-| `report.include_attributes` | bool | `false` | Includes emitted attributes when enabled. Redaction still applies. |
+| `report.enabled` | bool | `false` | Enables optional redacted policy decision reports. This does not affect enforcement, logs, metrics, traces, or client responses. |
+| `report.include_fsm` | bool | `true` | Includes FSM decision material in report output. Selected FSM markers are still used internally even when reports are disabled. |
+| `report.include_checks` | bool | `true` | Includes check results in report output. Check results still drive policy evaluation when reports are disabled. |
+| `report.include_attributes` | bool | `false` | Includes emitted attributes in report output when enabled. Redaction still applies. |
 | `checks` | list | `[]` | Explicit fact-producing check plan. |
 | `policies` | list | `[]` | Ordered first-match decision rules. |
 
@@ -101,6 +103,74 @@ auth:
 In this shape, the check plan decides which Lua controls run and in which order. `standard_auth` still decides the final result from the emitted facts. Add `auth.policy.policies` only when you want custom decision rules.
 
 For a Lua script family, configured checks own that family's schedule for the active operation and stage. Scripts without a matching check do not run in that request plan. If no checks exist for that script family, Nauthilus uses the built-in default scheduling for that family.
+
+## Backend Attribute Exports
+
+Backends can return arbitrary account attributes. Nauthilus does not expose all of them to policy automatically. This is intentional: LDAP and Lua backend attributes often contain internal fields, tokens, mailbox routing hints, or other values that should not become policy/report material by accident.
+
+Use `auth.policy.attribute_exports` to make selected backend/AuthState attributes available as policy subject facts:
+
+```yaml
+auth:
+  policy:
+    attribute_exports:
+      - name: account_status
+        attribute: accountStatus
+        type: string
+        sensitivity: internal
+
+      - name: entitlements
+        attribute: entitlements
+        type: string_list
+
+      - name: risk_score
+        attribute: riskScore
+        type: number
+```
+
+| Field | Required | Purpose |
+|---|---:|---|
+| `name` | yes | Policy-safe export name. It becomes the final path segment in `auth.subject.attribute.<name>`. |
+| `attribute` | yes | Backend/AuthState attribute name to read from the backend result. |
+| `type` | yes | Detail type: `bool`, `string`, `string_list`, or `number`. |
+| `sensitivity` | no | Report redaction class: `internal` default, `public`, or `secret`. |
+
+The generated policy attribute is a boolean presence fact:
+
+```yaml
+if:
+  attribute: auth.subject.attribute.account_status
+  is: true
+```
+
+The configured value is available as a typed detail:
+
+```yaml
+if:
+  attribute: auth.subject.attribute.account_status
+  detail: value
+  eq: locked
+```
+
+For `string_list` exports, use the `values` detail:
+
+```yaml
+if:
+  attribute: auth.subject.attribute.entitlements
+  detail: values
+  contains: imap
+```
+
+Generated details are:
+
+| Detail | Type | Meaning |
+|---|---|---|
+| `attribute` | string | Original backend/AuthState attribute name. |
+| `count` | number | Number of values present in the backend attribute. |
+| `value` | bool, string, or number | Typed first value for scalar exports. |
+| `values` | string_list | Typed string list for `string_list` exports. |
+
+`name` is normalized like generated bucket and RBL list identifiers: letters and digits are kept, separators collapse to `_`, the segment is lower-cased, and leading digits are prefixed with `b_`. If two exports normalize to the same segment, the policy snapshot is rejected.
 
 ## Operations
 
@@ -193,6 +263,48 @@ The Nauthilus-specific parts are the YAML configuration surface, fixed auth oper
 
 For administrators, the practical takeaway is that Nauthilus uses an XACML-like PDP/PEP split: mechanisms and Lua code produce facts, the policy decision point selects an effect, and enforcement bridges apply the response, FSM marker, obligations, and advice.
 
+## Attribute Categories
+
+Every registered policy attribute has a category. The category is metadata for the policy registry, report readers, and future tooling. It does not change how an `if` condition is written: policy conditions still reference the full attribute ID.
+
+Nauthilus currently uses these categories:
+
+| Category | Meaning in Nauthilus policies | Examples |
+|---|---|---|
+| `environment` | Request context or external environment around the login attempt. This is where pre-auth controls usually emit facts. | `request.client.ip`, `auth.tls.secure`, `auth.brute_force.triggered`, `auth.rbl.score`, `auth.relay_domain.rejected` |
+| `subject` | Facts about the authenticating identity or account after backend lookup/authentication. | `auth.authenticated`, `auth.identity.found`, configured `auth.subject.attribute.<name>` exports, Lua billing/account facts |
+| `resource` | Facts about a requested resource or a resource-producing operation. | `auth.account_provider.completed` for account-list responses |
+| `action` | Facts about the requested action. Nauthilus currently models the main action through `request.operation` instead of many separate action attributes. |
+| `system` | Implementation or system-level facts. This is reserved for future registry/tooling use; built-in policy decisions currently do not require user-authored `system` attributes. |
+
+Two names often look abstract at first:
+
+- `subject` means "the user/account side of the request". Backend attributes are not exported automatically because they may contain secrets or directory-internal values. Use `auth.policy.attribute_exports` when a backend field should become policy material.
+- `environment` means "facts around the request". This includes network, time, TLS, RBL, relay-domain, brute-force, and Lua risk signals. It does not mean operating-system environment variables.
+
+## Request Attributes
+
+Policies do not read the Lua `request` table or Go request structs directly. They can only use registered policy attributes. Some attributes happen to describe the current request and use the `request.*` prefix, but they are a stable policy surface, not a 1:1 copy of fields available to Lua features, filters, actions, or backends.
+
+Built-in request attributes are:
+
+| Attribute | Type | Operations | Meaning |
+|---|---|---|---|
+| `request.operation` | string | all | Active operation: `authenticate`, `lookup_identity`, or `list_accounts`. |
+| `request.time.now` | datetime | all | Request evaluation timestamp. |
+| `request.client.ip` | ip | all | Effective client IP after Nauthilus request-header/proxy handling. |
+| `request.protocol` | string | all | Effective authentication protocol, such as `imap`, `smtp`, `submission`, `http`, or IdP-related protocol names. |
+
+Use the policy attribute ID, not Lua field names. For example, Lua commonly uses `request.client_ip`, but YAML policies use `request.client.ip`:
+
+```yaml
+if:
+  attribute: request.client.ip
+  cidr_contains: "@network.trusted_clients"
+```
+
+Hostname-style request fields such as the Lua `request.client_host` value are not built-in policy attributes today. If a feature, filter, or backend needs such a value in policy decisions, expose it deliberately: register a Lua-owned policy attribute with `auth.policy.registry_scripts` and emit it with the Lua policy module, or export a selected backend result field with `auth.policy.attribute_exports`.
+
 ### Lua Check Scheduling
 
 | Goal | Policy expression |
@@ -283,6 +395,12 @@ Conditions are YAML objects. Free-form expression strings are not supported.
 | `not` | one child condition object |
 | `always` | `always: true` |
 
+Condition trees are recursive. A child below `all`, `any`, or `not` may be an attribute comparison, `always`, or another `all`, `any`, or `not` node. Each condition object must still contain exactly one expression node: one of `attribute`, `all`, `any`, `not`, or `always`.
+
+Attribute comparisons are leaf nodes. They must contain exactly one operator such as `is`, `eq`, `ne`, `gte`, `contains`, or `within_time_window`. Operators are not nested, and two operators cannot be placed on the same attribute comparison. To combine multiple comparisons, put them into `all`, `any`, or `not`.
+
+The `then` block is not recursive. A policy rule has one `if` tree and one `then` output block. For else-style behavior or different outcomes, write separate ordered policies.
+
 Examples:
 
 ```yaml
@@ -305,6 +423,22 @@ if:
   not:
     attribute: request.time.now
     within_time_window: "@time_window.business_hours"
+```
+
+```yaml
+if:
+  all:
+    - any:
+        - attribute: auth.rbl.threshold_reached
+          is: true
+        - attribute: auth.brute_force.triggered
+          is: true
+    - not:
+        any:
+          - attribute: auth.rbl.soft_allowlisted
+            is: true
+          - attribute: auth.relay_domain.soft_allowlisted
+            is: true
 ```
 
 ### Operators
@@ -369,6 +503,10 @@ Set names must use lowercase letters, digits, and underscores. Time-window inter
 
 ## Decision Outputs
 
+The `then` block is the consequence block of a policy rule. The `if` tree decides whether the rule matches; `then` says what Nauthilus should do with that match.
+
+`then` is not another condition tree and it does not contain `else` branches. For different outcomes, write multiple ordered policies. The first matching terminal rule for a stage wins according to the policy combining rules.
+
 The `then` block always needs `decision`.
 
 ```yaml
@@ -378,53 +516,92 @@ then:
   response_marker: auth.response.fail
 ```
 
+At snapshot-build time, Nauthilus compiles `then` into a typed decision plan:
+
+- `decision` becomes the transport-independent effect.
+- `fsm_event_marker` and `response_marker` are derived from stage and `decision` when the normal mapping is unambiguous.
+- `response_message`, `obligations`, and `advice` are validated against the registries.
+- invalid stage/effect combinations are rejected, for example `decision: permit` in `pre_auth`.
+
 | Field | Purpose |
 |---|---|
-| `decision` | `neutral`, `deny`, `permit`, or `tempfail`. `permit` is not allowed in `pre_auth`. |
-| `reason` | Internal reason for logs, reports, metrics, and advice. |
-| `outcome_marker` | Optional stable outcome marker. |
-| `fsm_event_marker` | Optional target FSM event marker. If omitted, Nauthilus derives one when unambiguous. |
-| `response_marker` | Optional response class. If omitted, Nauthilus derives one from the decision when possible. |
-| `response_message` | Optional final client-visible message selection. |
-| `obligations` | Mandatory registered enforcement work. |
-| `advice` | Non-binding registered context. |
-| `control.skip_remaining_stage_checks` | Stage-local control for neutral decisions that should stop later checks. |
+| `decision` | Required effect: `neutral`, `deny`, `permit`, or `tempfail`. `permit` is not allowed in `pre_auth`. |
+| `reason` | Optional internal reason for logs, reports, metrics, obligations, advice, and operator diagnosis. It is not a client-visible message by itself. |
+| `outcome_marker` | Optional stable outcome label for reports and tooling. Built-in `standard_auth` uses stable outcome markers; custom policies may set their own. |
+| `fsm_event_marker` | Optional target FSM event marker. If omitted, Nauthilus derives the normal marker from stage and decision. |
+| `response_marker` | Optional response class. If omitted, Nauthilus derives the normal class from the decision when possible. |
+| `response_message` | Optional final client-visible message selection inside the selected response class. |
+| `obligations` | Mandatory registered enforcement work to execute with the selected decision. |
+| `advice` | Non-binding registered context that may be used for reporting, logging, or follow-up context. |
+| `control.skip_remaining_stage_checks` | Stage-local control for neutral `pre_auth` decisions that should stop later checks without denying the request. |
 
-### FSM Event Markers
+### Decision Effects
 
-FSM means finite-state machine. In Nauthilus it is the deterministic request-state tracker that records how an auth request moved through parsing, pre-auth checks, backend or account-provider evaluation, and the final decision; policy rules select FSM markers so logs, reports, metrics, and transport responses describe the same terminal path.
+`decision` is the central `then` output.
 
-Operator policies may reference policy-visible target markers only:
-
-| Marker | Valid stage | Meaning |
+| Decision | `pre_auth` behavior | `auth_decision` behavior |
 |---|---|---|
-| `auth.fsm.event.pre_auth_ok` | `pre_auth` | Continue after pre-auth. |
-| `auth.fsm.event.pre_auth_deny` | `pre_auth` | Terminate as denial before backend auth. |
-| `auth.fsm.event.pre_auth_tempfail` | `pre_auth` | Terminate as temporary failure before backend auth. |
-| `auth.fsm.event.pre_auth_abort` | `pre_auth` | Abort pre-auth processing. |
-| `auth.fsm.event.auth_permit` | `auth_decision` | Final permit for the active operation. |
-| `auth.fsm.event.auth_deny` | `auth_decision` | Final deny for the active operation. |
-| `auth.fsm.event.auth_tempfail` | `auth_decision` | Final temporary failure for the active operation. |
-| `auth.fsm.event.auth_empty_user` | `auth_decision` | Empty username behavior. |
-| `auth.fsm.event.auth_empty_pass` | `auth_decision` | Empty password behavior. |
+| `neutral` | Continue the request unless `control.skip_remaining_stage_checks` stops later checks in the stage. | Non-terminal. Evaluation continues; final enforcement denies if no later rule permits. |
+| `deny` | Stop before backend evaluation and fail the operation. | Fail the active operation. |
+| `permit` | Invalid. Pre-auth cannot grant final success. | Permit the active operation. |
+| `tempfail` | Stop before backend evaluation with a temporary failure. | Temporary failure for the active operation. |
 
-Internal parser, stage-orchestration, caller-auth, and abort markers are not policy-visible.
+`neutral` is deliberately not `permit`. It means "this rule did not choose a terminal security result".
 
-### Response Markers
+### Reason and Outcome Marker
 
-| Marker | Decision | Purpose |
+Use `reason` for stable internal diagnosis:
+
+```yaml
+then:
+  decision: deny
+  reason: relay_domain_rejected
+```
+
+`reason` can appear in logs, reports, traces, counters, and POST-Action context. It must not contain secrets or user-specific free text. It does not override the client-visible response.
+
+Use `outcome_marker` when you need a stable, namespaced outcome label for tooling or reports:
+
+```yaml
+then:
+  decision: deny
+  reason: brute_force_reject
+  outcome_marker: auth.outcome.brute_force_reject
+```
+
+If you do not have a reporting/tooling need for a custom marker, leave `outcome_marker` unset.
+
+### Response Marker and Message
+
+`response_marker` selects the transport-independent response class. It is validated against the selected `decision`; for example `auth.response.ok` is compatible with `permit`, not with `deny`.
+
+If omitted, Nauthilus derives the normal response marker:
+
+| Decision | Derived response marker |
+|---|---|
+| `permit` | `auth.response.ok` |
+| `deny` | `auth.response.fail` |
+| `tempfail` | `auth.response.tempfail` |
+| `neutral` | none |
+
+Use an explicit marker for specialized classes:
+
+```yaml
+then:
+  decision: tempfail
+  reason: no_tls
+  response_marker: auth.response.tempfail.no_tls
+```
+
+`response_message` can override only the message inside the selected response class. It does not change HTTP status codes, gRPC status codes, redirect behavior, OIDC/SAML semantics, or the FSM state.
+
+Supported message sources:
+
+| Source | Required fields | Meaning |
 |---|---|---|
-| `auth.response.ok` | `permit` | Successful auth or lookup response. |
-| `auth.response.fail` | `deny` | Authentication, lookup, or account-list denial. |
-| `auth.response.tempfail` | `tempfail` | Temporary failure. |
-| `auth.response.tempfail.no_tls` | `tempfail` | TLS-required temporary failure. |
-| `auth.response.list_accounts.ok` | `permit` | Successful `list_accounts` response. |
-
-Policies select response markers, not raw HTTP status codes, headers, gRPC status codes, OIDC protocol fields, or SAML protocol fields.
-
-### Response Messages
-
-If `response_message` is omitted or `from: default`, Nauthilus uses the default message from the response marker.
+| omitted or `from: default` | none | Use the default message of `response_marker`. |
+| `from: literal` | `text` | Use a static policy-configured message. |
+| `from: attribute_detail` | `attribute`, `detail`, optional `fallback` | Use a public string detail from a registered policy attribute. |
 
 Literal message:
 
@@ -450,9 +627,196 @@ then:
     fallback: "Invalid login or password"
 ```
 
-`attribute_detail` is valid only for a registered string detail with `sensitivity: public` and `purpose: response_message`. Generated Lua control and Lua filter decision attributes expose `status_message` this way.
+For `attribute_detail`, the referenced detail must be a registered string detail with `sensitivity: public` and `purpose: response_message`. If the detail is absent or empty at runtime, Nauthilus uses `fallback`; if no fallback is configured, it uses the response-marker default.
 
-### Obligations and Advice
+### Obligations, Advice, and Control
+
+`obligations` request registered enforcement work. They are mandatory for the selected decision and are not arbitrary Lua extension points.
+
+Registered obligations:
+
+| ID | What it does |
+|---|---|
+| `auth.obligation.brute_force.update` | Updates brute-force counters, toleration, and learning state. |
+| `auth.obligation.lua_post_action.enqueue` | Enqueues an existing Lua POST-Action after the request-time decision is known. |
+
+Example:
+
+```yaml
+then:
+  decision: deny
+  obligations:
+    - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_post_action.enqueue
+      args:
+        action: brute_force
+```
+
+`advice` is non-binding context. It may be used for reports, logging, or follow-up context, but failing or ignoring advice must not change the selected decision or response.
+
+Registered advice:
+
+| ID | What it does |
+|---|---|
+| `auth.advice.audit_reason` | Carries sanitized audit context. |
+
+Example:
+
+```yaml
+then:
+  decision: deny
+  advice:
+    - id: auth.advice.audit_reason
+      args:
+        reason: blocked_country
+```
+
+`control.skip_remaining_stage_checks` is a narrow stage-local control. It is useful for neutral pre-auth rules that should stop later pre-auth checks without granting success:
+
+```yaml
+then:
+  decision: neutral
+  reason: pre_auth_check_aborted
+  control:
+    skip_remaining_stage_checks: true
+```
+
+This control does not skip final `auth_decision`. It only stops remaining checks in the current stage.
+
+### Lua Actions and POST-Actions
+
+Nauthilus has two Lua side-effect surfaces with similar names but different policy semantics.
+
+| Surface | Config action type | Runtime timing | Policy relationship |
+|---|---|---|---|
+| Synchronous Lua actions | `brute_force`, `lua`, `tls_encryption`, `relay_domains`, `rbl` in `auth.controls.lua.actions` | Dispatched by the mechanism that triggered them and waited for before the request continues. | Current compatibility behavior. They are not policy checks, obligations, or advice in the current implementation. |
+| Lua POST-Actions | `post` in `auth.controls.lua.actions` | Enqueued after the request-time decision context is known. | Policy-owned in policy-authoritative paths through `auth.obligation.lua_post_action.enqueue`. |
+
+Synchronous Lua actions are still started automatically by the corresponding mechanism. For example:
+
+- a triggered Lua control can dispatch the `lua` action;
+- TLS enforcement can dispatch the `tls_encryption` action;
+- relay-domain rejection can dispatch the `relay_domains` action;
+- an RBL hit can dispatch the `rbl` action;
+- brute-force detection can dispatch the `brute_force` action.
+
+This is compatibility behavior from the first policy-layer rollout, not the clean long-term policy ownership model. A synchronous action can run because a mechanism observed a trigger before the final YAML policy decision has owned the side effect. That preserves existing deployments, but it is less explicit than policy-owned enforcement work.
+
+For new policy-driven side effects, prefer registered obligations. A stricter future model should expose synchronous action dispatch as a registered obligation and attach it to selected policy decisions, so reports, observe mode, and side effects all describe the same decision path. `advice` should not execute actions.
+
+Brute force has both mechanism-owned and policy-owned side effects:
+
+| Side effect | Current owner |
+|---|---|
+| Synchronous `brute_force` Lua action | Brute-force evaluator. |
+| Brute-force counter, toleration, and learning update | `auth.obligation.brute_force.update` when policy enforcement owns the decision; legacy fallback otherwise. |
+| Lua POST-Action after a brute-force denial | `auth.obligation.lua_post_action.enqueue` when policy enforcement owns the decision; legacy fallback otherwise. |
+
+The built-in `standard_auth` policy attaches both obligations to the `standard_brute_force_deny` decision:
+
+```yaml
+then:
+  decision: deny
+  reason: brute_force_reject
+  response_marker: auth.response.fail
+  obligations:
+    - id: auth.obligation.brute_force.update
+    - id: auth.obligation.lua_post_action.enqueue
+      args:
+        action: brute_force
+```
+
+For custom policies, add these obligations explicitly when you want the same policy-owned side effects. Without them, a custom terminal policy decision can deny or tempfail without scheduling the POST-Action or updating brute-force counters through the policy obligation path.
+
+There is no `post_decision` policy stage. POST-Actions are enforcement follow-up work requested by obligations after a decision has been selected. A POST-Action must not change the already selected `decision`, FSM terminal state, `response_marker`, or `response_message`.
+
+In `mode: observe`, custom obligations are diagnostic only: custom POST-Action enqueueing, brute-force updates, learning updates, and other mutable side effects are not executed.
+
+### FSM Event Markers
+
+FSM means finite-state machine. In Nauthilus it is the deterministic request-state tracker that records how an auth request moved through parsing, pre-auth checks, backend or account-provider evaluation, and the final decision.
+
+In policy terms, three outputs have different jobs:
+
+| Output | Answers | Example |
+|---|---|---|
+| `decision` | What did this rule decide? | `deny`, `permit`, `tempfail`, `neutral` |
+| `fsm_event_marker` | Which auth-FSM event should record and enforce that path? | `auth.fsm.event.pre_auth_deny` |
+| `response_marker` | Which transport response profile should be rendered? | `auth.response.fail` |
+
+The FSM is not a second policy language and is not admin-editable. Policies reference registered event markers; Nauthilus applies those events to the internal FSM and reaches terminal states such as `auth_ok`, `auth_fail`, `auth_tempfail`, or `aborted`. Those terminal state names are not valid `fsm_event_marker` values.
+
+Most rules should omit `fsm_event_marker`. The compiler derives the normal marker from the policy stage and decision, then validates any explicit marker against the same registry.
+
+| Stage | Decision | Derived FSM event marker | Resulting meaning |
+|---|---|---|---|
+| `pre_auth` | `neutral` | `auth.fsm.event.pre_auth_ok` | Continue after pre-auth. This is not a successful login. |
+| `pre_auth` | `deny` | `auth.fsm.event.pre_auth_deny` | Stop before backend auth and terminate as `auth_fail`. |
+| `pre_auth` | `tempfail` | `auth.fsm.event.pre_auth_tempfail` | Stop before backend auth and terminate as `auth_tempfail`. |
+| `pre_auth` | `permit` | not allowed | Pre-auth cannot grant final authentication success. |
+| `auth_decision` | `permit` | `auth.fsm.event.auth_permit` | Terminal success for the active operation. |
+| `auth_decision` | `deny` | `auth.fsm.event.auth_deny` | Terminal denial for the active operation. |
+| `auth_decision` | `tempfail` | `auth.fsm.event.auth_tempfail` | Terminal temporary failure for the active operation. |
+| `auth_decision` | `neutral` | none | Evaluation continues; if no later rule permits the request, final enforcement denies. |
+
+Explicit FSM markers are useful when a custom policy needs a more specific built-in terminal path, for example empty-user, empty-password, or a deliberate pre-auth abort. They are also useful when reports, logs, metrics, and enforcement traces must distinguish two rules that share the same high-level decision.
+
+Operator policies may reference policy-visible target markers only:
+
+| Marker | Valid stage | Use for |
+|---|---|---|
+| `auth.fsm.event.pre_auth_ok` | `pre_auth` | Continue after pre-auth. |
+| `auth.fsm.event.pre_auth_deny` | `pre_auth` | Denial before backend auth. |
+| `auth.fsm.event.pre_auth_tempfail` | `pre_auth` | Temporary failure before backend auth. |
+| `auth.fsm.event.pre_auth_abort` | `pre_auth` | Abort pre-auth processing. |
+| `auth.fsm.event.auth_permit` | `auth_decision` | Final permit for the active operation. |
+| `auth.fsm.event.auth_deny` | `auth_decision` | Final deny for the active operation. |
+| `auth.fsm.event.auth_tempfail` | `auth_decision` | Final temporary failure for the active operation. |
+| `auth.fsm.event.auth_empty_user` | `auth_decision` | Empty username behavior; normally paired with `decision: tempfail`. |
+| `auth.fsm.event.auth_empty_pass` | `auth_decision` | Empty password behavior; normally paired with `decision: deny`. |
+
+The final `auth_permit`, `auth_deny`, and `auth_tempfail` markers are operation-terminal events. For `authenticate` they describe password authentication. For `lookup_identity` they describe identity lookup. For `list_accounts` they describe account-listing completion or denial.
+
+Internal parser, stage-orchestration, caller-auth, and runtime abort markers are produced by Nauthilus itself and are not policy-visible. Examples include `auth.fsm.event.parse_ok`, `auth.fsm.event.auth_evaluated`, `auth.fsm.event.account_provider_evaluated`, `auth.fsm.event.basic_auth_ok`, and `auth.fsm.event.abort`.
+
+Normal rule with derived FSM marker:
+
+```yaml
+then:
+  decision: deny
+  reason: billing_locked
+  response_marker: auth.response.fail
+```
+
+In `pre_auth`, this derives `auth.fsm.event.pre_auth_deny`. In `auth_decision`, it derives `auth.fsm.event.auth_deny`.
+
+Advanced rule with an explicit empty-password path:
+
+```yaml
+then:
+  decision: deny
+  reason: empty_password
+  fsm_event_marker: auth.fsm.event.auth_empty_pass
+  response_marker: auth.response.fail
+```
+
+### Response Marker Registry
+
+| Marker | Decision | Purpose |
+|---|---|---|
+| `auth.response.ok` | `permit` | Successful auth or lookup response. |
+| `auth.response.fail` | `deny` | Authentication, lookup, or account-list denial. |
+| `auth.response.tempfail` | `tempfail` | Temporary failure. |
+| `auth.response.tempfail.no_tls` | `tempfail` | TLS-required temporary failure. |
+| `auth.response.list_accounts.ok` | `permit` | Successful `list_accounts` response. |
+
+Policies select response markers, not raw HTTP status codes, headers, gRPC status codes, OIDC protocol fields, or SAML protocol fields.
+
+### Response Message Reminder
+
+If `response_message` is omitted or `from: default`, Nauthilus uses the default message from the response marker. `attribute_detail` is valid only for a registered string detail with `sensitivity: public` and `purpose: response_message`. Generated Lua control and Lua filter decision attributes expose `status_message` this way.
+
+### Obligation and Advice Registry
 
 | ID | Kind | Purpose |
 |---|---|---|
@@ -472,13 +836,43 @@ The built-in registry includes at least these attributes.
 | `request.time.now` | `pre_auth` | all | datetime | none |
 | `request.client.ip` | `pre_auth` | all | ip | none |
 | `request.protocol` | `pre_auth` | all | string | none |
-| `auth.brute_force.triggered` | `pre_auth` | `authenticate` | bool | `rule`, `client_net`, `repeating` |
+| `auth.brute_force.triggered` | `pre_auth` | `authenticate` | bool | `rule`, `bucket_id`, `client_net`, `repeating`, `rwp_active`, `bucket_count`, `bucket_ratio`, `effective_limit` |
+| `auth.brute_force.repeating` | `pre_auth` | `authenticate` | bool | selected bucket summary |
+| `auth.brute_force.rwp.active` | `pre_auth` | `authenticate` | bool | selected bucket summary |
+| `auth.brute_force.rwp.enforce_bucket_update` | `pre_auth` | `authenticate` | bool | selected bucket summary |
+| `auth.brute_force.toleration.active` | `pre_auth` | `authenticate` | bool | toleration summary |
+| `auth.brute_force.toleration.mode` | `pre_auth` | `authenticate` | string | `static`, `adaptive`, or `disabled` |
+| `auth.brute_force.toleration.custom` | `pre_auth` | `authenticate` | bool | toleration summary |
+| `auth.brute_force.toleration.positive` | `pre_auth` | `authenticate` | number | toleration summary |
+| `auth.brute_force.toleration.negative` | `pre_auth` | `authenticate` | number | toleration summary |
+| `auth.brute_force.toleration.max_negative` | `pre_auth` | `authenticate` | number | toleration summary |
+| `auth.brute_force.toleration.percent` | `pre_auth` | `authenticate` | number | toleration summary |
+| `auth.brute_force.toleration.ttl_seconds` | `pre_auth` | `authenticate` | number | toleration summary |
+| `auth.brute_force.toleration.suppressed_block` | `pre_auth` | `authenticate` | bool | toleration summary |
+| `auth.brute_force.bucket.matched_count` | `pre_auth` | `authenticate` | number | selected bucket summary |
+| `auth.brute_force.bucket.triggered_count` | `pre_auth` | `authenticate` | number | selected bucket summary |
+| `auth.brute_force.bucket.max_count` | `pre_auth` | `authenticate` | number | selected bucket summary |
+| `auth.brute_force.bucket.max_ratio` | `pre_auth` | `authenticate` | number | selected bucket summary |
 | `auth.brute_force.error` | `pre_auth` | `authenticate` | bool | `reason_code`, `retryable` |
 | `auth.tls.secure` | `pre_auth` | `authenticate`, `lookup_identity` | bool | none |
-| `auth.relay_domain.present` | `pre_auth` | `authenticate` | bool | `domain` |
-| `auth.relay_domain.known` | `pre_auth` | `authenticate` | bool | `domain` |
+| `auth.relay_domain.present` | `pre_auth` | `authenticate` | bool | relay-domain details |
+| `auth.relay_domain.known` | `pre_auth` | `authenticate` | bool | relay-domain details |
+| `auth.relay_domain.value` | `pre_auth` | `authenticate` | string | relay-domain details |
+| `auth.relay_domain.rejected` | `pre_auth` | `authenticate` | bool | relay-domain details |
+| `auth.relay_domain.static_match` | `pre_auth` | `authenticate` | bool | relay-domain details |
+| `auth.relay_domain.soft_allowlisted` | `pre_auth` | `authenticate` | bool | relay-domain details |
+| `auth.relay_domain.configured_count` | `pre_auth` | `authenticate` | number | relay-domain details |
 | `auth.relay_domain.error` | `pre_auth` | `authenticate` | bool | `reason_code`, `retryable` |
-| `auth.rbl.threshold_reached` | `pre_auth` | `authenticate`, `lookup_identity` | bool | `lists` |
+| `auth.rbl.threshold_reached` | `pre_auth` | `authenticate`, `lookup_identity` | bool | RBL summary |
+| `auth.rbl.score` | `pre_auth` | `authenticate`, `lookup_identity` | number | RBL summary |
+| `auth.rbl.threshold` | `pre_auth` | `authenticate`, `lookup_identity` | number | RBL summary |
+| `auth.rbl.matched_count` | `pre_auth` | `authenticate`, `lookup_identity` | number | RBL summary |
+| `auth.rbl.matched_lists` | `pre_auth` | `authenticate`, `lookup_identity` | string_list | RBL summary |
+| `auth.rbl.list_count` | `pre_auth` | `authenticate`, `lookup_identity` | number | RBL summary |
+| `auth.rbl.allow_failure_error_count` | `pre_auth` | `authenticate`, `lookup_identity` | number | RBL summary |
+| `auth.rbl.effective_error` | `pre_auth` | `authenticate`, `lookup_identity` | bool | RBL summary |
+| `auth.rbl.soft_allowlisted` | `pre_auth` | `authenticate`, `lookup_identity` | bool | RBL summary |
+| `auth.rbl.ip_allowlisted` | `pre_auth` | `authenticate`, `lookup_identity` | bool | RBL summary |
 | `auth.rbl.error` | `pre_auth` | `authenticate`, `lookup_identity` | bool | `reason_code`, `retryable` |
 | `auth.authenticated` | `auth_backend` | `authenticate` | bool | `backend` |
 | `auth.identity.found` | `auth_backend` | `lookup_identity` | bool | `backend` |
@@ -487,6 +881,55 @@ The built-in registry includes at least these attributes.
 | `auth.backend.empty_password` | `auth_backend` | `authenticate` | bool | none |
 | `auth.account_provider.completed` | `account_provider` | `list_accounts` | bool | `count` |
 | `auth.account_provider.tempfail` | `account_provider` | `list_accounts` | bool | `reason_code`, `retryable` |
+
+For each configured brute-force bucket, Nauthilus also registers per-bucket attributes:
+
+| Pattern | Type | Meaning |
+|---|---|---|
+| `auth.brute_force.bucket.<bucket>.matched` | bool | The bucket matched the current protocol, OIDC client, IP family, and network context. |
+| `auth.brute_force.bucket.<bucket>.count` | number | Current read-only sliding-window counter value. |
+| `auth.brute_force.bucket.<bucket>.limit` | number | Configured `failed_requests` value. |
+| `auth.brute_force.bucket.<bucket>.effective_limit` | number | Effective Redis-side limit after adaptive toleration. |
+| `auth.brute_force.bucket.<bucket>.remaining` | number | Remaining attempts until the effective limit is exceeded. |
+| `auth.brute_force.bucket.<bucket>.ratio` | number | `count / effective_limit`; useful with `gt`, `gte`, `lt`, and `lte`. |
+| `auth.brute_force.bucket.<bucket>.over_limit` | bool | The bucket is currently over the effective limit. |
+| `auth.brute_force.bucket.<bucket>.already_banned` | bool | A ban/repeating state already exists for this bucket. |
+| `auth.brute_force.bucket.<bucket>.repeating` | bool | The bucket is either over limit or already banned. |
+
+The `<bucket>` segment is derived from `auth.controls.brute_force.buckets[].name`. It is lower-cased and normalized to an ASCII identifier segment: letters, digits, and `_` are kept, other separators collapse to `_`, and leading digits are prefixed with `b_`. For example, `IMAP Short` becomes `imap_short`, and `24h` becomes `b_24h`. If two configured bucket names normalize to the same identifier, policy snapshot compilation fails.
+
+Per-bucket attributes carry internal details: `rule`, `bucket_id`, `client_net`, `matched`, `over_limit`, `already_banned`, `repeating`, `limit`, `effective_limit`, `remaining`, `ratio`, `period_seconds`, `ban_time_seconds`, and `cidr`.
+
+Brute-force toleration attributes describe the reputation decision that may suppress a block after a bucket is over limit:
+
+| Attribute | Meaning |
+|---|---|
+| `auth.brute_force.toleration.active` | The current client IP is tolerated by the reputation calculation. |
+| `auth.brute_force.toleration.mode` | `static`, `adaptive`, or `disabled`. |
+| `auth.brute_force.toleration.custom` | A custom toleration entry matched the client IP. |
+| `auth.brute_force.toleration.positive` | Positive reputation counter. |
+| `auth.brute_force.toleration.negative` | Negative reputation counter. |
+| `auth.brute_force.toleration.max_negative` | Maximum tolerated negative counter. |
+| `auth.brute_force.toleration.percent` | Effective tolerated percentage. |
+| `auth.brute_force.toleration.ttl_seconds` | Effective reputation TTL in seconds. |
+| `auth.brute_force.toleration.suppressed_block` | Toleration suppressed a block that would otherwise have been applied. |
+
+Relay-domain attributes carry internal details: `domain`, `matched_domain`, `configured_count`, `present`, `known`, `rejected`, `static_match`, and `soft_allowlisted`.
+
+RBL summary attributes carry internal details: `lists`, `score`, `threshold`, `matched_count`, `list_count`, `allow_failure_error_count`, `effective_error`, `soft_allowlisted`, and `ip_allowlisted`.
+
+For each configured RBL list, Nauthilus also registers per-list attributes:
+
+| Pattern | Type | Meaning |
+|---|---|---|
+| `auth.rbl.list.<list>.listed` | bool | The client IP matched this RBL list. |
+| `auth.rbl.list.<list>.weight` | number | Configured weight for this RBL list. |
+| `auth.rbl.list.<list>.error` | bool | Lookup for this list ended with a technical error. |
+| `auth.rbl.list.<list>.allow_failure` | bool | The list is configured with `allow_failure`. |
+
+The `<list>` segment is derived from `auth.controls.rbl.lists[].name` with the same identifier normalization used for brute-force buckets. If two RBL list names normalize to the same identifier, policy snapshot compilation fails.
+
+Per-list RBL attributes carry internal details: `list`, `list_id`, `host`, `query`, `return_code`, `reason_code`, `ip_family`, `listed`, `error`, `allow_failure`, and `weight`.
 
 For each configured Lua control check, Nauthilus also registers:
 
@@ -628,7 +1071,140 @@ Brute force is first-class policy material. The built-in default runs brute-forc
 
 ## Observability and Reports
 
-Policy observability is redaction-aware.
+Policy observability is redaction-aware. It has several layers:
+
+| Layer | Purpose | Controlled by `auth.policy.report` |
+|---|---|---:|
+| Request-local `DecisionReport` | The in-memory policy diagnostic object used while the request is evaluated. | no |
+| Normal structured logs | Bounded final facts for operations and alerting. | no |
+| Debug logs with module `policy` | Detailed compiler, check, evaluation, FSM, observe, and report diagnosis. | no |
+| Prometheus and OpenTelemetry | Metrics and traces for policy orchestration. | no |
+| Optional decision report output | Redacted report payload for deeper inspection. | yes |
+
+The request-local report is created for the active auth operation and collects the facts that the policy engine needs:
+
+| Report field | Meaning |
+|---|---|
+| `session_id` | Request/session correlation ID when available. |
+| `operation` | `authenticate`, `lookup_identity`, or `list_accounts`. |
+| `stage` | Last evaluated policy stage. |
+| `attributes` | Policy attributes emitted by built-ins, Lua, request facts, or backend exports. |
+| `checks` | Check results with status, matched flag, decision hint, and emitted attributes. |
+| `missing_checks` | Required checks that were not available for a policy rule. |
+| `unavailable` | Facts/checks intentionally unavailable, for example custom-only non-observe-safe checks in observe mode. |
+| `policies` | Selected policy decisions in evaluation order. |
+| `final` | Final selected decision that enforcement applies. |
+| `observe` | Default-vs-custom comparison result in `mode: observe`. |
+
+Reports are diagnostic material, not authentication responses. They do not add fields to HTTP, CBOR, Nginx auth-request, gRPC, OIDC, or SAML responses, and enabling reports does not change policy decisions.
+
+### Report Configuration
+
+```yaml
+auth:
+  policy:
+    report:
+      enabled: true
+      include_fsm: true
+      include_checks: true
+      include_attributes: false
+```
+
+| Key | Default | Effect |
+|---|---:|---|
+| `enabled` | `false` | Enables optional redacted decision report output. The in-memory report still exists when this is `false`. |
+| `include_fsm` | `true` | Keeps FSM decision material in report output. The selected FSM marker is still enforced when reports are disabled. |
+| `include_checks` | `true` | Keeps check results in report output. Checks still run and affect policy decisions when reports are disabled. |
+| `include_attributes` | `false` | Includes emitted attributes in report output. Leave this off unless you are actively diagnosing a policy, because reports become larger and redaction matters more. |
+
+The implementation defaults `include_fsm` and `include_checks` to `true` when omitted. `include_attributes` defaults to `false` because attributes may contain internal diagnostic details.
+
+### Redaction Rules
+
+Decision reports must not expose passwords, tokens, cookies, LDAP bind secrets, raw runtime errors, stack traces, or non-public attribute details.
+
+Attribute details carry sensitivity metadata:
+
+| Sensitivity | Report behavior |
+|---|---|
+| `public` | May appear only when the detail is selected for a public purpose, such as the final response message. |
+| `internal` | Redacted from normal reports. |
+| `secret` | Always redacted. |
+
+The redacted value placeholder is `[redacted]`. A public Lua `status_message` detail appears only after a policy explicitly selects it through `then.response_message`.
+
+### Observe Mode Reports
+
+In `mode: observe`, `standard_auth` remains the production decision. Custom policies run as shadow evaluation and populate `observe` with comparison data:
+
+| Observe field | Meaning |
+|---|---|
+| `production` | The authoritative `standard_auth` final decision. |
+| `shadow` | The custom-policy final decision. |
+| `surface` | Response surface used for comparison, such as `http_json`, `grpc_auth_service`, or `http_list_accounts`. |
+| `mismatch` and `mismatch_type` | Whether custom and production behavior differ, and why. |
+| `production_terminal_state` / `shadow_terminal_state` | FSM terminal-state comparison. |
+| `response_message_match` | Whether sanitized rendered response messages match. |
+| `obligations_match` | Whether planned obligations match. |
+
+Observe mode deliberately does not execute custom obligations, Lua POST-Action enqueueing, brute-force counter updates, learning updates, or other custom mutable side effects.
+
+### Report Example
+
+```json
+{
+  "operation": "authenticate",
+  "stage": "pre_auth",
+  "attributes": {
+    "auth.rbl.threshold_reached": {
+      "id": "auth.rbl.threshold_reached",
+      "stage": "pre_auth",
+      "operation": "authenticate",
+      "value": true,
+      "details": {
+        "lists": {
+          "value": "[redacted]"
+        }
+      }
+    }
+  },
+  "checks": {
+    "rbl": {
+      "name": "rbl",
+      "type": "builtin.rbl",
+      "stage": "pre_auth",
+      "status": "ok",
+      "decision_hint": "deny",
+      "matched": true,
+      "attributes": ["auth.rbl.threshold_reached"]
+    }
+  },
+  "policies": [
+    {
+      "policy_name": "standard_rbl_reject",
+      "stage": "pre_auth",
+      "effect": "deny",
+      "fsm_event_marker": "auth.fsm.event.pre_auth_deny",
+      "response_marker": "auth.response.fail",
+      "response_message": {
+        "source": "response_marker",
+        "message": "Invalid login or password"
+      }
+    }
+  ],
+  "final": {
+    "policy_name": "standard_rbl_reject",
+    "stage": "pre_auth",
+    "effect": "deny",
+    "fsm_event_marker": "auth.fsm.event.pre_auth_deny",
+    "response_marker": "auth.response.fail"
+  }
+}
+```
+
+The exact output surface is diagnostic and not a public authentication API contract. Use stable policy IDs, `reason`, `outcome_marker`, `response_marker`, and `fsm_event_marker` for automation rather than parsing raw transport-specific auth responses.
+
+### Logs, Metrics, and Traces
 
 Normal structured logs include bounded final facts such as:
 
@@ -647,8 +1223,6 @@ Normal structured logs include bounded final facts such as:
 Debug logs use one debug module named `policy` and a `policy_component` field such as `compiler`, `snapshot`, `checks`, `eval`, `fsm`, `observe`, or `report`.
 
 Prometheus and OpenTelemetry instrumentation covers snapshot build/reload, check execution, policy evaluation, `require_checks`, observe comparison, FSM application, response rendering, obligations, and advice. Labels are bounded. Usernames, client IPs, tokens, raw errors, response text, and attribute-detail values are not used as Prometheus labels.
-
-Decision reports must not expose passwords, tokens, cookies, LDAP bind secrets, raw runtime errors, stack traces, or non-public attribute details. Public response messages may appear only after policy selection and response sanitization.
 
 ## Validation and Dumps
 

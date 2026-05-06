@@ -391,6 +391,7 @@ auth:
     mode: "enforce"
     default_policy: "standard_auth"
     registry_scripts: []
+    attribute_exports: []
 
     sets:
       networks: {}

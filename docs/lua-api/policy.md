@@ -62,6 +62,10 @@ Emission fails if:
 
 Failures abort the Lua execution like other Lua runtime errors.
 
+### Test Mode
+
+`--test-lua` provides a fixture-aware mock for `nauthilus_policy.emit_attribute`. The mock records emitted attributes for `policy.expected_calls`, but it does not build or validate a real policy snapshot. See [Lua Test Framework](../guides/lua-test-framework.md#policy).
+
 ### Example
 
 Registry script:

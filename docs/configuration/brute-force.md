@@ -70,6 +70,44 @@ auth:
       pw_history_for_known_accounts: true
 ```
 
+## Policy Attributes
+
+When `builtin.brute_force` is part of `auth.policy.checks`, Nauthilus exports both global brute-force facts and generated per-bucket facts. Bucket names become policy-safe identifier segments:
+
+| Bucket name | Policy segment | Example attribute |
+|---|---|---|
+| `login_rule` | `login_rule` | `auth.brute_force.bucket.login_rule.ratio` |
+| `IMAP Short` | `imap_short` | `auth.brute_force.bucket.imap_short.over_limit` |
+| `24h` | `b_24h` | `auth.brute_force.bucket.b_24h.repeating` |
+
+The generated bucket attributes include:
+
+- `matched`
+- `count`
+- `limit`
+- `effective_limit`
+- `remaining`
+- `ratio`
+- `over_limit`
+- `already_banned`
+- `repeating`
+
+Global brute-force policy attributes also include toleration facts:
+
+- `auth.brute_force.toleration.active`
+- `auth.brute_force.toleration.mode`
+- `auth.brute_force.toleration.custom`
+- `auth.brute_force.toleration.positive`
+- `auth.brute_force.toleration.negative`
+- `auth.brute_force.toleration.max_negative`
+- `auth.brute_force.toleration.percent`
+- `auth.brute_force.toleration.ttl_seconds`
+- `auth.brute_force.toleration.suppressed_block`
+
+Use these when a policy needs to distinguish "bucket pressure exists" from "the request was tolerated by reputation". For example, `suppressed_block` is true when toleration prevented a block that would otherwise have been applied.
+
+Normalized bucket identifiers must be unique. If two bucket names normalize to the same policy segment, the policy snapshot fails validation. For the full attribute list and YAML examples, see [Auth Policy Reference](auth-policy.md) and [Auth Policy Configuration Guide](../guides/auth-policy-configuration.md).
+
 ## Notes
 
 - `ip_allowlist` is the current canonical name.

@@ -21,6 +21,18 @@ is especially useful for other remote services that can influence the authentica
 After all this has finished, it is possible to do some **post actions**, which are run independent
 of all other steps in the whole pipeline and therefore can not influence the final result anymore.
 
+## Policy-aware action semantics
+
+Nauthilus distinguishes synchronous Lua actions from Lua POST-Actions.
+
+Synchronous Lua actions are configured with action types such as `brute_force`, `lua`, `tls_encryption`, `relay_domains`, and `rbl`. They are mechanism-owned compatibility behavior in the current implementation: when the corresponding brute-force check or pre-auth feature triggers, Nauthilus dispatches the matching action and waits for it before the request continues. These actions are not policy checks, policy `advice`, or generic user-defined `obligations`.
+
+This is not the clean long-term policy ownership model. A stricter policy-owned model should represent synchronous action dispatch as a registered obligation on the selected policy decision, so side effects happen because the policy selected them, not merely because a mechanism observed a trigger.
+
+Lua POST-Actions use the `post` action type. They run after the request-time decision context is known and must not change the final decision, response marker, response message, or FSM terminal state. In `auth.policy` authoritative paths, POST-Action enqueueing is requested through the registered obligation `auth.obligation.lua_post_action.enqueue`. Brute-force counter and learning updates are requested through `auth.obligation.brute_force.update`.
+
+Observe-mode policy evaluation never executes custom obligations, so it does not enqueue custom POST-Actions or mutate brute-force state.
+
 In the following sequence diagram you can see the processing of the request in more detail.
 
 ```mermaid

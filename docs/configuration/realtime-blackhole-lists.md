@@ -60,3 +60,32 @@ auth:
 - `return_codes` is the canonical list field.
 - `ip_allowlist` is the canonical allowlist field.
 - hostnames may include a trailing dot to force a fully qualified DNS name.
+
+## Policy Attributes
+
+When `builtin.rbl` is part of `auth.policy.checks`, Nauthilus exports aggregate RBL facts and generated per-list facts.
+
+Aggregate attributes include:
+
+- `auth.rbl.threshold_reached`
+- `auth.rbl.score`
+- `auth.rbl.threshold`
+- `auth.rbl.matched_count`
+- `auth.rbl.matched_lists`
+- `auth.rbl.list_count`
+- `auth.rbl.allow_failure_error_count`
+- `auth.rbl.effective_error`
+- `auth.rbl.soft_allowlisted`
+- `auth.rbl.ip_allowlisted`
+- `auth.rbl.error`
+
+For each configured list, the list name is normalized into a policy-safe identifier segment and these attributes are registered:
+
+- `auth.rbl.list.<list>.listed`
+- `auth.rbl.list.<list>.weight`
+- `auth.rbl.list.<list>.error`
+- `auth.rbl.list.<list>.allow_failure`
+
+Example: `SpamRats AuthBL` becomes `spamrats_authbl`, so the match attribute is `auth.rbl.list.spamrats_authbl.listed`.
+
+If two RBL list names normalize to the same identifier, the policy snapshot fails validation. For policy examples, see [Auth Policy Configuration Guide](../guides/auth-policy-configuration.md).

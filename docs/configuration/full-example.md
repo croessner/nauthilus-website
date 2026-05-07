@@ -384,6 +384,8 @@ auth:
     default_policy: "standard_auth"
     registry_scripts: []
     attribute_exports: []
+    request_headers: []
+    request_metadata: []
 
     attribute_sources:
       lua:

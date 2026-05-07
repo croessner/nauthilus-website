@@ -129,6 +129,9 @@ This is the list of modules that are currently available:
 | [nauthilus\_backend](/docs/lua-api/backend)               | Backend related functions                                                              |
 | [nauthilus\_http_request](/docs/lua-api/http)             | HTTP request header functions                                                          |
 | [nauthilus\_http_response](/docs/lua-api/http-response)   | HTTP response functions (headers, status, body; environment/subject sources MUST NOT send a body) |
+| [nauthilus\_policy](policy.md)                            | Request-local policy attribute emission                                                 |
+| [nauthilus\_i18n](i18n.md)                                | Policy localization helpers and startup catalog overlays                                |
+| [nauthilus\_cbor](cbor.md)                                | CBOR encode/decode helpers                                                              |
 | [nauthilus\_prometheus](/docs/lua-api/prometheus)         | Prometheus metrics functions                                                           |
 | [nauthilus\_soft\_whitelist](/docs/lua-api/softwhitelist) | Soft whitelist functions                                                               |
 | [nauthilus\_brute\_force](/docs/lua-api/bruteforce)       | Brute force prevention functions                                                       |

@@ -21,6 +21,14 @@ The authentication API is available below `/api/v1/auth/`:
 
 The JSON and CBOR endpoints use the same logical request model. CBOR clients must send `Content-Type: application/cbor`; JSON clients must send `Content-Type: application/json`.
 
+When an auth policy selects `response_message.from: i18n`, the HTTP auth response renderer uses `Accept-Language` unless policy selected a `response_language`. The rendered status message is returned through the existing response field or status header for that endpoint. When localization selects a language, the response includes:
+
+```text
+Content-Language: de
+```
+
+If the translation key is missing, Nauthilus returns the configured policy fallback text. Existing policies without `response_message.from: i18n` keep their current response text behavior and do not gain localization headers.
+
 ```json
 {
   "username": "alice@example.test",

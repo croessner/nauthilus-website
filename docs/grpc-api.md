@@ -73,6 +73,20 @@ authorization: Bearer <access-token>
 
 Caller-auth failures are transport errors such as `Unauthenticated` or `PermissionDenied`. User authentication failures are domain decisions in a successful RPC response.
 
+Policy-localized status messages use gRPC metadata. A client can send language preference metadata:
+
+```text
+accept-language: de-DE,de;q=0.9,en;q=0.8
+```
+
+If an auth policy selected `response_message.from: i18n`, Nauthilus resolves the key at the gRPC response boundary. A policy-selected `response_language` takes precedence over incoming `accept-language`. The existing `status_message` response field carries the rendered text, and Nauthilus sends response metadata when localization selected a language:
+
+```text
+content-language: de
+```
+
+Missing translations use the configured policy fallback text. The protobuf response does not expose `i18n_key`; clients should treat `status_message` as rendered text.
+
 ## Service Contract
 
 ```proto

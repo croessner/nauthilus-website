@@ -41,6 +41,8 @@ auth:
     default_policy: standard_auth
     registry_scripts: []
     attribute_exports: []
+    request_headers: []
+    request_metadata: []
 
     attribute_sources:
       lua:
@@ -71,6 +73,8 @@ auth:
 | `default_policy` | string | `standard_auth` | Built-in default policy set. This is currently the only built-in default-policy name. |
 | `registry_scripts` | list of paths | `[]` | Lua scripts that register additional policy attributes during snapshot build. |
 | `attribute_exports` | list | `[]` | Opt-in backend/AuthState attributes that become policy-visible subject facts. |
+| `request_headers` | list | `[]` | Explicit allowlist for non-standard HTTP request headers that become normalized policy facts. |
+| `request_metadata` | list | `[]` | Explicit allowlist for gRPC metadata keys that become normalized policy facts. |
 | `attribute_sources.lua.environment` | list | `[]` | Lua environment sources that run in `pre_auth` and can emit environment facts before the subject identity is known. |
 | `attribute_sources.lua.subject` | list | `[]` | Lua subject sources that run in `subject_analysis` and can evaluate or enrich subject facts after backend identity material exists. |
 | `obligation_targets.lua.actions` | list | `[]` | Reusable Lua action scripts selected through policy obligations. |
@@ -364,6 +368,75 @@ if:
 ```
 
 Hostname-style request fields such as the Lua `request.client_host` value are not built-in policy attributes today. If an environment source, subject source, or backend needs such a value in policy decisions, expose it deliberately: register a Lua-owned policy attribute with `auth.policy.registry_scripts` and emit it with the Lua policy module, or export a selected backend result field with `auth.policy.attribute_exports`.
+
+Non-standard HTTP request headers and gRPC metadata are not exposed automatically. Use `request_headers` and `request_metadata` when a trusted proxy or client supplies a bounded value that policy may read:
+
+```yaml
+auth:
+  policy:
+    request_headers:
+      - header: X-Company-Language
+        attribute: request.header.company_language
+        visibility: public
+        normalize:
+          trim: true
+          case: lower
+          max_length: 16
+
+    request_metadata:
+      - key: x-company-language
+        attribute: request.metadata.company_language
+        visibility: public
+        normalize:
+          trim: true
+          case: lower
+          max_length: 16
+```
+
+Rules:
+
+- HTTP header names are matched case-insensitively and are stored under `request.header.*` attribute IDs.
+- gRPC metadata keys must be lowercase and are stored under `request.metadata.*` attribute IDs.
+- Attribute IDs must be unique across both allowlists.
+- Credential and session carriers such as `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` are rejected.
+- Allowed values are single string facts. `trim`, `case: lower`, `case: upper`, and `max_length` define normalization before the value reaches the policy context.
+- `visibility` currently accepts `public`; keep values short and low-cardinality because public request facts can appear in diagnostics when reports include attributes.
+
+Example policy using an allowlisted header as a response-language selector:
+
+```yaml
+auth:
+  policy:
+    request_headers:
+      - header: X-Company-Language
+        attribute: request.header.company_language
+        visibility: public
+        normalize:
+          trim: true
+          case: lower
+          max_length: 16
+
+    policies:
+      - name: deny_account_locked_with_company_language
+        stage: auth_decision
+        operations: [authenticate]
+        if:
+          attribute: auth.subject.attribute.account_status
+          detail: value
+          eq: locked
+        then:
+          decision: deny
+          reason: account_locked
+          response_marker: auth.response.fail
+          response_language:
+            from: attribute
+            attribute: request.header.company_language
+            fallback: en
+          response_message:
+            from: i18n
+            i18n_key: auth.policy.company.account_locked
+            fallback: "Login failed because the account is locked."
+```
 
 ### Lua Check Scheduling
 
@@ -662,6 +735,7 @@ Supported message sources:
 | omitted or `from: default` | none | Use the default message of `response_marker`. |
 | `from: literal` | `text` | Use a static policy-configured message. |
 | `from: attribute_detail` | `attribute`, `detail`, optional `fallback` | Use a public string detail from a registered policy attribute. |
+| `from: i18n` | `i18n_key`, `fallback` | Use a stable localization key and keep the fallback text for missing translations or non-localized response boundaries. |
 
 Literal message:
 
@@ -688,6 +762,100 @@ then:
 ```
 
 For `attribute_detail`, the referenced detail must be a registered string detail with `sensitivity: public` and `purpose: response_message`. If the detail is absent or empty at runtime, Nauthilus uses `fallback`; if no fallback is configured, it uses the response-marker default.
+
+Localized message:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+For `from: i18n`, `i18n_key` is a stable catalog key. `fallback` is the safe text returned when no matching catalog entry exists or when the response surface cannot localize. `text`, `attribute`, and `detail` are not valid with `from: i18n`. Existing `from: default`, `from: literal`, and `from: attribute_detail` behavior is unchanged.
+
+`response_language` is optional response-rendering metadata. It never changes whether a policy permits, denies, or tempfails the request.
+
+| Source | Required fields | Meaning |
+|---|---|---|
+| `from: literal` | `language` | Use a configured BCP 47 language tag such as `de` or `en-US`. |
+| `from: attribute` | `attribute`, optional `fallback` | Read a BCP 47 language tag from a policy attribute, falling back to the configured `fallback` tag when the attribute is absent or invalid. |
+
+Literal language:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_language:
+    from: literal
+    language: de
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+Attribute-driven language:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_language:
+    from: attribute
+    attribute: lua.company.preferred_language
+    fallback: en
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+Language selection happens at the response boundary:
+
+- IdP browser responses use explicit UI language from URL or cookie first, then policy-selected `response_language`, then `Accept-Language`, then the configured default language.
+- HTTP auth responses use policy-selected `response_language`, then `Accept-Language`, then the configured default language.
+- gRPC auth responses use policy-selected `response_language`, then incoming metadata `accept-language`, then the resolver default.
+- HTTP responses set `Content-Language` and gRPC responses set `content-language` metadata when localization selected a language.
+- Missing translations return the configured `fallback` text and keep the selected policy decision unchanged.
+
+### Deployment Translation Catalogs
+
+Nauthilus ships system-owned resource bundles for product messages. Deployment-owned policy keys such as `auth.policy.company.*` should live in deployment catalogs, not in the server repository's `server/resources/*.json` files.
+
+Example deployment catalog:
+
+```json title="policy-en.json"
+{
+  "auth.policy.company.account_locked": "Login failed because the account is locked.",
+  "auth.policy.company.account_unpaid": "Login failed because open payments exist and the account is locked."
+}
+```
+
+Deployment overlays are merged after the system catalog in deterministic order. They may add new keys and override system keys. Overrides are logged with the language, key, namespace, and override status. The effective catalog is frozen before request processing; request-time Lua cannot mutate it. On reload, Nauthilus builds the complete next effective catalog first and activates it atomically only after the reload succeeds. If reload fails, the previous effective catalog stays active.
+
+Startup Lua can register deployment overlays with [`nauthilus_i18n.register_catalog(...)`](../lua-api/i18n.md#nauthilus_i18nregister_catalog). Request-time Lua can resolve messages for Lua-owned logs or notices with [`nauthilus_i18n.get_localized(...)`](../lua-api/i18n.md#nauthilus_i18nget_localized), but final auth responses should still use policy-selected `response_message` plus optional `response_language` so reports and transports share one decision path.
+
+### Testing and Mocking Boundaries
+
+Policy localization should be tested at boundaries with fakes instead of production services:
+
+| Boundary | Mock or fake |
+|---|---|
+| Policy compiler and evaluator | Table-driven config tests with fake policy attributes and fake catalogs. |
+| Localization resolver | Fake `MessageResolver` or fake effective catalog covering selected language, missing key, fallback, and truncation. |
+| HTTP auth rendering | `httptest` requests with explicit `Accept-Language`, allowlisted headers, and a fake resolver. |
+| gRPC auth rendering | In-memory gRPC or handler tests with incoming metadata such as `accept-language` and a fake auth service outcome. |
+| IdP rendering | Mocked auth outcomes that carry fallback text, optional `i18n_key`, and optional policy-selected response language. |
+| Request attributes | Header and metadata fixtures that prove allowlisted values are normalized and non-allowlisted values are absent. |
+| Lua policy emissions | Hermetic Lua states or `--test-lua` fixtures that assert `nauthilus_policy.emit_attribute(...)` calls. |
+| `nauthilus_i18n` | Fake resolver and fake startup catalog collector; no production resource files or backend authentication required. |
+
+Keep example translation keys such as `auth.policy.company.*` in tests or deployment-owned documentation examples. Do not add documentation-only keys to `server/resources/*.json`.
 
 ### Obligations, Advice, and Control
 
@@ -881,7 +1049,7 @@ Policies select response markers, not raw HTTP status codes, headers, gRPC statu
 
 ### Response Message Reminder
 
-If `response_message` is omitted or `from: default`, Nauthilus uses the default message from the response marker. `attribute_detail` is valid only for a registered string detail with `sensitivity: public` and `purpose: response_message`. Generated Lua environment source and Lua subject source decision attributes expose `status_message` this way.
+If `response_message` is omitted or `from: default`, Nauthilus uses the default message from the response marker. `literal` uses configured text. `attribute_detail` is valid only for a registered string detail with `sensitivity: public` and `purpose: response_message`; generated Lua environment source and Lua subject source decision attributes expose `status_message` this way. `i18n` stores a stable `i18n_key` plus fallback text and is rendered only at the HTTP, gRPC, or IdP response boundary.
 
 ### Obligation and Advice Registry
 
@@ -1320,5 +1488,7 @@ nauthilus -n --config /etc/nauthilus/nauthilus.yml
 ## Related Guides
 
 - [Auth Policy Configuration Guide](../guides/auth-policy-configuration.md)
+- [Auth Policy I18N Guide](../guides/auth-policy-i18n.md)
 - [Config v2 Migration](../guides/config-v2-migration.md)
 - [Lua Backend](database-backends/lua.md)
+- [Lua I18N API](../lua-api/i18n.md)

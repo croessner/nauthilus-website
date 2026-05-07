@@ -129,3 +129,60 @@ auth:
 ```
 
 For the bundled plugin attributes, see [Lua Policy Plugins](../guides/lua-policy-plugins.md).
+
+## Localized Policy Response Pattern
+
+Lua should emit stable facts, not i18n keys derived from free text. Keep `nauthilus_builtin.status_message_set(...)` as fallback text for existing non-localized behavior, then map the emitted fact to `response_message.from: i18n` in YAML.
+
+Lua:
+
+```lua
+local policy = require("nauthilus_policy")
+
+if account_status == "locked" then
+  nauthilus_builtin.status_message_set("Login failed because the account is locked.")
+  policy.emit_attribute({
+    id = "lua.company.account_status",
+    value = "locked",
+  })
+end
+```
+
+Policy:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+Lua can also emit a language candidate:
+
+```lua
+policy.emit_attribute({
+  id = "lua.company.preferred_language",
+  value = "en",
+})
+```
+
+Policy decides whether that value becomes response-rendering metadata:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_language:
+    from: attribute
+    attribute: lua.company.preferred_language
+    fallback: en
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+For complete examples, see [Auth Policy I18N Guide](../guides/auth-policy-i18n.md). For Lua-owned localization helpers, see [I18N](i18n.md).

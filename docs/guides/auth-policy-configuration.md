@@ -226,6 +226,40 @@ if:
 
 Hostname fields from Lua request tables, such as `request.client_host`, are not built-in policy facts. If a policy needs them, emit a registered Lua policy attribute or export a selected backend result attribute.
 
+Trusted proxy or client hints can become policy facts only through explicit allowlists. This keeps secrets, cookies, and high-cardinality metadata out of reports by default.
+
+HTTP header allowlist:
+
+```yaml
+auth:
+  policy:
+    request_headers:
+      - header: X-Company-Language
+        attribute: request.header.company_language
+        visibility: public
+        normalize:
+          trim: true
+          case: lower
+          max_length: 16
+```
+
+gRPC metadata allowlist:
+
+```yaml
+auth:
+  policy:
+    request_metadata:
+      - key: x-company-language
+        attribute: request.metadata.company_language
+        visibility: public
+        normalize:
+          trim: true
+          case: lower
+          max_length: 16
+```
+
+HTTP header names are matched case-insensitively. gRPC metadata keys must be lowercase. Attribute IDs must use the correct prefix, either `request.header.*` or `request.metadata.*`, and must be unique across both allowlists.
+
 ## Policy-Owned Scheduling
 
 Lua mechanism entries define scripts. They do not define scheduling. Keep execution selection in `auth.policy.checks` so the policy snapshot has one authoritative operation plan.
@@ -541,6 +575,7 @@ Use the `then` keys this way:
 | `reason` | You want a stable internal reason for logs, reports, metrics, traces, or follow-up context. |
 | `response_marker` | You need a specific response class, such as `auth.response.tempfail.no_tls`; otherwise the normal marker is derived from `decision`. |
 | `response_message` | You need a specific client-visible message inside the selected response class. |
+| `response_language` | A localized `response_message.from: i18n` should prefer a policy-selected language before transport language headers. |
 | `fsm_event_marker` | You need a specific FSM path such as `auth.fsm.event.auth_empty_pass`; otherwise the normal marker is derived from stage and decision. |
 | `outcome_marker` | You need a stable namespaced outcome label for reports or tooling. |
 | `obligations` | The selected decision must run registered enforcement work, such as synchronous Lua action dispatch, brute-force updates, or Lua POST-Action enqueueing. |
@@ -578,13 +613,45 @@ then:
   decision: deny
   response_marker: auth.response.fail
   response_message:
-    from: attribute_detail
-    attribute: auth.lua.subject.billing_lock.rejected
-    detail: status_message
-    fallback: "Invalid login or password"
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
 ```
 
-The `attribute_detail` form works only for registered public string details with `purpose: response_message`. Lua may emit such a candidate, but YAML must explicitly select it before it becomes client-visible.
+The `i18n` form selects a stable catalog key and keeps the fallback text with the decision. It does not localize inside policy evaluation. HTTP, gRPC, and IdP response rendering resolve the key at the response boundary.
+
+Policy can also select the response language:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_language:
+    from: literal
+    language: de
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+Or it can read a language tag from a public policy attribute:
+
+```yaml
+then:
+  decision: deny
+  response_marker: auth.response.fail
+  response_language:
+    from: attribute
+    attribute: request.header.company_language
+    fallback: en
+  response_message:
+    from: i18n
+    i18n_key: auth.policy.company.account_locked
+    fallback: "Login failed because the account is locked."
+```
+
+Language selection only matters when the final response message has an `i18n_key`. The `attribute_detail` form works only for registered public string details with `purpose: response_message`. Lua may emit such a candidate, but YAML must explicitly select it before it becomes client-visible.
 
 Use obligations sparingly and only with registered IDs:
 
@@ -1518,6 +1585,82 @@ Policy:
 
 Runtime Lua must emit only attributes already registered in the active snapshot.
 
+### Lua Migration for Localized Responses
+
+Keep `nauthilus_builtin.status_message_set(...)` as fallback text, and emit stable policy facts with `nauthilus_policy.emit_attribute(...)`. Do not derive localization keys from free-text Lua status messages.
+
+Policy registry script:
+
+```lua
+nauthilus_policy.register_attribute({
+  id = "lua.company.account_status",
+  stage = "subject_analysis",
+  operations = { "authenticate" },
+  category = "subject",
+  type = "string",
+  description = "Company account status selected by Lua",
+})
+
+nauthilus_policy.register_attribute({
+  id = "lua.company.preferred_language",
+  stage = "subject_analysis",
+  operations = { "authenticate" },
+  category = "subject",
+  type = "string",
+  description = "Preferred response language selected by Lua",
+})
+```
+
+Subject source excerpt:
+
+```lua
+local policy = require("nauthilus_policy")
+
+if account_status == "locked" then
+  nauthilus_builtin.status_message_set("Login failed because the account is locked.")
+  policy.emit_attribute({
+    id = "lua.company.account_status",
+    value = "locked",
+  })
+
+  if preferred_language ~= "" then
+    policy.emit_attribute({
+      id = "lua.company.preferred_language",
+      value = preferred_language,
+    })
+  end
+end
+```
+
+Policy mapping:
+
+```yaml
+auth:
+  policy:
+    policies:
+      - name: deny_company_locked_account
+        stage: auth_decision
+        operations: [authenticate]
+        require_checks: [lua_subject_company_account]
+        if:
+          attribute: lua.company.account_status
+          eq: locked
+        then:
+          decision: deny
+          reason: company_account_locked
+          response_marker: auth.response.fail
+          response_language:
+            from: attribute
+            attribute: lua.company.preferred_language
+            fallback: en
+          response_message:
+            from: i18n
+            i18n_key: auth.policy.company.account_locked
+            fallback: "Login failed because the account is locked."
+```
+
+This keeps Lua in the fact-emitter role. The YAML policy decides which fact becomes a denial, which catalog key is used, and whether the Lua-selected language may override `Accept-Language` or gRPC `accept-language`.
+
 ## Testing a Policy Change
 
 1. Start with `mode: observe` for non-trivial custom policies.
@@ -1539,6 +1682,15 @@ nauthilus -n --config /etc/nauthilus/nauthilus.yml
 ```bash
 nauthilus -d
 ```
+
+For localized response policies, keep the tests narrow and mocked:
+
+- Use fake catalogs or a fake localization resolver for missing-key, selected-language, and fallback cases.
+- Use request fixtures for `Accept-Language`, `Content-Language`, gRPC `accept-language`, and gRPC `content-language`.
+- Use explicit header and metadata fixtures for `auth.policy.request_headers` and `auth.policy.request_metadata`; assert that non-allowlisted values are absent.
+- Use mocked auth outcomes for HTTP, gRPC, and IdP rendering tests instead of real Redis, LDAP, or backend authentication.
+- Use `--test-lua` fixtures or hermetic Lua states for `nauthilus_policy.emit_attribute(...)` and `nauthilus_i18n` API shape tests.
+- Keep documentation example keys such as `auth.policy.company.*` out of production resource JSON files.
 
 ## Troubleshooting
 
@@ -1576,5 +1728,7 @@ A final policy set denies unexpectedly:
 ## Related Reference
 
 - [Auth Policy Reference](../configuration/auth-policy.md)
+- [Auth Policy I18N Guide](auth-policy-i18n.md)
 - [Lua Backend](../configuration/database-backends/lua.md)
+- [Lua I18N API](../lua-api/i18n.md)
 - [Config v2 Migration](config-v2-migration.md)

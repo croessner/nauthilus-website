@@ -253,6 +253,16 @@ If you only want to control which checks run, where Lua scripts run, and how che
 
 Add `policies` only when you want to write custom decision rules.
 
+The exact authority rules are:
+
+- An omitted `auth.policy` block behaves like `mode: enforce` with `default_policy: standard_auth`.
+- A non-empty `auth.policy` block does not automatically enable custom policy authority.
+- Configured `checks`, `sets`, `registry_scripts`, `attribute_sources`, and `obligation_targets` can be used while `standard_auth` still decides the result.
+- Custom authority starts only when `auth.policy.policies` contains a rule for the current operation and stage.
+- `standard_auth` is not merged into that same custom operation/stage rule list. It remains the default for stages that have no matching custom rules.
+
+For example, if you configure only `auth_decision` policies, those rules own the final password-auth decision in `mode: enforce`, but `pre_auth` still uses `standard_auth`. If you configure only `pre_auth` policies, those rules own pre-auth decisions, but the final `auth_decision` stage still uses `standard_auth`.
+
 ## Configure Scheduling Without Custom Decisions
 
 This shape controls Lua execution while leaving decisions to `standard_auth`:

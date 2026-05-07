@@ -22,9 +22,15 @@ auth:
 
 There is no separate policy root. The supported configuration surface is `auth.policy`. The built-in default policy set is named `standard_auth`. When no custom policy rules are configured, `standard_auth` preserves the default Nauthilus authentication behavior through the same policy engine.
 
+The presence of an `auth.policy` block does not by itself make a custom policy authoritative. A custom policy takes production authority only when the compiled request plan contains at least one matching rule from `auth.policy.policies` for the current operation and stage. The decision boundary is therefore the `policies` list, not the mere existence of `auth.policy`, `checks`, `sets`, `registry_scripts`, or `default_policy`.
+
 Lua environment and subject sources define script entries. Their execution operation, auth-state guard, and start order are defined by `auth.policy.checks`.
 
 `checks` and `policies` have separate authority boundaries. You may configure checks only to control fact collection, Lua script operation scope, auth-state guards, and start order while `standard_auth` remains the decision authority. A stage and operation become custom-authoritative only when matching rules exist in `auth.policy.policies`.
+
+`standard_auth` is not automatically merged into a custom rule list for the same operation and stage. In `mode: enforce`, a matching custom stage plan owns that stage. Stages without matching custom rules still use `standard_auth`. For example, a custom `auth_decision` rule can own the final password-auth decision while `pre_auth` still uses `standard_auth` for brute-force, TLS, relay-domain, RBL, and Lua environment behavior.
+
+If both `default_policy: standard_auth` and custom `policies` are configured, that is valid and expected. `default_policy` names the built-in fallback/default set; `policies` declares the custom rules that may override it for their own operation and stage. The key name is `default_policy`; misspellings such as `default_poicy` are rejected as unsupported configuration keys.
 
 ## Root Shape
 

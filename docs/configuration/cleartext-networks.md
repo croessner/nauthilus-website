@@ -39,5 +39,6 @@ auth:
 
 Notes:
 
-- localhost remains a natural candidate for the allowlist
+- localhost is only a candidate when the listener and trust boundary make it appropriate; loopback is not a universal proof of safety
 - old top-level `cleartext_networks` is no longer the public path
+- policy-controlled check skips belong under `auth.policy.scheduler_guards` and check-level `skip_if`, not in this control-specific allowlist

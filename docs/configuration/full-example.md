@@ -400,6 +400,8 @@ auth:
       networks: {}
       time_windows: {}
 
+    scheduler_guards: {}
+
     report:
       enabled: false
       include_fsm: true

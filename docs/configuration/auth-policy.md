@@ -57,6 +57,8 @@ auth:
       networks: {}
       time_windows: {}
 
+    scheduler_guards: {}
+
     report:
       enabled: false
       include_fsm: true
@@ -80,6 +82,7 @@ auth:
 | `obligation_targets.lua.actions` | list | `[]` | Reusable Lua action scripts selected through policy obligations. |
 | `sets.networks` | map | `{}` | Named reusable IP/CIDR sets for policy conditions. |
 | `sets.time_windows` | map | `{}` | Named local-time windows for policy conditions. |
+| `scheduler_guards` | map | `{}` | Named opt-in scheduler conditions that may skip selected checks before their adapters run. |
 | `report.enabled` | bool | `false` | Enables optional redacted policy decision reports. This does not affect enforcement, logs, metrics, traces, or client responses. |
 | `report.include_fsm` | bool | `true` | Includes FSM decision material in report output. Selected FSM markers are still used internally even when reports are disabled. |
 | `report.include_checks` | bool | `true` | Includes check results in report output. Check results still drive policy evaluation when reports are disabled. |
@@ -289,6 +292,7 @@ auth:
 | `stage` | yes | Stage where the check emits facts. Must match the check type. |
 | `operations` | no | Operation scope. Omitted means `[authenticate]`. |
 | `run_if.auth_state` | no | Structural scheduler guard: `any`, `authenticated`, or `unauthenticated`. Omitted means `any`. |
+| `skip_if` | no | Named scheduler guards from `auth.policy.scheduler_guards`. If any referenced guard matches, the selected check is recorded as skipped and its adapter is not called. |
 | `after` | no | Check-plan ordering dependencies inside the same operation/stage plan. Dependencies must cover the dependent check's operations and auth-state scheduler guard. |
 | `config_ref` | no | Canonical mechanism config path used by the check. |
 | `output` | no | Unique output name for reports and internal plan identity. |
@@ -357,7 +361,18 @@ Built-in request attributes are:
 | `request.operation` | string | all | Active operation: `authenticate`, `lookup_identity`, or `list_accounts`. |
 | `request.time.now` | datetime | all | Request evaluation timestamp. |
 | `request.client.ip` | ip | all | Effective client IP after Nauthilus request-header/proxy handling. |
+| `request.client.ip.present` | bool | all | True when the effective client IP parsed successfully. |
+| `request.client.ip.trusted` | bool | all | True when the selected source is trusted for scheduler decisions. |
+| `request.client.ip.source` | string | all | Source label such as `direct_peer`, `proxy_protocol`, `trusted_proxy_header`, `grpc_peer`, `metadata`, or `unknown`. |
 | `request.protocol` | string | all | Effective authentication protocol, such as `imap`, `smtp`, `submission`, `http`, or IdP-related protocol names. |
+| `request.transport.kind` | string | all | Transport family such as HTTP, gRPC, mail protocol, IdP, hook, internal, or unknown. |
+| `request.listener.name` | string | all | Configured listener identity when available. |
+| `request.connection.tls` | bool | all | Already-known transport TLS state. |
+| `request.initiator.kind` | string | all | Server-derived initiator class such as external user traffic, backend health check, internal service, or unknown. |
+| `request.http.route` | string | all when available | Normalized server route, not the raw path or query string. |
+| `request.grpc.method` | string | all when available | gRPC service method. |
+| `request.idp.client_id` | string | all when available | Parsed OIDC client identifier; do not trust it alone for scheduler skips. |
+| `request.saml.sp_entity_id` | string | all when available | Parsed SAML service-provider entity ID; do not trust it alone for scheduler skips. |
 
 Use the policy attribute ID, not Lua field names. For example, Lua commonly uses `request.client_ip`, but YAML policies use `request.client.ip`:
 
@@ -449,6 +464,7 @@ auth:
 | Run a check regardless of authentication state | Omit `run_if` or set `run_if.auth_state: any`. |
 | Start one check after another check | Add `after: [check_name]` on the dependent check. |
 | Make a policy rule depend on a check result | Add the check name to `require_checks`. |
+| Skip a selected check for a guarded operational case | Add `skip_if: [guard_name]` on the check and define `guard_name` under `auth.policy.scheduler_guards`. |
 
 Example:
 
@@ -479,6 +495,227 @@ auth:
         config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
         output: checks.lua_environment_policy_gate
 ```
+
+## Scheduler Guards
+
+Scheduler guards are opt-in, need-based check-scheduler conditions. They decide whether a selected check adapter runs. They are not final authorization decisions, they do not grant authentication success, and they do not replace `auth.policy.policies`.
+
+Use scheduler guards only when reducing check coverage is operationally intentional, for example avoiding RBL DNS work for a trusted health probe source, skipping a specific pre-auth check during a documented maintenance window, or narrowing service-to-service traffic that is already constrained by listener or caller authentication. If a request must be permitted or denied, write an ordered policy rule. If a check should merely not run in a narrow case, use `skip_if`.
+
+Scheduler guards live under `auth.policy.scheduler_guards` and are referenced by check-level `skip_if`:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        pre_auth_exempt_sources:
+          - 127.0.0.0/8
+          - ::1
+
+    scheduler_guards:
+      pre_auth_exempt_source:
+        on_missing_attribute: run
+        if:
+          all:
+            - attribute: request.client.ip.present
+              is: true
+            - attribute: request.client.ip.trusted
+              is: true
+            - attribute: request.client.ip
+              cidr_contains: "@network.pre_auth_exempt_sources"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [pre_auth_exempt_source]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+### Scheduler Guard Fields
+
+`scheduler_guards` is a map. The map key is the guard name referenced by `checks[*].skip_if`.
+
+| Field | Required | Type | Default | Purpose |
+|---|---:|---|---|---|
+| map key | yes | simple identifier | none | Stable guard name. Use names such as `monitoring_pre_auth_source`; avoid vague names such as `bypass`. |
+| `if` | yes | condition tree | none | Request-only condition evaluated before the selected check adapter starts. It must contain exactly one expression node: `attribute`, `all`, `any`, `not`, or `always: true`. |
+| `on_missing_attribute` | no | string | `run` | Missing-attribute behavior. The only supported value is `run`, which means the guarded check still runs when any attribute referenced by the guard is missing. |
+
+`on_missing_attribute: run` is fail closed. A missing client IP, an unparsable client IP, a missing detail, or an untrusted header-derived IP must not suppress a security check. Because `run` is also the default, omitting `on_missing_attribute` has the same runtime effect. The explicit form is recommended for operational exemptions because it documents the intended safety behavior.
+
+Scheduler guard conditions use the same YAML condition tree shape as policy rules, but with a narrower authority:
+
+| Guard condition item | Supported in scheduler guards | Notes |
+|---|---:|---|
+| `attribute` | yes | Must reference a `request.*` attribute. Check-produced, Lua-produced, backend, and subject attributes are rejected. |
+| `all`, `any`, `not` | yes | Recursive grouping. If any referenced attribute anywhere in the guard tree is missing, `on_missing_attribute: run` makes the check run. |
+| `always: true` | yes | Valid but broad; use only when a check should always be skipped wherever the guard is attached. |
+| `exists` | yes | Presence test for any request attribute type. |
+| `is`, `eq`, `ne`, `in`, `not_in` | yes | Boolean or string request attributes only. |
+| `cidr_contains` | yes | IP or CIDR request attributes, usually `request.client.ip` with an `@network.*` set. |
+| `within_time_window` | yes | Datetime request attributes, usually `request.time.now` with an `@time_window.*` set. |
+| `matches`, `contains`, `contains_any`, `contains_all`, `contains_none`, `gt`, `gte`, `lt`, `lte` | no | These rule-condition operators are not accepted for scheduler guards. |
+
+Client-controlled request values are not trusted scheduler facts by themselves. A guard that references `request.header.*`, `request.metadata.*`, `request.idp.client_id`, or `request.saml.sp_entity_id` must combine that value with a server-derived criterion, for example trusted client IP, listener identity, transport kind, or TLS state.
+
+### Guard Evaluation
+
+Scheduler guards are evaluated after structural selection and before the check adapter is called:
+
+1. `operations`, `run_if.auth_state`, and `after` build the active check plan.
+2. For each selected check, Nauthilus evaluates that check's `skip_if` guards.
+3. Multiple guard names in `skip_if` are OR-combined.
+4. If any guard matches, the check adapter is not called.
+5. The policy report records the check as `status: "skipped"` with a reason such as `scheduler_guard:pre_auth_exempt_source`.
+
+Skipped checks are not technical adapter errors. Reports and metrics distinguish scheduler-guard skips from operation or `run_if` skips.
+
+`after` dependencies stay deterministic. If check `B` declares `after: [A]` and `A` can be skipped by `guard_x`, `B` must also include `guard_x` in `skip_if`; otherwise the configuration is rejected.
+
+### `require_checks` with Skipped Checks
+
+`require_checks` is a policy applicability contract, not a scheduler. A skipped check does not satisfy `require_checks`.
+
+The runtime semantics are:
+
+- only check results with status `ok` or `error` satisfy `require_checks`;
+- a missing or skipped required check makes that policy rule non-applicable;
+- non-applicable is not the same as a false condition;
+- later rules in the same stage may still match.
+
+This allows a source-exempt request to skip `rbl`, make a rule such as `require_checks: [rbl]` non-applicable, and still reach a later rule that does not require `rbl`.
+
+### Safe Request Surface
+
+Scheduler guards should use conservative, request-local attributes that are available before the check adapter starts. Prefer server-derived facts over values supplied by a client.
+
+| Attribute | Type | Trust model | Good scheduler-guard use |
+|---|---:|---|---|
+| `request.operation` | string | server-derived | Limit a guard to `authenticate`, `lookup_identity`, or `list_accounts`. |
+| `request.protocol` | string | server-derived or normalized by the protocol adapter | Scope a guard to a protocol family. |
+| `request.time.now` | datetime | captured once per request by Nauthilus | Time-window guards. |
+| `request.client.ip` | ip | selected client source after parsing | CIDR/network-set guards when combined with presence and trust facts. |
+| `request.client.ip.present` | bool | server-derived | Require a stable parsed client IP before matching. |
+| `request.client.ip.trusted` | bool | server-derived | Prevent untrusted headers or metadata from skipping checks. |
+| `request.client.ip.source` | string | server-derived | Explain where the IP came from, such as `direct_peer`, `proxy_protocol`, `trusted_proxy_header`, `grpc_peer`, `metadata`, or `unknown`. |
+| `request.transport.kind` | string | server-derived | Distinguish HTTP, gRPC, mail protocol, IdP, hook, or internal execution. |
+| `request.listener.name` | string | configured listener identity | Prefer listener identity over IP when deployments have separate internal and external listeners. |
+| `request.connection.tls` | bool | transport-derived | Depend on already-known transport security, not on a check result. |
+| `request.initiator.kind` | string | server-derived | Distinguish external user traffic, backend health checks, internal service calls, and unknown callers. |
+| `request.http.route` | string | normalized server route | Scope HTTP traffic without using raw path or query input. |
+| `request.grpc.method` | string | gRPC transport-derived | Scope gRPC service methods. |
+| `request.idp.client_id` | string | parsed request value, not trusted alone | Optional IdP/OIDC scoping when combined with trusted transport or source facts. |
+| `request.saml.sp_entity_id` | string | parsed request value, not trusted alone | Optional SAML scoping when combined with trusted transport or source facts. |
+
+Do not use these values as scheduler-guard inputs:
+
+- password, token, OTP, recovery code, or other credential material;
+- arbitrary raw HTTP headers, raw gRPC metadata, raw paths, raw queries, cookies, `User-Agent`, or language headers;
+- username or account as a standalone bypass criterion;
+- check-produced attributes;
+- Lua-produced attributes.
+
+Allowlisted request headers and gRPC metadata may be normal policy attributes, but they are not trusted scheduler facts by default. A guard that uses a client-controlled value must combine it with trusted server-derived facts, and deployments should prefer listener, transport, and source trust attributes where available.
+
+### Client IP Trust Model
+
+`request.client.ip` is useful only after Nauthilus has parsed it and assigned trust metadata:
+
+- direct peer addresses may be trusted only when they come from the actual transport peer;
+- proxy-header addresses may be trusted only through configured trusted proxy handling;
+- gRPC or request metadata is untrusted unless the transport and caller identity make it trustworthy;
+- empty IP is not loopback;
+- loopback is not universally safe and should not be used as a blanket authorization signal.
+
+A network-set guard should therefore normally require all three client-IP facts:
+
+```yaml
+if:
+  all:
+    - attribute: request.client.ip.present
+      is: true
+    - attribute: request.client.ip.trusted
+      is: true
+    - attribute: request.client.ip
+      cidr_contains: "@network.pre_auth_exempt_sources"
+```
+
+When any of these facts is missing or false, the guard does not match and the protected check runs.
+
+### Time-Window Guards
+
+Use `request.time.now` with a named `@time_window.*` set. `request.time.now` is captured once for the request, so all guards and policies see the same timestamp.
+
+```yaml
+auth:
+  policy:
+    sets:
+      time_windows:
+        pre_auth_exempt_windows:
+          timezone: Europe/Berlin
+          days: [sunday]
+          intervals:
+            - start: "02:00"
+              end: "04:00"
+
+    scheduler_guards:
+      pre_auth_exempt_window:
+        on_missing_attribute: run
+        if:
+          attribute: request.time.now
+          within_time_window: "@time_window.pre_auth_exempt_windows"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate]
+        skip_if: [pre_auth_exempt_window]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+This skips only the attached check during the named window. It does not permit the request and does not skip final policy evaluation.
+
+### Network-Set Guards
+
+Use `request.client.ip` with `@network.*` only after proving the IP is present and trusted:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        monitoring_sources:
+          - 192.0.2.10/32
+
+    scheduler_guards:
+      monitoring_pre_auth_source:
+        on_missing_attribute: run
+        if:
+          all:
+            - attribute: request.client.ip.present
+              is: true
+            - attribute: request.client.ip.trusted
+              is: true
+            - attribute: request.client.ip
+              cidr_contains: "@network.monitoring_sources"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [monitoring_pre_auth_source]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+Use documentation and deployment comments to explain why the guard exists. A purpose name such as `monitoring_pre_auth_source` is better than a mechanism name such as `loopback_skip`.
 
 ## Policies
 
@@ -513,6 +750,8 @@ auth:
 Rules are evaluated in YAML order within the active operation/stage plan. A matching terminal decision stops evaluation for that stage.
 
 `neutral` is not `permit`. A neutral pre-auth result allows the request to continue. Final auth decisions are deny-biased: if no `auth_decision` rule permits, the operation is denied.
+
+When a rule lists `require_checks`, each named check must have produced an `ok` or `error` result for the rule to be applicable. A check skipped by a scheduler guard does not satisfy `require_checks`; the rule is skipped as non-applicable and later rules in the same stage may still match.
 
 ## Conditions
 
@@ -1071,6 +1310,17 @@ The built-in registry includes at least these attributes.
 | `request.operation` | `pre_auth` | all | string | none |
 | `request.time.now` | `pre_auth` | all | datetime | none |
 | `request.client.ip` | `pre_auth` | all | ip | none |
+| `request.client.ip.present` | `pre_auth` | all | bool | none |
+| `request.client.ip.trusted` | `pre_auth` | all | bool | none |
+| `request.client.ip.source` | `pre_auth` | all | string | none |
+| `request.transport.kind` | `pre_auth` | all | string | none |
+| `request.listener.name` | `pre_auth` | all | string | none |
+| `request.connection.tls` | `pre_auth` | all | bool | none |
+| `request.initiator.kind` | `pre_auth` | all | string | none |
+| `request.http.route` | `pre_auth` | all when available | string | none |
+| `request.grpc.method` | `pre_auth` | all when available | string | none |
+| `request.idp.client_id` | `pre_auth` | all when available | string | none |
+| `request.saml.sp_entity_id` | `pre_auth` | all when available | string | none |
 | `request.protocol` | `pre_auth` | all | string | none |
 | `auth.brute_force.triggered` | `pre_auth` | `authenticate` | bool | `rule`, `bucket_id`, `client_net`, `repeating`, `rwp_active`, `bucket_count`, `bucket_ratio`, `effective_limit` |
 | `auth.brute_force.repeating` | `pre_auth` | `authenticate` | bool | selected bucket summary |

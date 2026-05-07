@@ -189,11 +189,24 @@ YAML policies do not dereference the Lua `request` object. Use the registered po
 | Policy attribute | Lua-style field this is easy to confuse with | Use for |
 |---|---|---|
 | `request.client.ip` | `request.client_ip` | CIDR checks, client-IP allow/deny decisions, network sets |
+| `request.client.ip.present` | no direct Lua field | fail-closed checks when the client IP is missing or invalid |
+| `request.client.ip.trusted` | no direct Lua field | source trust checks before a policy or scheduler guard relies on the IP |
+| `request.client.ip.source` | no direct Lua field | reporting and source-specific policy logic |
 | `request.protocol` | `request.protocol` | Protocol-specific behavior |
 | `request.operation` | no direct Lua field | `authenticate`, `lookup_identity`, or `list_accounts` decisions |
 | `request.time.now` | no direct Lua field | Time-window checks |
+| `request.transport.kind` | no direct Lua field | Distinguishing HTTP, gRPC, mail protocol, IdP, hook, or internal execution |
+| `request.listener.name` | no direct Lua field | Listener-scoped policies and scheduler guards |
+| `request.connection.tls` | no direct Lua field | Transport-derived TLS state without depending on a check result |
+| `request.initiator.kind` | no direct Lua field | External user traffic, backend health checks, internal service calls, or unknown callers |
+| `request.http.route` | no direct Lua field | Normalized HTTP route scoping without raw path or query input |
+| `request.grpc.method` | no direct Lua field | gRPC method scoping |
+| `request.idp.client_id` | no direct Lua field | Optional IdP/OIDC scoping when combined with trusted server-derived facts |
+| `request.saml.sp_entity_id` | no direct Lua field | Optional SAML scoping when combined with trusted server-derived facts |
 
-CIDR example:
+For policy decisions, `request.client.ip` is useful when the source is part of the decision. For scheduler guards, combine it with `request.client.ip.present` and `request.client.ip.trusted` so missing, invalid, or untrusted IP data fails closed and the check still runs. Empty IP is not loopback, and loopback is not a universal security boundary.
+
+CIDR decision example:
 
 ```yaml
 auth:
@@ -215,6 +228,8 @@ auth:
           decision: neutral
           reason: trusted_network
 ```
+
+The same network set can be used by a scheduler guard, but the effect is different: a policy rule decides `neutral`, `deny`, `permit`, or `tempfail`; a scheduler guard only decides whether a selected check adapter runs.
 
 Protocol example:
 
@@ -269,6 +284,9 @@ The three scheduling controls are:
 - `operations`: selects `authenticate`, `lookup_identity`, or `list_accounts`.
 - `run_if.auth_state`: narrows execution by authenticated, unauthenticated, or any state.
 - `after`: defines start order inside the compiled check plan.
+- `skip_if`: attaches named `auth.policy.scheduler_guards` that may skip a selected check before its adapter starts.
+
+Scheduler guards reduce check coverage. Use them only for explicit operational exemptions, and keep final authorization in `auth.policy.policies`.
 
 ## Start With the Default
 
@@ -357,6 +375,7 @@ For Lua environment and subject sources, `standard_auth` maps the generated Lua 
 | Run only after backend auth failed or is unauthenticated | `run_if.auth_state: unauthenticated` |
 | Run in both authenticated and unauthenticated states | omit `run_if` or use `run_if.auth_state: any` |
 | Run script B after script A | put `after: [check_for_script_a]` on script B's check |
+| Skip a selected check for a trusted operational source or window | put `skip_if: [guard_name]` on the check and define `guard_name` under `auth.policy.scheduler_guards` |
 | Depend on a script's fact in a rule | put that check in `require_checks` |
 | Send Lua status message to the client | select the generated `status_message` attribute detail in `response_message` |
 
@@ -366,6 +385,153 @@ For Lua environment and subject sources, `standard_auth` maps the generated Lua 
 - `require_checks` is policy applicability and validation.
 
 Do not use `require_checks` as a scheduler. It never causes a check to run.
+
+When `skip_if` skips a check, that check does not satisfy `require_checks`. A policy rule that requires the skipped check is non-applicable, not false, and later rules can still match.
+
+## Skip Selected Checks With Scheduler Guards
+
+Scheduler guards live under `auth.policy.scheduler_guards` and are attached to individual checks with `skip_if`.
+
+Each guard has a name, an `if` condition, and optional `on_missing_attribute`.
+The guard name is the map key used by `skip_if`. The `if` condition must use request attributes only, because it runs before check adapters can emit facts. `on_missing_attribute` defaults to `run`, and `run` is currently the only supported value. This means that if any attribute referenced anywhere in the guard is missing, the guard does not skip the check; the check runs.
+
+Scheduler guards support only the operators that are safe at check-scheduler time: `exists`, `is`, `eq`, `ne`, `in`, `not_in`, `cidr_contains`, and `within_time_window`. They do not support rule-only operators such as `matches`, list containment operators, or numeric comparisons. A guard that uses a client-controlled value such as an allowlisted header, gRPC metadata, OIDC client ID, or SAML SP entity ID must combine it with a server-derived fact such as trusted client IP, listener name, transport kind, or TLS state.
+
+Use a source guard when a trusted operational source should skip one expensive or inappropriate pre-auth check:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        pre_auth_exempt_sources:
+          - 127.0.0.0/8
+          - ::1
+          - 192.0.2.10/32
+
+    scheduler_guards:
+      pre_auth_exempt_source:
+        on_missing_attribute: run
+        if:
+          all:
+            - attribute: request.client.ip.present
+              is: true
+            - attribute: request.client.ip.trusted
+              is: true
+            - attribute: request.client.ip
+              cidr_contains: "@network.pre_auth_exempt_sources"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [pre_auth_exempt_source]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+This does not permit the request. It only records `rbl` as skipped when the source guard matches. Any policy rule with `require_checks: [rbl]` is non-applicable for that request, and a later rule without that requirement may still match.
+
+Use a time-window guard when a check should be skipped only during a documented window:
+
+```yaml
+auth:
+  policy:
+    sets:
+      time_windows:
+        pre_auth_exempt_windows:
+          timezone: Europe/Berlin
+          days: [sunday]
+          intervals:
+            - start: "02:00"
+              end: "04:00"
+
+    scheduler_guards:
+      pre_auth_exempt_window:
+        on_missing_attribute: run
+        if:
+          attribute: request.time.now
+          within_time_window: "@time_window.pre_auth_exempt_windows"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate]
+        skip_if: [pre_auth_exempt_window]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+`request.time.now` is captured once per request, so all guard and policy checks use the same timestamp.
+
+If a check has an `after` dependency on another check that can be skipped, copy the same guard to the dependent check:
+
+```yaml
+checks:
+  - name: lua_environment_context
+    type: lua.environment
+    stage: pre_auth
+    skip_if: [pre_auth_exempt_source]
+    config_ref: auth.policy.attribute_sources.lua.environment.context
+
+  - name: lua_environment_policy_gate
+    type: lua.environment
+    stage: pre_auth
+    after: [lua_environment_context]
+    skip_if: [pre_auth_exempt_source]
+    config_ref: auth.policy.attribute_sources.lua.environment.policy_gate
+```
+
+This keeps the check graph deterministic. If the dependency can be skipped but the dependent check cannot, Nauthilus rejects the policy snapshot.
+
+## Migrate Implicit Loopback Skips
+
+Older deployments may have relied on implicit loopback behavior in pre-auth controls. In the policy-controlled model, loopback, monitoring clients, backend health checks, and internal-looking callers do not get a hidden bypass. If a deployment still needs a loopback or monitoring-source exemption, make it explicit and attach it only to the checks that should be skipped.
+
+Before migration, the exemption was implicit in mechanism code. After migration, it is visible in `auth.policy`:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        pre_auth_exempt_sources:
+          - 127.0.0.0/8
+          - ::1
+
+    scheduler_guards:
+      pre_auth_exempt_source:
+        on_missing_attribute: run
+        if:
+          all:
+            - attribute: request.client.ip.present
+              is: true
+            - attribute: request.client.ip.trusted
+              is: true
+            - attribute: request.client.ip
+              cidr_contains: "@network.pre_auth_exempt_sources"
+
+    checks:
+      - name: tls_encryption
+        type: builtin.tls_encryption
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [pre_auth_exempt_source]
+        config_ref: auth.controls.tls_encryption
+        output: checks.tls_encryption
+
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [pre_auth_exempt_source]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+Review each check separately. It may be reasonable to skip RBL for a local health probe while still running TLS, Lua environment, relay-domain, or brute-force checks for the same source. Do not treat loopback as a general proof of safety; use listener identity, transport trust, and caller authentication wherever they describe the deployment better than an IP range.
 
 ## Step 1: Define Lua Attribute Sources
 
@@ -1009,6 +1175,49 @@ Then add final decisions:
 ```
 
 The account list itself is response data. It is not exposed as a policy attribute.
+
+If account listing should be available only from a bounded service source, write that as a final policy restriction rather than a scheduler guard. Scheduler guards skip checks; they are not final authorization decisions.
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        account_listing_sources:
+          - 192.0.2.10/32
+
+    policies:
+      - name: deny_list_accounts_untrusted_source
+        stage: auth_decision
+        operations: [list_accounts]
+        if:
+          not:
+            all:
+              - attribute: request.client.ip.present
+                is: true
+              - attribute: request.client.ip.trusted
+                is: true
+              - attribute: request.client.ip
+                cidr_contains: "@network.account_listing_sources"
+        then:
+          decision: deny
+          reason: list_accounts_untrusted_source
+          response_marker: auth.response.fail
+
+      - name: list_accounts_success
+        stage: auth_decision
+        operations: [list_accounts]
+        require_checks: [account_provider]
+        if:
+          attribute: auth.account_provider.completed
+          is: true
+        then:
+          decision: permit
+          reason: list_accounts_success
+          response_marker: auth.response.list_accounts.ok
+```
+
+Put the source restriction before the success rule. A missing or untrusted IP fails closed into the deny rule. Existing caller-auth requirements, backchannel credentials, and gRPC scopes still apply before policy evaluation.
 
 ## Model Multiple Brute-Force Buckets
 

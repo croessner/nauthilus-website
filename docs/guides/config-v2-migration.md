@@ -153,6 +153,47 @@ Lua environment and subject sources now keep only their script identity and scri
 
 See [Auth Policy Configuration Guide](auth-policy-configuration.md) for a manual migration walkthrough and [Auth Policy Reference](../configuration/auth-policy.md) for the complete schema.
 
+## Scheduler Guards for Former Implicit Exemptions
+
+Older configurations may have inherited implicit loopback or monitoring-client behavior from mechanism code. In the policy-controlled scheduler model, those exemptions are not hidden. They must be visible under `auth.policy.scheduler_guards` and attached to selected checks with `skip_if`.
+
+Use this pattern when you intentionally want a trusted source to skip a specific pre-auth check:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        pre_auth_exempt_sources:
+          - 127.0.0.0/8
+          - ::1
+
+    scheduler_guards:
+      pre_auth_exempt_source:
+        on_missing_attribute: run
+        if:
+          all:
+            - attribute: request.client.ip.present
+              is: true
+            - attribute: request.client.ip.trusted
+              is: true
+            - attribute: request.client.ip
+              cidr_contains: "@network.pre_auth_exempt_sources"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [pre_auth_exempt_source]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+`on_missing_attribute: run` is the fail-closed behavior: if Nauthilus cannot prove that a trusted client IP is present and inside the configured set, the check runs. A skipped check does not satisfy `require_checks`, so rules that require the skipped check are non-applicable and later rules may still match.
+
+Do not translate "loopback used to work" into a blanket authorization rule. Loopback is an operational source, not universal proof of safety. Attach guards only to checks that should lose coverage for that source, and keep final permit or deny behavior in `auth.policy.policies`.
+
 ## Example
 
 Legacy:

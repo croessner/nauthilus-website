@@ -217,6 +217,39 @@ An explicitly empty list is invalid.
 
 Caller authentication, backchannel credentials, gRPC scopes, malformed requests, and transport errors are prerequisites. They are not normal policy denials.
 
+## Policy Flow
+
+The runtime path is operation-specific. `pre_auth` and `auth_decision` are the stages where configured policies can select terminal outcomes in enforce mode. `auth_backend`, `subject_analysis`, and `account_provider` collect facts that later rules can use.
+
+Read this diagram top-down:
+
+```mermaid
+flowchart TD
+    request["Request enters policy<br/>operation: authenticate, lookup_identity, or list_accounts"] --> operation{"Selected operation"}
+    operation -->|"authenticate or lookup_identity"| preAuth["pre_auth<br/>collect request, TLS, brute-force, relay-domain, RBL, and Lua environment facts"]
+    operation -->|"list_accounts in standard_auth"| accountProvider["account_provider<br/>collect account-list provider completion, tempfail, and count facts"]
+
+    preAuth --> preDecision{"pre_auth decision"}
+    preDecision -->|"neutral"| authBackend["auth_backend<br/>collect password-auth, identity-lookup, backend tempfail, and empty-field facts"]
+    preDecision -->|"deny"| preDeny["Stop before backend auth<br/>response: auth.response.fail"]
+    preDecision -->|"tempfail"| preTempfail["Stop before backend auth<br/>response: auth.response.tempfail"]
+    preDecision -->|"permit"| preInvalid["Invalid<br/>pre_auth cannot grant final success"]
+
+    authBackend --> backendPath{"Active operation"}
+    backendPath -->|"authenticate"| subjectAnalysis["subject_analysis<br/>collect Lua subject-source and exported subject facts"]
+    backendPath -->|"lookup_identity"| authDecision["auth_decision<br/>ordered first-match policy rules"]
+    subjectAnalysis --> authDecision
+    accountProvider --> authDecision
+
+    authDecision --> finalDecision{"auth_decision decision"}
+    finalDecision -->|"permit"| permit["Permit active operation<br/>response: auth.response.ok or auth.response.list_accounts.ok"]
+    finalDecision -->|"deny"| deny["Deny active operation<br/>response: auth.response.fail"]
+    finalDecision -->|"tempfail"| tempfail["Temporary failure<br/>response: auth.response.tempfail"]
+    finalDecision -->|"neutral or no match"| defaultDeny["Continue rule evaluation<br/>final fallback denies"]
+```
+
+`neutral` in `pre_auth` means "continue", not "success". `permit` is valid only at `auth_decision`. A terminal `pre_auth` result stops before backend evaluation; a terminal `auth_decision` result selects the response class, FSM marker, obligations, and advice for the active operation.
+
 ## Stages
 
 | Stage | Purpose |

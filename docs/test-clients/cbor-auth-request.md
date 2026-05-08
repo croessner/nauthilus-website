@@ -110,4 +110,4 @@ Additional headers can be added with repeated `--header 'Name: value'` options.
 
 Use `--insecure` only for local tests with self-signed certificates. `--timeout` controls the HTTP timeout in seconds.
 
-For response decoding, the script understands `application/cbor`, `application/json`, and text responses. The request `Accept` header prefers CBOR first, then JSON, then text.
+For response decoding, the script understands `application/cbor`, `application/json`, and text responses. The request `Accept` header prefers CBOR first, then JSON, then text. Successful CBOR authentication responses decode to the same logical map as JSON, authentication denials decode as CBOR `null`, and temporary failures decode as a map with an `error` field.

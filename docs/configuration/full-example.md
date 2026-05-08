@@ -75,7 +75,7 @@ runtime:
         burst: 0
 
     grpc:
-      auth:
+      authority:
         enabled: false
         address: "127.0.0.1:9444"
 

@@ -88,15 +88,15 @@ runtime:
         burst: 400
 ```
 
-### gRPC Auth Service
+### gRPC Authority Listener
 
-The gRPC AuthService runs on a separate optional listener. It exposes the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener.
+The gRPC authority listener is a separate optional listener. It exposes the gRPC AuthService with the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener.
 
 ```yaml
 runtime:
   servers:
     grpc:
-      auth:
+      authority:
         enabled: true
         address: "127.0.0.1:9444"
         tls:

@@ -94,6 +94,36 @@ Accept: application/cbor, application/json;q=0.5, text/plain;q=0.1, */*;q=0.05
 
 See [CBOR Auth Request Client](test-clients/cbor-auth-request.md) for the full script documentation.
 
+## CBOR Authentication Responses
+
+`/api/v1/auth/cbor` returns CBOR response bodies with `Content-Type: application/cbor`.
+
+Successful authentication returns the same logical response object as the JSON endpoint, encoded as a CBOR map:
+
+```json
+{
+  "ok": true,
+  "account_field": "uid",
+  "totp_secret_field": "totp_secret",
+  "backend": 1,
+  "attributes": {
+    "uid": ["alice@example.test"]
+  }
+}
+```
+
+Authentication denials are domain decisions, not decoder failures. They keep the normal auth-failure status code, set
+`Auth-Status` to the rendered status message, and return a CBOR `null` body.
+
+Temporary failures return the temporary-failure status code, set `Auth-Status` to the rendered status message, and
+encode the error payload as a CBOR map:
+
+```json
+{
+  "error": "Temporary server problem"
+}
+```
+
 ## No-Auth and List-Accounts Modes
 
 `/api/v1/auth/cbor` supports the same query modes as the JSON endpoint:
@@ -115,6 +145,9 @@ Accept: application/json, application/cbor;q=0.4
 ```
 
 Unsupported `Accept` combinations return `415 Unsupported Media Type`.
+
+When `mode=list-accounts` negotiates `application/cbor`, the response body is a single CBOR array containing the
+account names.
 
 ## Current Configuration References
 

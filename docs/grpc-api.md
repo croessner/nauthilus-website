@@ -9,7 +9,9 @@ sidebar_position: 11
 
 Nauthilus exposes a typed gRPC authentication API for clients that prefer protobuf contracts over the REST JSON and CBOR endpoints.
 
-The gRPC service runs on its own listener under `runtime.servers.grpc.auth`. It reuses the same authentication pipeline as `/api/v1/auth/json` and `/api/v1/auth/cbor`: backend selection, environment evaluation, brute-force handling, Lua subject sources, post-actions, metrics, logging, cache behavior, and list-account semantics stay identical.
+The gRPC AuthService runs on its own authority listener under `runtime.servers.grpc.authority`. It reuses the same authentication pipeline as `/api/v1/auth/json` and `/api/v1/auth/cbor`: backend selection, environment evaluation, brute-force handling, Lua subject sources, post-actions, metrics, logging, cache behavior, and list-account semantics stay identical.
+
+The protobuf client contract remains `nauthilus.auth.v1.AuthService`; external clients call `Authenticate`, `LookupIdentity`, or `ListAccounts` through the same service and RPC names.
 
 Custom Lua hooks remain HTTP-only. The gRPC API models the authentication surface, not arbitrary HTTP hook payloads.
 
@@ -19,7 +21,7 @@ Custom Lua hooks remain HTTP-only. The gRPC API models the authentication surfac
 runtime:
   servers:
     grpc:
-      auth:
+      authority:
         enabled: true
         address: "127.0.0.1:9444"
         tls:

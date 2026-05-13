@@ -90,7 +90,7 @@ runtime:
 
 ### gRPC Authority Listener
 
-The gRPC authority listener is a separate optional listener. It exposes the gRPC AuthService with the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener.
+The gRPC authority listener is a separate optional listener. It exposes the gRPC AuthService with the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener. It also hosts the internal identity backend service used by split edge/authority deployments.
 
 ```yaml
 runtime:
@@ -110,7 +110,7 @@ runtime:
 
 The listener defaults to loopback. Plaintext gRPC is only valid on loopback addresses; non-loopback listeners require TLS. `min_tls_version` accepts `TLS1.2` and `TLS1.3` and defaults to `TLS1.2`. The gRPC listener always uses HTTP/2 ALPN and does not expose configurable cipher suites.
 
-Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings. See [gRPC Auth API](../grpc-api.md) for the service contract.
+Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings. See [gRPC Authority APIs](../grpc-api.md) for the service contract and [Split Identity Proxy Configuration](identity-proxy.md) for the distributed deployment model.
 
 ### Shared Runtime Timeouts
 
@@ -149,9 +149,40 @@ runtime:
       resolver: "192.0.2.53"
       timeout: 5s
       resolve_client_ip: false
+    grpc:
+      nauthilus_authorities:
+        primary:
+          address: "authority.internal.example:9444"
+          timeout: 5s
+          edge_cluster_id: "dmz-edge"
+          edge_instance_id: "edge-a"
+          tls:
+            enabled: true
+            server_name: "authority.internal.example"
+            ca: "/etc/nauthilus/tls/authority-ca.pem"
+            cert: "/etc/nauthilus/tls/edge-a.crt"
+            key: "/etc/nauthilus/tls/edge-a.key"
+            min_tls_version: "TLS1.3"
+          caller_auth:
+            oidc_bearer:
+              enabled: true
+              mode: "client_credentials"
+              token_endpoint: "https://authority.internal.example/oidc/token"
+              client_id: "edge-primary"
+              token_endpoint_auth_method: "private_key_jwt"
+              client_private_key_file: "/etc/nauthilus/keys/edge-primary.key"
+              client_assertion_alg: "RS256"
+              scopes:
+                - nauthilus:authenticate
+                - nauthilus:lookup_identity
+              token_cache:
+                backend: "redis"
+                key_prefix: "grpc:authority_tokens:"
 ```
 
 Outbound HTTP client TLS uses the same `min_tls_version` and `cipher_suites` validation rules as the inbound HTTP server TLS block: TLS 1.3 cipher-suite names are rejected, and `cipher_suites` must be empty when the minimum version is `TLS1.3`.
+
+Outbound authority clients under `runtime.clients.grpc.nauthilus_authorities` are used by the remote backend. Non-loopback targets require TLS and mTLS certificate material. Caller auth is mandatory; use OIDC client credentials with `private_key_jwt` for production edge instances. The caller-token cache uses the edge instance's Redis connection.
 
 ## `observability`
 

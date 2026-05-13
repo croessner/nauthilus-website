@@ -12,6 +12,7 @@ sidebar_position: 2
 - unified authentication hub for mail, HTTP, OIDC, and SAML flows
 - Redis-backed caching and operational state
 - LDAP and Lua authentication backends
+- remote authority backend for split edge/authority deployments
 - canonical config-v2 structure with validation and dump tooling
 
 ## Policy Controls
@@ -34,6 +35,8 @@ sidebar_position: 2
 
 - native OIDC provider
 - native SAML IdP
+- edge-hosted OIDC/SAML flows backed by a private Nauthilus authority over gRPC
 - integrated frontend
 - TOTP and WebAuthn MFA
+- authority-owned TOTP, recovery-code, and WebAuthn persistence for distributed IdP deployments
 - remember-me/session controls

@@ -136,4 +136,20 @@ Related request-header propagation for subject sources/logging lives at:
 
 ## Built-in Scope Families
 
-The reserved `nauthilus:*` scopes are used for backchannel administration and MFA self-service. They are granted through `identity.oidc.clients[].scopes` like any other allowed scope.
+The reserved `nauthilus:*` scopes are used for backchannel administration, authority RPCs, and MFA/WebAuthn operations. They are granted through `identity.oidc.clients[].scopes` like any other allowed scope.
+
+| Scope | Purpose |
+| --- | --- |
+| `nauthilus:admin` | Full administrative access to backchannel API surfaces that accept admin bearer tokens. |
+| `nauthilus:security` | Security-related backchannel access such as brute-force and metrics controls. |
+| `nauthilus:authenticate` | Password authentication through backchannel or gRPC authority APIs. |
+| `nauthilus:lookup_identity` | Trusted identity lookup and remote user resolution. |
+| `nauthilus:list_accounts` | Account listing. |
+| `nauthilus:mfa_read` | Read public MFA state. |
+| `nauthilus:mfa_verify` | Verify TOTP or recovery-code material. |
+| `nauthilus:mfa_write` | Register, update, or delete TOTP and recovery-code state. |
+| `nauthilus:webauthn_read` | Read public WebAuthn credential descriptors. |
+| `nauthilus:webauthn_write` | Save, update, or delete WebAuthn credentials. |
+| `nauthilus:attribute_read` | Release identity attributes to a trusted authority caller. |
+
+For split edge/authority deployments, configure the edge service-principal client with only the scopes needed by its remote backend `allowed_operations`.

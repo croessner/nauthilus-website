@@ -69,6 +69,7 @@ Examples of canonical paths:
 
 - [Includes](includes.md): split config across multiple files
 - [Runtime, Observability, and Storage](server-configuration.md): process, listeners, HTTP behavior, logs, tracing, metrics, Redis
+- [Split Identity Proxy Configuration](identity-proxy.md): distributed edge/authority deployments with remote backends
 - [RBL Control](realtime-blackhole-lists.md): `auth.controls.rbl`
 - [TLS Enforcement / Cleartext Allowlist](cleartext-networks.md): `auth.controls.tls_encryption.allow_cleartext_networks`
 - [Relay Domains](relay-domains.md): `auth.controls.relay_domains`

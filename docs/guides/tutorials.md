@@ -26,12 +26,14 @@ This is intentional. The examples describe the current configuration structure a
 1. [OpenLDAP Tutorial](tutorial-openldap.md)
 2. [MariaDB + Lua Tutorial](tutorial-mariadb-lua.md)
 3. [Mail Infrastructure Tutorial](tutorial-mail-infrastructure.md)
+4. [Distributed Identity Proxy Guide](distributed-identity-proxy.md)
 
 This order moves from the smallest mental model to a more complete mail deployment:
 
 - OpenLDAP shows a classic directory-backed authentication flow.
 - MariaDB + Lua shows how to use an application-style database without LDAP.
 - The mail infrastructure tutorial shows how Nauthilus fits between Dovecot, Postfix, pfxhttp, Valkey, and Lua hooks.
+- The distributed identity proxy guide shows how to split public IdP edges from a private authority with separate Redis instances.
 
 ## What You Learn
 

@@ -60,6 +60,7 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
+          docItemComponent: '@theme/ApiItem',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
@@ -115,6 +116,11 @@ const config = {
       },
       mermaid: {
         theme: { light: 'default', dark: 'dark' },
+      },
+      api: {
+        authPersistence: false,
+        requestCredentials: 'same-origin',
+        requestTimeout: 60000,
       },
       metadata: [
         { name: 'keywords', content: 'authentication, authorization' },
@@ -273,8 +279,41 @@ const config = {
       onBrokenMarkdownLinks: 'warn',
     },
   },
-  plugins: [],
+  plugins: [
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'openapi',
+        docsPluginId: 'classic',
+        config: {
+          management: {
+            specPath: 'static/openapi/management.yaml',
+            outputDir: 'docs/api-reference/management',
+            downloadUrl: '/openapi/management.yaml',
+            showSchemas: true,
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+              sidebarCollapsed: true,
+            },
+          },
+          idp: {
+            specPath: 'static/openapi/idp.yaml',
+            outputDir: 'docs/api-reference/idp',
+            downloadUrl: '/openapi/idp.yaml',
+            showSchemas: true,
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+              sidebarCollapsed: true,
+            },
+          },
+        },
+      },
+    ],
+  ],
   themes: [
+    'docusaurus-theme-openapi-docs',
     '@docusaurus/theme-mermaid',
     [
       require.resolve('@easyops-cn/docusaurus-search-local'),

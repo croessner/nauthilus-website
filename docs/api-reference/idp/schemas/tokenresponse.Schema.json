@@ -1,0 +1,1 @@
+{"schema":{"type":"object","properties":{"access_token":{"type":"string"},"token_type":{"type":"string"},"expires_in":{"type":"integer"},"refresh_token":{"type":"string"},"id_token":{"type":"string"},"scope":{"type":"string"}},"title":"TokenResponse"},"schemaType":"response"}

@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["jobId","status"],"properties":{"jobId":{"type":"string"},"status":{"type":"string","enum":["QUEUED"]}},"title":"AsyncAcceptedPayload"},"schemaType":"response"}

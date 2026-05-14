@@ -9,6 +9,8 @@ sidebar_position: 10
 
 Nauthilus exposes REST endpoints for authentication, administration, and the native identity flows.
 
+For generated endpoint references and raw OpenAPI downloads, see [API Reference](api-reference/index.md).
+
 For typed gRPC authentication, see [gRPC Auth API](grpc-api.md).
 
 ## Authentication Endpoints

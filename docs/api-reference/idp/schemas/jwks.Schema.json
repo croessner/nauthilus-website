@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["keys"],"properties":{"keys":{"type":"array","items":{"type":"object","additionalProperties":true}}},"title":"JWKS"},"schemaType":"response"}

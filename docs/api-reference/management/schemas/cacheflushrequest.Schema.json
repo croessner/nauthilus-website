@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["user"],"properties":{"user":{"type":"string"}},"title":"CacheFlushRequest"},"schemaType":"response"}

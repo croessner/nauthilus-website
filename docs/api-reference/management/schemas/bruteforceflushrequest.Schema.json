@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["ip_address","rule_name"],"properties":{"ip_address":{"type":"string"},"rule_name":{"type":"string"},"protocol":{"type":"string"},"oidc_cid":{"type":"string"}},"title":"BruteForceFlushRequest"},"schemaType":"response"}

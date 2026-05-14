@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["accounts"],"properties":{"accounts":{"type":"object","additionalProperties":{"type":"array","items":{"type":"string"}}},"error":{"type":["string","null"]}},"title":"BruteForceBlockedAccounts"},"schemaType":"response"}

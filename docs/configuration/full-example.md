@@ -117,6 +117,59 @@ runtime:
       timeout: 5s
       resolve_client_ip: false
 
+    grpc:
+      nauthilus_authorities:
+        primary:
+          address: "authority.internal.example:9444"
+          timeout: 5s
+          edge_cluster_id: "dmz-edge"
+          edge_instance_id: "edge-a"
+          split_strict_mode: true
+
+          tls:
+            enabled: true
+            server_name: "authority.internal.example"
+            ca: "/etc/nauthilus/tls/authority-ca.pem"
+            cert: "/etc/nauthilus/tls/edge-a.crt"
+            key: "/etc/nauthilus/tls/edge-a.key"
+            min_tls_version: "TLS1.3"
+
+          caller_auth:
+            basic_auth:
+              enabled: false
+              username: ""
+              password: ""
+
+            oidc_bearer:
+              enabled: true
+              mode: "client_credentials"
+              token_endpoint: "https://authority.internal.example/oidc/token"
+              client_id: "edge-primary"
+              client_secret: ""
+              token_endpoint_auth_method: "private_key_jwt"
+              client_private_key_file: "/etc/nauthilus/keys/edge-primary.key"
+              client_key_id: "edge-primary-rs256"
+              client_assertion_alg: "RS256"
+              audience: "https://authority.internal.example/oidc/token"
+              scopes:
+                - "nauthilus:authenticate"
+                - "nauthilus:lookup_identity"
+                - "nauthilus:list_accounts"
+                - "nauthilus:mfa_read"
+                - "nauthilus:mfa_verify"
+                - "nauthilus:mfa_write"
+                - "nauthilus:webauthn_read"
+                - "nauthilus:webauthn_write"
+                - "nauthilus:attribute_read"
+              static_token_file: ""
+              static_token_emergency_mode: false
+
+              token_cache:
+                backend: "redis"
+                key_prefix: "grpc:authority_tokens:"
+                refresh_before_expiry: 30s
+                refresh_lock_ttl: 10s
+
 observability:
   log:
     json: false
@@ -327,6 +380,22 @@ auth:
         named_backends: {}
         search: []
 
+    remote:
+      default:
+        authority: "primary"
+        mode: "nauthilus"
+        timeout: 5s
+        allowed_operations:
+          - "auth"
+          - "lookup_identity"
+          - "list_accounts"
+          - "mfa_read"
+          - "mfa_verify"
+          - "mfa_write"
+          - "webauthn_read"
+          - "webauthn_write"
+          - "attribute_read"
+
   controls:
     enabled: []
 
@@ -505,3 +574,132 @@ identity:
       max_participants: 64
       back_channel_max_retries: 1
 ```
+
+## Split Edge/Authority Profiles
+
+The reference example above shows both the authority-side listener keys and the edge-side remote backend keys. In a real split deployment, use separate configuration files and separate Redis instances.
+
+An authority instance owns local backend credentials, persistent identity data, MFA/WebAuthn data, backend-reference handles, and authority-side token/cache state:
+
+```yaml
+runtime:
+  instance_name: "nauthilus-authority"
+
+  servers:
+    grpc:
+      authority:
+        enabled: true
+        address: "0.0.0.0:9444"
+
+        tls:
+          enabled: true
+          cert: "/etc/nauthilus/tls/authority.crt"
+          key: "/etc/nauthilus/tls/authority.key"
+          client_ca: "/etc/nauthilus/tls/edge-client-ca.pem"
+          min_tls_version: "TLS1.3"
+          require_client_cert: true
+
+storage:
+  redis:
+    primary:
+      address: "authority-redis.internal:6379"
+
+auth:
+  backchannel:
+    oidc_bearer:
+      enabled: true
+
+  backends:
+    order:
+      - "ldap"
+    ldap:
+      default:
+        server_uri:
+          - "ldaps://ldap.internal.example:636"
+```
+
+An edge instance owns public IdP endpoints, browser sessions, OIDC/SAML flow state, and the cached caller token used for authority RPCs. A strict remote-only edge uses only the `remote` backend and does not configure LDAP or Lua backend credentials:
+
+```yaml
+runtime:
+  instance_name: "nauthilus-edge-a"
+
+  clients:
+    grpc:
+      nauthilus_authorities:
+        primary:
+          address: "authority.internal.example:9444"
+          timeout: 5s
+          edge_cluster_id: "dmz-edge"
+          edge_instance_id: "edge-a"
+          split_strict_mode: true
+          tls:
+            enabled: true
+            server_name: "authority.internal.example"
+            ca: "/etc/nauthilus/tls/authority-ca.pem"
+            cert: "/etc/nauthilus/tls/edge-a.crt"
+            key: "/etc/nauthilus/tls/edge-a.key"
+            min_tls_version: "TLS1.3"
+          caller_auth:
+            oidc_bearer:
+              enabled: true
+              mode: "client_credentials"
+              token_endpoint: "https://authority.internal.example/oidc/token"
+              client_id: "edge-primary"
+              token_endpoint_auth_method: "private_key_jwt"
+              client_private_key_file: "/etc/nauthilus/keys/edge-primary.key"
+              client_key_id: "edge-primary-rs256"
+              client_assertion_alg: "RS256"
+              audience: "https://authority.internal.example/oidc/token"
+              scopes:
+                - "nauthilus:authenticate"
+                - "nauthilus:lookup_identity"
+                - "nauthilus:list_accounts"
+                - "nauthilus:mfa_read"
+                - "nauthilus:mfa_verify"
+                - "nauthilus:mfa_write"
+                - "nauthilus:webauthn_read"
+                - "nauthilus:webauthn_write"
+                - "nauthilus:attribute_read"
+              token_cache:
+                backend: "redis"
+                key_prefix: "grpc:authority_tokens:"
+                refresh_before_expiry: 30s
+                refresh_lock_ttl: 10s
+
+storage:
+  redis:
+    primary:
+      address: "edge-redis.internal:6379"
+
+auth:
+  backends:
+    order:
+      - "remote"
+    remote:
+      default:
+        authority: "primary"
+        mode: "nauthilus"
+        timeout: 5s
+        allowed_operations:
+          - "auth"
+          - "lookup_identity"
+          - "list_accounts"
+          - "mfa_read"
+          - "mfa_verify"
+          - "mfa_write"
+          - "webauthn_read"
+          - "webauthn_write"
+          - "attribute_read"
+```
+
+Keep these boundaries intact:
+
+- the edge Redis address is different from the authority Redis address;
+- the edge token cache under `caller_auth.oidc_bearer.token_cache` uses edge Redis;
+- the authority stores backend references, idempotency outcomes, backend cache, MFA data, and WebAuthn data in authority-owned state;
+- the edge must not connect to authority Redis directly;
+- the authority must not connect to edge Redis directly;
+- the edge must not carry LDAP bind credentials or Lua backend secrets unless it is intentionally configured as a local fallback edge.
+
+For a step-by-step build guide, see [Distributed Identity Proxy](../guides/distributed-identity-proxy.md).

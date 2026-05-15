@@ -7,32 +7,43 @@
   },
   "servers": [
     {
-      "url": "/"
+      "url": "{baseUrl}",
+      "description": "Nauthilus deployment base URL.",
+      "variables": {
+        "baseUrl": {
+          "default": "https://nauthilus.example.com",
+          "description": "Absolute base URL of the Nauthilus deployment to call."
+        }
+      }
     }
   ],
   "tags": [
     {
-      "name": "OpenAPI",
-      "description": "Public IdP API contract documents."
+      "name": "WellKnown",
+      "x-displayName": "/.well-known",
+      "description": "Public discovery and API contract documents."
     },
     {
       "name": "OIDC",
+      "x-displayName": "/oidc",
       "description": "OpenID Connect and OAuth 2.0 protocol endpoints."
     },
     {
       "name": "SAML",
+      "x-displayName": "/saml",
       "description": "SAML Identity Provider protocol endpoints."
     },
     {
       "name": "Browser",
-      "description": "Browser-oriented login, consent, and MFA flow endpoints."
+      "x-displayName": "/login and /logout",
+      "description": "Browser-oriented login, logout, and MFA flow endpoints."
     }
   ],
   "paths": {
     "/.well-known/openapi.yaml": {
       "get": {
         "tags": [
-          "OpenAPI"
+          "WellKnown"
         ],
         "operationId": "getPublicIdPOpenAPIYAML",
         "summary": "Get the public IdP OpenAPI document as YAML.",
@@ -54,7 +65,7 @@
     "/.well-known/openapi.json": {
       "get": {
         "tags": [
-          "OpenAPI"
+          "WellKnown"
         ],
         "operationId": "getPublicIdPOpenAPIJSON",
         "summary": "Get the public IdP OpenAPI document as JSON.",
@@ -77,7 +88,7 @@
     "/.well-known/openid-configuration": {
       "get": {
         "tags": [
-          "OIDC"
+          "WellKnown"
         ],
         "operationId": "getOIDCDiscovery",
         "summary": "Get OIDC discovery metadata.",
@@ -368,7 +379,6 @@
     "/oidc/device/verify": {
       "get": {
         "tags": [
-          "Browser",
           "OIDC"
         ],
         "operationId": "getOIDCDeviceVerify",
@@ -377,12 +387,14 @@
         "responses": {
           "200": {
             "$ref": "#/components/responses/HTMLPage"
+          },
+          "302": {
+            "$ref": "#/components/responses/Redirect"
           }
         }
       },
       "post": {
         "tags": [
-          "Browser",
           "OIDC"
         ],
         "operationId": "postOIDCDeviceVerify",
@@ -412,7 +424,6 @@
     "/oidc/device/consent": {
       "get": {
         "tags": [
-          "Browser",
           "OIDC"
         ],
         "operationId": "getOIDCDeviceConsent",
@@ -425,12 +436,14 @@
         "responses": {
           "200": {
             "$ref": "#/components/responses/HTMLPage"
+          },
+          "302": {
+            "$ref": "#/components/responses/Redirect"
           }
         }
       },
       "post": {
         "tags": [
-          "Browser",
           "OIDC"
         ],
         "operationId": "postOIDCDeviceConsent",
@@ -461,8 +474,7 @@
     "/oidc/logout": {
       "get": {
         "tags": [
-          "OIDC",
-          "Browser"
+          "OIDC"
         ],
         "operationId": "oidcLogout",
         "summary": "Start OIDC logout.",
@@ -506,8 +518,7 @@
     "/oidc/consent": {
       "get": {
         "tags": [
-          "OIDC",
-          "Browser"
+          "OIDC"
         ],
         "operationId": "getOIDCConsent",
         "summary": "Render the OIDC consent page.",
@@ -524,8 +535,7 @@
       },
       "post": {
         "tags": [
-          "OIDC",
-          "Browser"
+          "OIDC"
         ],
         "operationId": "postOIDCConsent",
         "summary": "Submit OIDC consent.",
@@ -653,6 +663,9 @@
         "responses": {
           "200": {
             "$ref": "#/components/responses/HTMLPage"
+          },
+          "302": {
+            "$ref": "#/components/responses/Redirect"
           }
         }
       },
@@ -1027,6 +1040,9 @@
       },
       "ErrorResponse": {
         "type": "object",
+        "required": [
+          "error"
+        ],
         "properties": {
           "error": {
             "type": "string"
@@ -1146,7 +1162,13 @@
         ],
         "properties": {
           "grant_type": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "authorization_code",
+              "refresh_token",
+              "client_credentials",
+              "urn:ietf:params:oauth:grant-type:device_code"
+            ]
           },
           "code": {
             "type": "string"
@@ -1173,6 +1195,16 @@
           },
           "code_verifier": {
             "type": "string"
+          },
+          "client_assertion_type": {
+            "type": "string",
+            "enum": [
+              "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+            ]
+          },
+          "client_assertion": {
+            "type": "string",
+            "description": "JWT client assertion for private_key_jwt token endpoint authentication."
           }
         }
       },

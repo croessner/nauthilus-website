@@ -8,11 +8,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "OpenAPI",
-      link: {
-        type: "doc",
-        id: "api-reference/management/open-api",
-      },
+      label: "/api/v1/openapi",
       collapsed: true,
       items: [
         {
@@ -31,11 +27,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Authentication",
-      link: {
-        type: "doc",
-        id: "api-reference/management/authentication",
-      },
+      label: "/api/v1/auth",
       collapsed: true,
       items: [
         {
@@ -62,15 +54,35 @@ const sidebar: SidebarsConfig = {
           label: "Authenticate with a strict CBOR request body.",
           className: "api-method post",
         },
+        {
+          type: "doc",
+          id: "api-reference/management/get-header-auth",
+          label: "Authenticate using configured HTTP request headers.",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "api-reference/management/post-header-auth",
+          label: "Authenticate using configured HTTP request headers.",
+          className: "api-method post",
+        },
+        {
+          type: "doc",
+          id: "api-reference/management/get-nginx-auth",
+          label: "Authenticate an NGINX auth_http request.",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "api-reference/management/post-nginx-auth",
+          label: "Authenticate an NGINX auth_http request.",
+          className: "api-method post",
+        },
       ],
     },
     {
       type: "category",
-      label: "BruteForce",
-      link: {
-        type: "doc",
-        id: "api-reference/management/brute-force",
-      },
+      label: "/api/v1/bruteforce",
       collapsed: true,
       items: [
         {
@@ -101,11 +113,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Cache",
-      link: {
-        type: "doc",
-        id: "api-reference/management/cache",
-      },
+      label: "/api/v1/cache",
       collapsed: true,
       items: [
         {
@@ -124,11 +132,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Config",
-      link: {
-        type: "doc",
-        id: "api-reference/management/config",
-      },
+      label: "/api/v1/config",
       collapsed: true,
       items: [
         {
@@ -141,11 +145,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Async",
-      link: {
-        type: "doc",
-        id: "api-reference/management/async",
-      },
+      label: "/api/v1/async",
       collapsed: true,
       items: [
         {
@@ -158,11 +158,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "MFA",
-      link: {
-        type: "doc",
-        id: "api-reference/management/mfa",
-      },
+      label: "/api/v1/mfa",
       collapsed: true,
       items: [
         {
@@ -211,11 +207,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "OIDCSessions",
-      link: {
-        type: "doc",
-        id: "api-reference/management/oidc-sessions",
-      },
+      label: "/api/v1/oidc/sessions",
       collapsed: true,
       items: [
         {

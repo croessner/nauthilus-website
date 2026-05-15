@@ -8,11 +8,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "OpenAPI",
-      link: {
-        type: "doc",
-        id: "api-reference/idp/open-api",
-      },
+      label: "/.well-known",
       collapsed: true,
       items: [
         {
@@ -27,23 +23,19 @@ const sidebar: SidebarsConfig = {
           label: "Get the public IdP OpenAPI document as JSON.",
           className: "api-method get",
         },
-      ],
-    },
-    {
-      type: "category",
-      label: "OIDC",
-      link: {
-        type: "doc",
-        id: "api-reference/idp/oidc",
-      },
-      collapsed: true,
-      items: [
         {
           type: "doc",
           id: "api-reference/idp/get-oidc-discovery",
           label: "Get OIDC discovery metadata.",
           className: "api-method get",
         },
+      ],
+    },
+    {
+      type: "category",
+      label: "/oidc",
+      collapsed: true,
+      items: [
         {
           type: "doc",
           id: "api-reference/idp/authorize-oidc",
@@ -126,11 +118,7 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "SAML",
-      link: {
-        type: "doc",
-        id: "api-reference/idp/saml",
-      },
+      label: "/saml",
       collapsed: true,
       items: [
         {
@@ -161,60 +149,14 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "Browser",
-      link: {
-        type: "doc",
-        id: "api-reference/idp/browser",
-      },
+      label: "/login and /logout",
       collapsed: true,
       items: [
-        {
-          type: "doc",
-          id: "api-reference/idp/get-oidc-device-verify",
-          label: "Render the device verification page.",
-          className: "api-method get",
-        },
-        {
-          type: "doc",
-          id: "api-reference/idp/post-oidc-device-verify",
-          label: "Submit a device verification code.",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "api-reference/idp/get-oidc-device-consent",
-          label: "Render the device consent page.",
-          className: "api-method get",
-        },
-        {
-          type: "doc",
-          id: "api-reference/idp/post-oidc-device-consent",
-          label: "Submit device consent.",
-          className: "api-method post",
-        },
-        {
-          type: "doc",
-          id: "api-reference/idp/oidc-logout",
-          label: "Start OIDC logout.",
-          className: "api-method get",
-        },
         {
           type: "doc",
           id: "api-reference/idp/browser-logout",
           label: "Start browser logout.",
           className: "api-method get",
-        },
-        {
-          type: "doc",
-          id: "api-reference/idp/get-oidc-consent",
-          label: "Render the OIDC consent page.",
-          className: "api-method get",
-        },
-        {
-          type: "doc",
-          id: "api-reference/idp/post-oidc-consent",
-          label: "Submit OIDC consent.",
-          className: "api-method post",
         },
         {
           type: "doc",

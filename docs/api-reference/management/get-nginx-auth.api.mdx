@@ -1,0 +1,67 @@
+---
+id: get-nginx-auth
+title: "Authenticate an NGINX auth_http request."
+description: "Reads NGINX mail auth_http-compatible headers and returns the decision through Auth-* response headers. NGINX mode intentionally returns HTTP 200 for authentication failures and communicates the result via Auth-Status."
+sidebar_label: "Authenticate an NGINX auth_http request."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "get api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Authenticate an NGINX auth_http request."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/api/v1/auth/nginx"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Reads NGINX mail auth_http-compatible headers and returns the decision through Auth-* response headers. NGINX mode intentionally returns HTTP 200 for authentication failures and communicates the result via Auth-Status.
+
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./get-nginx-auth.ParamsDetails.json")}
+>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./get-nginx-auth.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./get-nginx-auth.StatusCodes.json")}
+>
+
+</StatusCodes>

@@ -1,1 +1,1 @@
-{"schema":{"type":"object","properties":{"errors":{"type":"array","items":{"type":"object","properties":{"field":{"type":"string"},"message":{"type":"string"}},"title":"FieldError"}}},"title":"FieldErrorResponse"},"schemaType":"response"}
+{"schema":{"type":"object","required":["errors"],"properties":{"errors":{"type":"array","items":{"type":"object","properties":{"field":{"type":"string"},"message":{"type":"string"}},"title":"FieldError"}}},"title":"FieldErrorResponse"},"schemaType":"response"}

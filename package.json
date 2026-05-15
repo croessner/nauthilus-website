@@ -14,7 +14,7 @@
     "write-heading-ids": "docusaurus write-heading-ids",
     "openapi:sync": "node scripts/sync-openapi.mjs",
     "openapi:generate": "npm run openapi:sync && docusaurus clean-api-docs all && npm run openapi:sync && docusaurus gen-api-docs all && node scripts/sync-openapi.mjs --clean-generated",
-    "openapi:check": "node scripts/sync-openapi.mjs --check"
+    "openapi:check": "node scripts/check-openapi-generated.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.10.1",

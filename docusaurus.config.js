@@ -6,6 +6,8 @@
 
 import {themes as prismThemes} from 'prism-react-renderer';
 import { createRequire } from 'module';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 // Determine the latest product release including patch (e.g. 2.1.0).
 const require = createRequire(import.meta.url);
@@ -24,6 +26,84 @@ const latestProductVersion =
 
 // The docs dropdown should display major.minor only.
 const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');
+
+async function generateDocumentationSidebar(args) {
+  const items = await args.defaultSidebarItemsGenerator(args);
+
+  if (!items.some(isAPIReferenceCategory)) {
+    return items;
+  }
+
+  const apiReferenceSidebar = await loadAPIReferenceSidebar();
+
+  if (!apiReferenceSidebar) {
+    return items;
+  }
+
+  return items.map((item) => {
+    if (isAPIReferenceCategory(item)) {
+      return apiReferenceSidebar;
+    }
+
+    return item;
+  });
+}
+
+function isAPIReferenceCategory(item) {
+  return item.type === 'category' && item.label === 'API Reference';
+}
+
+async function loadAPIReferenceSidebar() {
+  const [managementItems, idpItems] = await Promise.all([
+    loadGeneratedOpenAPISidebar('management'),
+    loadGeneratedOpenAPISidebar('idp'),
+  ]);
+
+  if (!managementItems || !idpItems) {
+    return undefined;
+  }
+
+  return {
+    type: 'category',
+    label: 'API Reference',
+    link: {
+      type: 'doc',
+      id: 'api-reference/index',
+    },
+    collapsed: true,
+    items: [
+      createOpenAPICategory('Management API', managementItems),
+      createOpenAPICategory('IdP API', idpItems),
+    ],
+  };
+}
+
+async function loadGeneratedOpenAPISidebar(key) {
+  const sidebarPath = fileURLToPath(new URL(`./docs/api-reference/${key}/sidebar.ts`, import.meta.url));
+
+  if (!fs.existsSync(sidebarPath)) {
+    return undefined;
+  }
+
+  const module = require(sidebarPath);
+
+  return module.default;
+}
+
+function createOpenAPICategory(label, items) {
+  const [overviewItem, ...apiItems] = items;
+  const link = overviewItem?.type === 'doc'
+    ? { type: 'doc', id: overviewItem.id }
+    : undefined;
+
+  return {
+    type: 'category',
+    label,
+    ...(link && { link }),
+    collapsed: true,
+    items: apiItems,
+  };
+}
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -60,6 +140,7 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
+          sidebarItemsGenerator: generateDocumentationSidebar,
           docItemComponent: '@theme/ApiItem',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
@@ -293,7 +374,6 @@ const config = {
             showSchemas: true,
             sidebarOptions: {
               groupPathsBy: 'tag',
-              categoryLinkSource: 'tag',
               sidebarCollapsed: true,
             },
           },
@@ -304,7 +384,6 @@ const config = {
             showSchemas: true,
             sidebarOptions: {
               groupPathsBy: 'tag',
-              categoryLinkSource: 'tag',
               sidebarCollapsed: true,
             },
           },

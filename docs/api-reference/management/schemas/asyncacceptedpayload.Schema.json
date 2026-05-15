@@ -1,1 +1,1 @@
-{"schema":{"type":"object","required":["jobId","status"],"properties":{"jobId":{"type":"string"},"status":{"type":"string","enum":["QUEUED"]}},"title":"AsyncAcceptedPayload"},"schemaType":"response"}
+{"schema":{"type":"object","required":["jobId","status"],"properties":{"jobId":{"type":"string"},"status":{"type":"string","description":"The initial state returned immediately after the job is accepted.","enum":["QUEUED"],"x-enum-varnames":["AsyncAcceptedStatusQueued"]}},"title":"AsyncAcceptedPayload"},"schemaType":"response"}

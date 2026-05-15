@@ -51,6 +51,11 @@ runtime:
 
       disabled_endpoints: {}
 
+      openapi_validation:
+        enabled: false
+        enforce: false
+        operations: []
+
       middlewares:
         logging: true
         limit: true

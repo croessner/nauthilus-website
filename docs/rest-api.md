@@ -19,7 +19,8 @@ The authentication API is available below `/api/v1/auth/`:
 
 - `/api/v1/auth/json` accepts JSON request bodies.
 - `/api/v1/auth/cbor` accepts CBOR request bodies.
-- `/api/v1/auth/header`, `/api/v1/auth/basic`, and `/api/v1/auth/nginx` map request metadata from headers, Basic auth, or NGINX-style form fields.
+- `/api/v1/auth/header` and `/api/v1/auth/nginx` map request metadata from headers or NGINX-style form fields.
+- `/api/v1/auth/basic` maps end-user credentials from the HTTP Basic `Authorization` header. This endpoint exists only in binaries built with the Go build tag `auth_basic_endpoint`.
 
 The JSON and CBOR endpoints use the same logical request model. CBOR clients must send `Content-Type: application/cbor`; JSON clients must send `Content-Type: application/json`.
 
@@ -179,6 +180,8 @@ runtime:
         auth_cbor: true
 ```
 
+The Basic authentication endpoint is different from `auth.backchannel.basic_auth`. Backchannel Basic auth protects management routes. `/api/v1/auth/basic` is an authentication protocol endpoint and is only present when the binary was built with `-tags auth_basic_endpoint`; `runtime.servers.http.disabled_endpoints.auth_basic` only has an effect for that tagged binary.
+
 ## Header Authentication Example
 
 ```text
@@ -201,6 +204,20 @@ auth:
     oidc_bearer:
       enabled: true
 ```
+
+## OpenAPI Contracts and Runtime Validation
+
+Nauthilus serves its management OpenAPI contract at:
+
+- `/api/v1/openapi.yaml`
+- `/api/v1/openapi.json`
+
+The public IdP contract is served at:
+
+- `/.well-known/openapi.yaml`
+- `/.well-known/openapi.json`
+
+These documents are the stable machine-readable contracts used by the generated client checks and by the website API reference. Runtime request validation is optional and default-off. When enabled, it validates only selected management operation IDs such as cache flush and brute-force list/flush requests. See [Runtime, Observability, and Storage](configuration/server-configuration.md#openapi-runtime-request-validation) for the configuration block and the current operation allowlist.
 
 ## Configuration Endpoint Example
 

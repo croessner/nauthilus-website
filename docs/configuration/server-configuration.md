@@ -88,6 +88,53 @@ runtime:
         burst: 400
 ```
 
+### OpenAPI Runtime Request Validation
+
+Nauthilus publishes stable OpenAPI contracts for the management API and the public IdP API. The runtime request validation block is optional and disabled by default. Existing production deployments do not need to add this block unless they explicitly want Nauthilus to reject selected malformed management requests before handler execution.
+
+Default configuration:
+
+```yaml
+runtime:
+  servers:
+    http:
+      openapi_validation:
+        enabled: false
+        enforce: false
+        operations: []
+```
+
+To enable runtime request validation, set both `enabled` and `enforce` to `true` and select at least one supported operation ID. Warn-only validation is not supported; validation is either off or enforcing.
+
+```yaml
+runtime:
+  servers:
+    http:
+      openapi_validation:
+        enabled: true
+        enforce: true
+        operations:
+          - flushUserCache
+          - enqueueUserCacheFlush
+          - flushBruteForceRule
+          - enqueueBruteForceRuleFlush
+          - listBruteForceEntries
+          - listFilteredBruteForceEntries
+```
+
+Supported operation IDs:
+
+| Operation ID | Route |
+|---|---|
+| `flushUserCache` | `DELETE /api/v1/cache/flush` |
+| `enqueueUserCacheFlush` | `DELETE /api/v1/cache/flush/async` |
+| `flushBruteForceRule` | `DELETE /api/v1/bruteforce/flush` |
+| `enqueueBruteForceRuleFlush` | `DELETE /api/v1/bruteforce/flush/async` |
+| `listBruteForceEntries` | `GET /api/v1/bruteforce/list` |
+| `listFilteredBruteForceEntries` | `POST /api/v1/bruteforce/list` |
+
+The validator uses the same OpenAPI contract that Nauthilus serves at `/api/v1/openapi.yaml` and `/api/v1/openapi.json`. It currently covers only the selected management operations above. Authentication behavior, auth protocol handling, CBOR decoding, and IdP browser/protocol flows stay implemented by the normal runtime code paths.
+
 ### gRPC Authority Listener
 
 The gRPC authority listener is a separate optional listener. It exposes the gRPC AuthService with the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener. It also hosts the internal identity backend service used by split edge/authority deployments.

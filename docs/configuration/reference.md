@@ -25,6 +25,8 @@ Examples:
 | YAML path | Environment variable |
 |---|---|
 | `runtime.servers.http.address` | `NAUTHILUS_RUNTIME_SERVERS_HTTP_ADDRESS` |
+| `runtime.servers.http.openapi_validation.enabled` | `NAUTHILUS_RUNTIME_SERVERS_HTTP_OPENAPI_VALIDATION_ENABLED` |
+| `runtime.servers.http.openapi_validation.operations` | `NAUTHILUS_RUNTIME_SERVERS_HTTP_OPENAPI_VALIDATION_OPERATIONS` |
 | `runtime.servers.grpc.authority.address` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_ADDRESS` |
 | `runtime.servers.grpc.authority.tls.min_tls_version` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_TLS_MIN_TLS_VERSION` |
 | `runtime.clients.grpc.nauthilus_authorities.primary.address` | `NAUTHILUS_RUNTIME_CLIENTS_GRPC_NAUTHILUS_AUTHORITIES_PRIMARY_ADDRESS` |

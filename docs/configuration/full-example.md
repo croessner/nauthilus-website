@@ -24,6 +24,9 @@ nauthilus -n --config /etc/nauthilus/nauthilus.yml
 ## Current Reference Example
 
 ```yaml
+# Built-in placeholders are expanded in string values after includes and patches.
+# NAUTHILUS_CONF_DIR defaults to /etc/nauthilus.
+# NAUTHILUS_PLUGINS_DIR defaults to the packaged Lua plugin root.
 runtime:
   instance_name: "nauthilus"
 
@@ -134,9 +137,9 @@ runtime:
           tls:
             enabled: true
             server_name: "authority.internal.example"
-            ca: "/etc/nauthilus/tls/authority-ca.pem"
-            cert: "/etc/nauthilus/tls/edge-a.crt"
-            key: "/etc/nauthilus/tls/edge-a.key"
+            ca: "${NAUTHILUS_CONF_DIR}/tls/authority-ca.pem"
+            cert: "${NAUTHILUS_CONF_DIR}/tls/edge-a.crt"
+            key: "${NAUTHILUS_CONF_DIR}/tls/edge-a.key"
             min_tls_version: "TLS1.3"
 
           caller_auth:
@@ -152,7 +155,7 @@ runtime:
               client_id: "edge-primary"
               client_secret: ""
               token_endpoint_auth_method: "private_key_jwt"
-              client_private_key_file: "/etc/nauthilus/keys/edge-primary.key"
+              client_private_key_file: "${NAUTHILUS_CONF_DIR}/keys/edge-primary.key"
               client_key_id: "edge-primary-rs256"
               client_assertion_alg: "RS256"
               audience: "https://authority.internal.example/oidc/token"
@@ -215,6 +218,12 @@ observability:
     prometheus_timer:
       enabled: false
       labels: []
+
+    endpoint_auth:
+      basic:
+        enabled: false
+        username: ""
+        password: ""
 
 storage:
   redis:
@@ -381,7 +390,7 @@ auth:
     lua:
       backend:
         default:
-          package_path: ""
+          package_path: "${NAUTHILUS_PLUGINS_DIR}/share/?.lua;${NAUTHILUS_CONF_DIR}/lua/?.lua"
         named_backends: {}
         search: []
 
@@ -598,9 +607,9 @@ runtime:
 
         tls:
           enabled: true
-          cert: "/etc/nauthilus/tls/authority.crt"
-          key: "/etc/nauthilus/tls/authority.key"
-          client_ca: "/etc/nauthilus/tls/edge-client-ca.pem"
+          cert: "${NAUTHILUS_CONF_DIR}/tls/authority.crt"
+          key: "${NAUTHILUS_CONF_DIR}/tls/authority.key"
+          client_ca: "${NAUTHILUS_CONF_DIR}/tls/edge-client-ca.pem"
           min_tls_version: "TLS1.3"
           require_client_cert: true
 
@@ -641,9 +650,9 @@ runtime:
           tls:
             enabled: true
             server_name: "authority.internal.example"
-            ca: "/etc/nauthilus/tls/authority-ca.pem"
-            cert: "/etc/nauthilus/tls/edge-a.crt"
-            key: "/etc/nauthilus/tls/edge-a.key"
+            ca: "${NAUTHILUS_CONF_DIR}/tls/authority-ca.pem"
+            cert: "${NAUTHILUS_CONF_DIR}/tls/edge-a.crt"
+            key: "${NAUTHILUS_CONF_DIR}/tls/edge-a.key"
             min_tls_version: "TLS1.3"
           caller_auth:
             oidc_bearer:
@@ -652,7 +661,7 @@ runtime:
               token_endpoint: "https://authority.internal.example/oidc/token"
               client_id: "edge-primary"
               token_endpoint_auth_method: "private_key_jwt"
-              client_private_key_file: "/etc/nauthilus/keys/edge-primary.key"
+              client_private_key_file: "${NAUTHILUS_CONF_DIR}/keys/edge-primary.key"
               client_key_id: "edge-primary-rs256"
               client_assertion_alg: "RS256"
               audience: "https://authority.internal.example/oidc/token"

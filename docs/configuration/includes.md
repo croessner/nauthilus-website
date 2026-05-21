@@ -54,6 +54,10 @@ Merge order is deterministic:
 
 Later values win.
 
+After this merge and after patch application, Nauthilus expands `${NAME}` placeholders in final string values. Values from included files and patch `value` payloads participate in that expansion.
+
+Include paths themselves are not placeholder strings. Keep paths such as `config/base.yaml` literal; if include-path templating is needed, model it with `includes.env` instead of `${NAME}`.
+
 ## Example
 
 `nauthilus.yml`:

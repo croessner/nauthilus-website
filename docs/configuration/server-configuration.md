@@ -264,6 +264,11 @@ observability:
     prometheus_timer:
       enabled: false
       labels: []
+    endpoint_auth:
+      basic:
+        enabled: false
+        username: ""
+        password: ""
 ```
 
 Important paths:
@@ -274,6 +279,7 @@ Important paths:
 - `observability.tracing.*`
 - `observability.metrics.monitor_connections`
 - `observability.metrics.prometheus_timer.*`
+- `observability.metrics.endpoint_auth.basic.*`
 
 ## `storage`
 

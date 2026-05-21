@@ -7,7 +7,7 @@ sidebar_position: 2
 
 # Environment, Validation, and Dumps
 
-This page documents how the current config-v2 surface maps to environment variables, how validation behaves, and how to use the built-in dump modes.
+This page documents how the current config-v2 surface maps to environment variables, how value placeholders work, how validation behaves, and how to use the built-in dump modes.
 
 ## Environment Variables
 
@@ -33,6 +33,9 @@ Examples:
 | `runtime.clients.grpc.nauthilus_authorities.primary.caller_auth.oidc_bearer.client_id` | `NAUTHILUS_RUNTIME_CLIENTS_GRPC_NAUTHILUS_AUTHORITIES_PRIMARY_CALLER_AUTH_OIDC_BEARER_CLIENT_ID` |
 | `runtime.timeouts.lua_script` | `NAUTHILUS_RUNTIME_TIMEOUTS_LUA_SCRIPT` |
 | `observability.log.level` | `NAUTHILUS_OBSERVABILITY_LOG_LEVEL` |
+| `observability.metrics.endpoint_auth.basic.enabled` | `NAUTHILUS_OBSERVABILITY_METRICS_ENDPOINT_AUTH_BASIC_ENABLED` |
+| `observability.metrics.endpoint_auth.basic.username` | `NAUTHILUS_OBSERVABILITY_METRICS_ENDPOINT_AUTH_BASIC_USERNAME` |
+| `observability.metrics.endpoint_auth.basic.password` | `NAUTHILUS_OBSERVABILITY_METRICS_ENDPOINT_AUTH_BASIC_PASSWORD` |
 | `storage.redis.primary.address` | `NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS` |
 | `auth.request.headers.username` | `NAUTHILUS_AUTH_REQUEST_HEADERS_USERNAME` |
 | `auth.backchannel.basic_auth.username` | `NAUTHILUS_AUTH_BACKCHANNEL_BASIC_AUTH_USERNAME` |
@@ -47,6 +50,56 @@ Use environment variables primarily for:
 - secrets
 - containerized setups
 
+These variables are Viper overrides. They replace the effective value of the matching canonical configuration path after the file tree has been loaded.
+
+## Value Placeholders
+
+String values in configuration files may reference operating-system environment variables with `${NAME}` placeholders:
+
+```yaml
+storage:
+  redis:
+    primary:
+      address: "${REDIS_ADDRESS}"
+      password: "${REDIS_PASSWORD}"
+
+auth:
+  backends:
+    ldap:
+      default:
+        server_uri:
+          - "ldap://${LDAP_HOST}:389"
+        bind_pw: "${LDAP_BIND_PASSWORD}"
+```
+
+`NAME` must start with a letter or `_` and may then contain letters, digits, or `_`. Placeholders are expanded only inside string values, including values nested in maps and lists.
+
+Expansion happens after root config, includes, and patch `value` payloads have been merged, and before strict decoding and validation. Missing variables are fatal during startup and `--config-check`; the error includes the affected config path and the missing variable name. Expanded secret values are not printed in those errors.
+
+Built-in placeholders are available even when the OS environment does not define them:
+
+| Placeholder | Non-container default | Docker image default |
+|---|---|---|
+| `${NAUTHILUS_CONF_DIR}` | `/etc/nauthilus` | `/etc/nauthilus` |
+| `${NAUTHILUS_PLUGINS_DIR}` | `/usr/local/share/nauthilus/lua-plugins.d` | `/usr/app/lua-plugins.d` |
+
+An OS environment variable with the same name overrides the compiled built-in value.
+
+Use `$${NAME}` when a literal `${NAME}` string should remain in the final configuration.
+
+### Placeholders versus `NAUTHILUS_*` Overrides
+
+Value placeholders and `NAUTHILUS_*` overrides are different mechanisms:
+
+| Mechanism | Example | Scope | Precedence |
+|---|---|---|---|
+| Value placeholder | `address: "${REDIS_ADDRESS}"` | interpolates a string value inside the loaded file tree | happens before Viper environment overrides |
+| Viper override | `NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS=redis:6379` | replaces the canonical config path `storage.redis.primary.address` | wins over the expanded file value |
+
+This means a file value such as `storage.redis.primary.address: "${REDIS_ADDRESS}"` can still be overridden by `NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS`.
+
+Placeholders do not expand map keys. They also do not expand `includes` paths, patch `path` fields, or YAML structure. If you need a dynamic value inside a map, keep the key static and put the placeholder in the value.
+
 ## Loader-Only Roots
 
 These top-level keys are loader mechanics, not runtime roots:
@@ -55,7 +108,7 @@ These top-level keys are loader mechanics, not runtime roots:
 - `env`
 - `patch`
 
-They are processed before the final runtime configuration is built.
+They are processed before the final runtime configuration is built. Include paths and patch paths are loader controls and are not environment-template strings; final values produced by included files and patch payloads are expanded.
 
 ## Validation
 
@@ -90,7 +143,7 @@ This prints the canonical default configuration as sorted `path = value` lines.
 nauthilus -n --config /etc/nauthilus/nauthilus.yml
 ```
 
-This prints only values that differ from defaults after includes, environment overrides, and patches have been applied.
+This prints only values that differ from defaults after includes, patches, value expansion, and environment overrides have been applied.
 
 ### Print Sensitive Values
 
@@ -118,6 +171,7 @@ Examples of values redacted by default:
 
 - `storage.redis.password_nonce`
 - `storage.redis.encryption_secret`
+- `observability.metrics.endpoint_auth.basic.password`
 - `runtime.clients.grpc.nauthilus_authorities.<name>.caller_auth.basic_auth.password`
 - `runtime.clients.grpc.nauthilus_authorities.<name>.caller_auth.oidc_bearer.client_secret`
 - `auth.request.headers.password`

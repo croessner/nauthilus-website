@@ -9,52 +9,46 @@ sidebar_position: 3
 There is some limited support for Prometheus and Grafana. For an example have a look at the contrib folder included with
 the source code.
 
-## Authentication for Metrics Endpoint
+## Endpoint Authentication
 
-The metrics endpoint (`/metrics`) is secured with authentication to prevent unauthorized access to sensitive monitoring data. The following authentication methods are supported:
+Nauthilus exposes Prometheus metrics on the HTTP listener at `/metrics`.
+The endpoint is open unless dedicated metrics authentication is enabled.
 
-1. **JWT Authentication**: If JWT authentication is enabled, users must have the "security" role to access the metrics endpoint.
-2. **Basic Authentication**: If Basic Authentication is enabled, users must provide valid credentials to access the metrics endpoint.
-3. **No Authentication**: If neither JWT nor Basic Authentication is enabled, the metrics endpoint is accessible without authentication.
+Use `observability.metrics.endpoint_auth.basic` to protect `/metrics` with HTTP Basic authentication:
+
+```yaml
+observability:
+  metrics:
+    endpoint_auth:
+      basic:
+        enabled: true
+        username: prometheus
+        password: "replace-with-a-long-random-secret"
+```
+
+This authentication block is specific to the metrics endpoint.
+It does not reuse `auth.backchannel.basic_auth`, and `/metrics` does not accept Bearer or OIDC authentication.
+
+When `observability.metrics.endpoint_auth.basic.enabled=true`, both `username` and `password` are required during configuration validation.
+Requests without valid credentials return HTTP `401` with a Basic authentication challenge.
+
+If the block is disabled or omitted, `/metrics` remains accessible without authentication.
 
 ## Prometheus Configuration
 
-### Basic Authentication
-
-If you're using Basic Authentication, configure Prometheus as follows:
+Configure Prometheus with matching credentials:
 
 ```yaml
+scrape_configs:
   - job_name: nauthilus
+    metrics_path: /metrics
     scheme: https
     static_configs:
       - targets:
           - nauthilus.example.test:9443
     basic_auth:
-      username: "nauthilususer"
-      password: "nauthiluspassword"
+      username: prometheus
+      password: "replace-with-a-long-random-secret"
 ```
 
-### JWT Authentication
-
-If you're using JWT Authentication, configure Prometheus as follows:
-
-```yaml
-  - job_name: nauthilus
-    scheme: https
-    static_configs:
-      - targets:
-          - nauthilus.example.test:9443
-    authorization:
-      type: Bearer
-      credentials: "your_jwt_token"
-```
-
-You can generate a JWT token with the "security" role using the `/api/v1/jwt/token` endpoint:
-
-```bash
-curl -X POST http://nauthilus:8080/api/v1/jwt/token \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"your_password"}'
-```
-
-The response will include a token that you can use in the Prometheus configuration.
+For scrapes that cross a trust boundary, use HTTPS or a private scrape network in addition to Basic authentication.

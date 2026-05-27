@@ -32,6 +32,38 @@ Optional legacy GET support for `/oidc/token` is controlled by:
 
 - `identity.oidc.tokens.token_endpoint_allow_get`
 
+## CORS for Discovery
+
+OIDC discovery endpoints are often fetched directly by browser-based clients. Configure cross-origin behavior under `runtime.servers.http.cors`, not directly below `runtime.http`:
+
+```yaml
+runtime:
+  servers:
+    http:
+      cors:
+        enabled: true
+        policies:
+          - name: "oidc_discovery"
+            enabled: true
+            path_prefixes:
+              - "/.well-known/"
+            allow_origins:
+              - "https://app.example.com"
+            allow_methods:
+              - "GET"
+              - "OPTIONS"
+            allow_headers:
+              - "Authorization"
+              - "Content-Type"
+            expose_headers: []
+            allow_credentials: false
+            max_age: 600
+```
+
+Policies are evaluated in order. The first enabled policy whose `path_prefixes` entry matches the request path controls the response.
+
+If Nauthilus is behind a reverse proxy or identity sidecar that filters response headers, forward at least `Vary` and the `Access-Control-*` response headers. Otherwise the browser can report a missing `Access-Control-Allow-Origin` header even though Nauthilus emitted it.
+
 ## Example
 
 ```yaml

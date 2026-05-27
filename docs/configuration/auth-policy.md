@@ -364,6 +364,13 @@ Built-in request attributes are:
 | `request.client.ip.present` | bool | all | True when the effective client IP parsed successfully. |
 | `request.client.ip.trusted` | bool | all | True when the selected source is trusted for scheduler decisions. |
 | `request.client.ip.source` | string | all | Source label such as `direct_peer`, `proxy_protocol`, `trusted_proxy_header`, `grpc_peer`, `metadata`, or `unknown`. |
+| `request.caller.ip` | ip | all | Direct caller IP as seen by Nauthilus at the transport boundary. |
+| `request.caller.ip.present` | bool | all | True when the caller IP parsed successfully. |
+| `request.caller.ip.source` | string | all | Source label for the caller IP, such as the socket peer or proxy-protocol peer. |
+| `request.local.ip` | ip | all | Local server IP reported by the authentication request, for example Dovecot's `local_ip`. |
+| `request.local.ip.present` | bool | all | True when the reported local IP parsed successfully. |
+| `request.local.port` | string | all | Local server port reported by the authentication request. |
+| `request.local.port.present` | bool | all | True when the reported local port is present. |
 | `request.protocol` | string | all | Effective authentication protocol, such as `imap`, `smtp`, `submission`, `http`, or IdP-related protocol names. |
 | `request.transport.kind` | string | all | Transport family such as HTTP, gRPC, mail protocol, IdP, hook, internal, or unknown. |
 | `request.listener.name` | string | all | Configured listener identity when available. |
@@ -602,6 +609,13 @@ Scheduler guards should use conservative, request-local attributes that are avai
 | `request.client.ip.present` | bool | server-derived | Require a stable parsed client IP before matching. |
 | `request.client.ip.trusted` | bool | server-derived | Prevent untrusted headers or metadata from skipping checks. |
 | `request.client.ip.source` | string | server-derived | Explain where the IP came from, such as `direct_peer`, `proxy_protocol`, `trusted_proxy_header`, `grpc_peer`, `metadata`, or `unknown`. |
+| `request.caller.ip` | ip | transport-derived | Check which proxy, director, or frontend connected to Nauthilus. |
+| `request.caller.ip.present` | bool | server-derived | Require a parsed direct caller before matching caller-network rules. |
+| `request.caller.ip.source` | string | server-derived | Explain where the caller IP came from. |
+| `request.local.ip` | ip | request adapter value | Check the server-side endpoint reported by the mail/auth adapter, such as Dovecot `local_ip`. |
+| `request.local.ip.present` | bool | server-derived parse result | Require a parsed local server IP before matching local endpoint rules. |
+| `request.local.port` | string | request adapter value | Scope policies to a reported local service port. |
+| `request.local.port.present` | bool | server-derived presence flag | Require a reported local service port before matching port rules. |
 | `request.transport.kind` | string | server-derived | Distinguish HTTP, gRPC, mail protocol, IdP, hook, or internal execution. |
 | `request.listener.name` | string | configured listener identity | Prefer listener identity over IP when deployments have separate internal and external listeners. |
 | `request.connection.tls` | bool | transport-derived | Depend on already-known transport security, not on a check result. |
@@ -645,6 +659,73 @@ if:
 ```
 
 When any of these facts is missing or false, the guard does not match and the protected check runs.
+
+### Caller and Local Endpoint Policies
+
+Use `request.caller.ip` when the policy needs the direct caller that connected to Nauthilus, such as an HAProxy, director, or trusted frontend. Use `request.local.ip` and `request.local.port` when the request adapter reports the server-side endpoint that accepted the original protocol connection, such as Dovecot `local_ip` and `local_port`.
+
+For master-user authentication, combine these request facts with `auth.master_user.active`:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        master_user_haproxy_callers:
+          - 192.168.0.5/32
+          - 192.168.0.6/32
+        master_user_dovecot_local_ips:
+          - 192.168.0.2/32
+
+    policies:
+      - name: deny_master_user_outside_trusted_haproxy_dovecot_path
+        stage: auth_decision
+        operations: ["authenticate"]
+        if:
+          all:
+            - attribute: auth.master_user.active
+              is: true
+            - not:
+                all:
+                  - attribute: request.caller.ip.present
+                    is: true
+                  - attribute: request.caller.ip
+                    cidr_contains: "@network.master_user_haproxy_callers"
+                  - attribute: request.local.ip.present
+                    is: true
+                  - attribute: request.local.ip
+                    cidr_contains: "@network.master_user_dovecot_local_ips"
+        then:
+          decision: deny
+          fsm_event_marker: auth.fsm.event.auth_deny
+          response_marker: auth.response.fail
+```
+
+For identity lookup, use the same caller and local endpoint checks without `auth.master_user.active`:
+
+```yaml
+auth:
+  policy:
+    policies:
+      - name: deny_lookup_identity_outside_trusted_haproxy_dovecot_path
+        stage: auth_decision
+        operations: ["lookup_identity"]
+        if:
+          not:
+            all:
+              - attribute: request.caller.ip.present
+                is: true
+              - attribute: request.caller.ip
+                cidr_contains: "@network.master_user_haproxy_callers"
+              - attribute: request.local.ip.present
+                is: true
+              - attribute: request.local.ip
+                cidr_contains: "@network.master_user_dovecot_local_ips"
+        then:
+          decision: deny
+          fsm_event_marker: auth.fsm.event.auth_deny
+          response_marker: auth.response.fail
+```
 
 ### Time-Window Guards
 
@@ -1313,6 +1394,13 @@ The built-in registry includes at least these attributes.
 | `request.client.ip.present` | `pre_auth` | all | bool | none |
 | `request.client.ip.trusted` | `pre_auth` | all | bool | none |
 | `request.client.ip.source` | `pre_auth` | all | string | none |
+| `request.caller.ip` | `pre_auth` | all | ip | none |
+| `request.caller.ip.present` | `pre_auth` | all | bool | none |
+| `request.caller.ip.source` | `pre_auth` | all | string | none |
+| `request.local.ip` | `pre_auth` | all | ip | none |
+| `request.local.ip.present` | `pre_auth` | all | bool | none |
+| `request.local.port` | `pre_auth` | all | string | none |
+| `request.local.port.present` | `pre_auth` | all | bool | none |
 | `request.transport.kind` | `pre_auth` | all | string | none |
 | `request.listener.name` | `pre_auth` | all | string | none |
 | `request.connection.tls` | `pre_auth` | all | bool | none |
@@ -1362,6 +1450,7 @@ The built-in registry includes at least these attributes.
 | `auth.rbl.error` | `pre_auth` | `authenticate`, `lookup_identity` | bool | `reason_code`, `retryable` |
 | `auth.authenticated` | `auth_backend` | `authenticate` | bool | `backend` |
 | `auth.identity.found` | `auth_backend` | `lookup_identity` | bool | `backend` |
+| `auth.master_user.active` | `auth_backend` | `authenticate` | bool | `backend`, `master_user`, `target_user` |
 | `auth.backend.tempfail` | `auth_backend` | `authenticate`, `lookup_identity` | bool | `backend`, `reason_code`, `retryable` |
 | `auth.backend.empty_username` | `auth_backend` | `authenticate`, `lookup_identity` | bool | none |
 | `auth.backend.empty_password` | `auth_backend` | `authenticate` | bool | none |

@@ -387,6 +387,12 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
+          id: "api-reference/management/schemas/pageinfo",
+          label: "PageInfo",
+          className: "schema",
+        },
+        {
+          type: "doc",
           id: "api-reference/management/schemas/recoverycodesresponse",
           label: "RecoveryCodesResponse",
           className: "schema",

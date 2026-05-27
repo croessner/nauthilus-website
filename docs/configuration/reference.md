@@ -38,6 +38,7 @@ Examples:
 | `observability.metrics.endpoint_auth.basic.password` | `NAUTHILUS_OBSERVABILITY_METRICS_ENDPOINT_AUTH_BASIC_PASSWORD` |
 | `storage.redis.primary.address` | `NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS` |
 | `auth.request.headers.username` | `NAUTHILUS_AUTH_REQUEST_HEADERS_USERNAME` |
+| `auth.pipeline.master_user.user_format` | `NAUTHILUS_AUTH_PIPELINE_MASTER_USER_USER_FORMAT` |
 | `auth.backchannel.basic_auth.username` | `NAUTHILUS_AUTH_BACKCHANNEL_BASIC_AUTH_USERNAME` |
 | `auth.backends.remote.default.authority` | `NAUTHILUS_AUTH_BACKENDS_REMOTE_DEFAULT_AUTHORITY` |
 | `auth.backends.remote.default.allowed_operations` | `NAUTHILUS_AUTH_BACKENDS_REMOTE_DEFAULT_ALLOWED_OPERATIONS` |

@@ -170,3 +170,17 @@ policy.emit_attribute({
 ```
 
 The emitted type, operation, and stage must match the registry definition.
+
+Lua backends can emit the built-in master-user fact through the dedicated helper:
+
+```lua
+local policy = require("nauthilus_policy")
+
+policy.emit_master_user({
+  active = true,
+  master_user = "admin@example.test",
+  target_user = "alice@example.test",
+})
+```
+
+This records `auth.master_user.active` for the active `authenticate` request and attaches `master_user` and `target_user` details when provided.

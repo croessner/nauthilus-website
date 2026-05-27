@@ -192,6 +192,13 @@ YAML policies do not dereference the Lua `request` object. Use the registered po
 | `request.client.ip.present` | no direct Lua field | fail-closed checks when the client IP is missing or invalid |
 | `request.client.ip.trusted` | no direct Lua field | source trust checks before a policy or scheduler guard relies on the IP |
 | `request.client.ip.source` | no direct Lua field | reporting and source-specific policy logic |
+| `request.caller.ip` | no direct Lua field | direct caller checks, such as HAProxy or director allowlists |
+| `request.caller.ip.present` | no direct Lua field | fail-closed checks when the direct caller IP is missing or invalid |
+| `request.caller.ip.source` | no direct Lua field | reporting and caller-source-specific policy logic |
+| `request.local.ip` | `request.local_ip` | server-side endpoint checks, such as Dovecot `local_ip` |
+| `request.local.ip.present` | no direct Lua field | fail-closed checks when the reported local IP is missing or invalid |
+| `request.local.port` | `request.local_port` | server-side endpoint port checks |
+| `request.local.port.present` | no direct Lua field | fail-closed checks when the reported local port is missing |
 | `request.protocol` | `request.protocol` | Protocol-specific behavior |
 | `request.operation` | no direct Lua field | `authenticate`, `lookup_identity`, or `list_accounts` decisions |
 | `request.time.now` | no direct Lua field | Time-window checks |
@@ -230,6 +237,42 @@ auth:
 ```
 
 The same network set can be used by a scheduler guard, but the effect is different: a policy rule decides `neutral`, `deny`, `permit`, or `tempfail`; a scheduler guard only decides whether a selected check adapter runs.
+
+Caller/local path example:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        haproxy_callers:
+          - 192.168.0.5/32
+          - 192.168.0.6/32
+        dovecot_local_ips:
+          - 192.168.0.2/32
+
+    policies:
+      - name: deny_lookup_identity_outside_trusted_path
+        stage: auth_decision
+        operations: [lookup_identity]
+        if:
+          not:
+            all:
+              - attribute: request.caller.ip.present
+                is: true
+              - attribute: request.caller.ip
+                cidr_contains: "@network.haproxy_callers"
+              - attribute: request.local.ip.present
+                is: true
+              - attribute: request.local.ip
+                cidr_contains: "@network.dovecot_local_ips"
+        then:
+          decision: deny
+          fsm_event_marker: auth.fsm.event.auth_deny
+          response_marker: auth.response.fail
+```
+
+For master-user authentication, add `auth.master_user.active == true` and scope the policy to `operations: [authenticate]`.
 
 Protocol example:
 

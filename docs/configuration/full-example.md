@@ -355,7 +355,7 @@ auth:
 
     master_user:
       enabled: false
-      delimiter: "*"
+      user_format: "{user}*{master_user}"
 
   upstreams:
     imap:
@@ -450,7 +450,8 @@ auth:
       hooks: []
 
   services:
-    enabled: []
+    enabled:
+      - "backend_health_checks"
 
     backend_health_checks:
       connect_timeout: 5s
@@ -460,7 +461,40 @@ auth:
       deep_interval: 10s
       failure_threshold: 1
       recovery_threshold: 1
-      targets: []
+      targets:
+        - protocol: "imap"
+          host: "imap.internal.example"
+          port: 993
+          deep_check: true
+          test_username: "healthcheck@example.org"
+          test_password: "change-me"
+          auth_mechanism: "auto"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
+
+        - protocol: "smtp"
+          host: "smtp.internal.example"
+          port: 465
+          deep_check: true
+          test_username: "healthcheck@example.org"
+          test_password: "change-me"
+          auth_mechanism: "PLAIN"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
+
+        - protocol: "http"
+          host: "auth-api.internal.example"
+          port: 443
+          request_uri: "/health"
+          deep_check: true
+          test_username: "healthcheck"
+          test_password: "change-me"
+          auth_mechanism: "BASIC"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
 
   policy:
     mode: "enforce"

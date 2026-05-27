@@ -1019,8 +1019,9 @@ Fields:
 
 Supported `expected_calls.method` values:
 - `emit_attribute`
+- `emit_master_user`
 
-The policy mock records calls to `emit_attribute(...)`. It does not build or validate a real `auth.policy` snapshot. Use production/config tests for registry ownership, stage, operation, and type validation. In Lua test fixtures, use `expected_calls` to assert that a script emits the expected policy fact.
+The policy mock records calls to `emit_attribute(...)` and `emit_master_user(...)`. It does not build or validate a real `auth.policy` snapshot. Use production/config tests for registry ownership, stage, operation, and type validation. In Lua test fixtures, use `expected_calls` to assert that a script emits the expected policy fact.
 
 The `arg_contains` value is matched against a stable string built from the emitted table:
 

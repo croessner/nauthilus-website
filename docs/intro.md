@@ -1,20 +1,33 @@
 ---
 title: Nauthilus
-description: Authentication and authorization server
-keywords: [Authentication]
+description: Central policy engine for infrastructure workflows
+keywords: [Policy engine, Infrastructure policy, Authentication, Authorization]
 sidebar_position: 1
 ---
 # Nauthilus
 
-Nauthilus is a universal authentication and authorization platform written in Go, designed as a central hub to handle
-various authentication requests (e.g., from mail servers or websites). It appears to be aimed at both developers and
-users who are looking for a unified solution for authentication and authorization.
+Nauthilus is a unified central policy engine written in Go for real-world infrastructure workflows. Authentication is
+one of its entry points, but the core idea is broader: operators get a single place to make consistent policy decisions
+across mail services, web applications, identity flows, MFA, LDAP, Lua-based policies, observability, and Redis-backed
+state.
 
 ## Community
 
 You can subscribe to a mailing list. Available lists can be found here:
 
 [https://lists.nauthilus.org](https://lists.nauthilus.org)
+
+## Support Nauthilus
+
+Nauthilus is maintained as an independent open source project. If it saves you time or runs in your infrastructure, you
+can support ongoing development through:
+
+- [GitHub Sponsors](https://github.com/sponsors/croessner) for one-time or recurring sponsorships
+- [PayPal](https://www.paypal.com/donate/?hosted_button_id=3XLD5KEJD7AQ8) for one-time or recurring donations
+
+Sponsorships and donations help sustain maintenance, security work, protocol compatibility, testing, documentation,
+release engineering, and long-term design. They are appreciated, but never required to use Nauthilus under the GPLv3
+license.
 
 ## Commercial support
 

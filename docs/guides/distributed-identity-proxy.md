@@ -314,6 +314,8 @@ identity:
 
 Use the smallest scope set needed by that edge tier.
 
+When the edge authenticates to `/oidc/token` with `private_key_jwt`, the assertion audience is the token endpoint URL. OIDC discovery also advertises `private_key_jwt` for `/oidc/introspect`; introspection callers must sign a separate assertion with the introspection endpoint URL as the audience.
+
 ## 7. Configure Edge Redis
 
 Edge Redis stores only edge-owned public IdP state:
@@ -547,6 +549,7 @@ Use this checklist before exposing the deployment:
 - [ ] Network policy blocks cross-Redis access.
 - [ ] Edge-to-authority gRPC uses mTLS.
 - [ ] Caller auth uses short-lived bearer tokens.
+- [ ] `private_key_jwt` token-acquisition and introspection audiences are endpoint-specific.
 - [ ] Edge token cache uses edge Redis.
 - [ ] Authority caller tokens use authority Redis.
 - [ ] Remote backend `allowed_operations` contains only needed operations.
@@ -566,7 +569,7 @@ Check:
 - authority token endpoint URL and network path;
 - authority OIDC client id;
 - `private_key_jwt` key pair and `kid`;
-- expected `audience`;
+- expected `audience`, which should match the token endpoint for caller-token acquisition;
 - authority OIDC scopes;
 - authority Redis availability for opaque token storage.
 

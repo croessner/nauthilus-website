@@ -32,6 +32,21 @@ Optional legacy GET support for `/oidc/token` is controlled by:
 
 - `identity.oidc.tokens.token_endpoint_allow_get`
 
+## Client Authentication Metadata
+
+OIDC discovery publishes token and introspection client-auth metadata separately:
+
+| Metadata | Values |
+| --- | --- |
+| `token_endpoint_auth_methods_supported` | Configured through `identity.oidc.token_endpoint_auth_methods_supported`; defaults to `client_secret_post`, `client_secret_basic`, `private_key_jwt`, and `none`. |
+| `token_endpoint_auth_signing_alg_values_supported` | `RS256` and `EdDSA` when `private_key_jwt` is advertised for the token endpoint. |
+| `introspection_endpoint_auth_methods_supported` | `client_secret_post`, `client_secret_basic`, and `private_key_jwt`. |
+| `introspection_endpoint_auth_signing_alg_values_supported` | `RS256` and `EdDSA`. |
+
+The introspection endpoint intentionally does not advertise or accept `none` client authentication.
+
+For `private_key_jwt`, the JWT `aud` claim must be the exact endpoint URL. Use `issuer + "/oidc/token"` for token requests and `issuer + "/oidc/introspect"` for introspection requests. A token-endpoint assertion is not reusable for introspection.
+
 ## CORS for Discovery
 
 OIDC discovery endpoints are often fetched directly by browser-based clients. Configure cross-origin behavior under `runtime.servers.http.cors`, not directly below `runtime.http`:
@@ -165,6 +180,8 @@ auth:
 Related request-header propagation for subject sources/logging lives at:
 
 - `auth.request.headers.oidc_cid`
+
+Clients that validate opaque OIDC bearer tokens through `/oidc/introspect` can authenticate with client secrets or `private_key_jwt`. For `private_key_jwt`, use the introspection endpoint URL as the client-assertion audience.
 
 ## Built-in Scope Families
 

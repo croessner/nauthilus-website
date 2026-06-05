@@ -114,6 +114,8 @@ identity:
 
 Opaque caller tokens are stored and validated by the authority using authority Redis.
 
+The `private_key_jwt` assertion used for caller-token acquisition uses the token endpoint URL as its `aud` value. If an operator, proxy, or service introspects those opaque tokens through `/oidc/introspect`, the introspection request uses a separate client assertion whose `aud` value is the introspection endpoint URL. The authority advertises both introspection client-auth methods and signing algorithms in OIDC discovery.
+
 ### Local Authority Backend
 
 The authority keeps the normal local backend configuration:
@@ -237,6 +239,8 @@ The current recommended caller-auth mode is OIDC bearer tokens from the authorit
 | `caller_auth.oidc_bearer.scopes` | recommended | empty | Authority scopes requested by the edge. |
 | `caller_auth.oidc_bearer.static_token_file` | dev/emergency only | empty | Static bearer token file. Requires developer or emergency mode. |
 | `caller_auth.oidc_bearer.static_token_emergency_mode` | no | `false` | Allows static-token use outside developer mode. |
+
+`caller_auth.oidc_bearer.audience` applies to token acquisition. Do not reuse that token-endpoint audience for a `private_key_jwt` introspection client assertion; introspection expects the introspection endpoint URL.
 
 ### Token Cache Fields
 

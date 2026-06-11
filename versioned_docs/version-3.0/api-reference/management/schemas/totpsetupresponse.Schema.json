@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["secret","qr_code_url"],"properties":{"secret":{"type":"string"},"qr_code_url":{"type":"string"}},"title":"TOTPSetupResponse"},"schemaType":"response"}

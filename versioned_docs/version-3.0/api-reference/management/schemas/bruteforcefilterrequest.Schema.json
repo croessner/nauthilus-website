@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"properties":{"accounts":{"type":"array","items":{"type":"string"}},"ip_addresses":{"type":"array","items":{"type":"string"}}},"title":"BruteForceFilterRequest"},"schemaType":"response"}

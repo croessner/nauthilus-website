@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"Public key credential request options.","content":{"application/json":{"schema":{"type":"object","additionalProperties":true}}}}}}

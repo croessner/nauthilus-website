@@ -1,0 +1,44 @@
+---
+title: TLS Enforcement / Cleartext Allowlist
+description: Configuration for auth.controls.tls_encryption.allow_cleartext_networks
+keywords: [Configuration, TLS, Cleartext, Networks]
+sidebar_position: 6
+---
+
+# TLS Enforcement / Cleartext Allowlist
+
+The TLS-enforcement control rejects unauthenticated cleartext connections except for explicitly trusted networks.
+
+The current path is:
+
+- `auth.controls.tls_encryption.allow_cleartext_networks`
+
+Enable it with:
+
+```yaml
+auth:
+  controls:
+    enabled:
+      - tls_encryption
+```
+
+## Example
+
+```yaml
+auth:
+  controls:
+    enabled:
+      - tls_encryption
+    tls_encryption:
+      allow_cleartext_networks:
+        - 127.0.0.0/8
+        - ::1
+        - 192.168.0.0/16
+        - fd00::/8
+```
+
+Notes:
+
+- localhost is only a candidate when the listener and trust boundary make it appropriate; loopback is not a universal proof of safety
+- old top-level `cleartext_networks` is no longer the public path
+- policy-controlled check skips belong under `auth.policy.scheduler_guards` and check-level `skip_if`, not in this control-specific allowlist

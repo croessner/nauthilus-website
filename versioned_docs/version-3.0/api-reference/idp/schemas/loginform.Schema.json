@@ -1,0 +1,1 @@
+{"schema":{"type":"object","properties":{"username":{"type":"string"},"password":{"type":"string","format":"password"}},"title":"LoginForm"},"schemaType":"response"}

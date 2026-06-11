@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["active"],"properties":{"active":{"type":"boolean"}},"additionalProperties":true,"title":"IntrospectionResponse"},"schemaType":"response"}

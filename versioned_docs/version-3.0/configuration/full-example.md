@@ -1,0 +1,753 @@
+---
+title: Full Configuration Example
+description: Complete current config-v2 reference for Nauthilus
+keywords: [Configuration, Example, Full, v2]
+sidebar_position: 11
+---
+
+# Full Configuration Example
+
+This page mirrors the current config-v2 reference structure.
+
+For the canonical defaults from a running binary, use:
+
+```bash
+nauthilus -d
+```
+
+For only the changed values of a concrete file, use:
+
+```bash
+nauthilus -n --config /etc/nauthilus/nauthilus.yml
+```
+
+## Current Reference Example
+
+```yaml
+# Built-in placeholders are expanded in string values after includes and patches.
+# NAUTHILUS_CONF_DIR defaults to /etc/nauthilus.
+# NAUTHILUS_PLUGINS_DIR defaults to the packaged Lua plugin root.
+runtime:
+  instance_name: "nauthilus"
+
+  process:
+    run_as_user: "nauthilus"
+    run_as_group: "nauthilus"
+    chroot: "/var/empty"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+      http3: false
+      haproxy_v2: false
+      trusted_proxies:
+        - "127.0.0.1"
+        - "::1"
+
+      tls:
+        enabled: false
+        skip_verify: false
+        min_tls_version: "TLS1.2"
+        cert: ""
+        key: ""
+        ca_file: ""
+
+      disabled_endpoints: {}
+
+      openapi_validation:
+        enabled: false
+        enforce: false
+        operations: []
+
+      middlewares:
+        logging: true
+        limit: true
+        recovery: true
+        trusted_proxies: true
+        request_decompression: true
+        response_compression: true
+        metrics: true
+        rate: true
+
+      compression:
+        enabled: false
+
+      keep_alive:
+        enabled: true
+        timeout: 30s
+        max_idle_connections: 100
+        max_idle_connections_per_host: 10
+
+      rate_limit:
+        per_second: 0
+        burst: 0
+
+    grpc:
+      authority:
+        enabled: false
+        address: "127.0.0.1:9444"
+
+        tls:
+          enabled: false
+          cert: ""
+          key: ""
+          client_ca: ""
+          min_tls_version: "TLS1.2"
+          require_client_cert: false
+
+  timeouts:
+    redis_read: 1s
+    redis_write: 2s
+    ldap_search: 3s
+    ldap_bind: 3s
+    ldap_modify: 5s
+    lua_backend: 5s
+    lua_script: 30s
+
+  clients:
+    http:
+      max_connections_per_host: 0
+      max_idle_connections: 0
+      max_idle_connections_per_host: 0
+      idle_connection_timeout: 0s
+      proxy: ""
+
+      tls:
+        skip_verify: false
+        min_tls_version: "TLS1.2"
+        cert: ""
+        key: ""
+        ca_file: ""
+        cipher_suites: []
+
+    dns:
+      resolver: ""
+      timeout: 5s
+      resolve_client_ip: false
+
+    grpc:
+      nauthilus_authorities:
+        primary:
+          address: "authority.internal.example:9444"
+          timeout: 5s
+          edge_cluster_id: "dmz-edge"
+          edge_instance_id: "edge-a"
+          split_strict_mode: true
+
+          tls:
+            enabled: true
+            server_name: "authority.internal.example"
+            ca: "${NAUTHILUS_CONF_DIR}/tls/authority-ca.pem"
+            cert: "${NAUTHILUS_CONF_DIR}/tls/edge-a.crt"
+            key: "${NAUTHILUS_CONF_DIR}/tls/edge-a.key"
+            min_tls_version: "TLS1.3"
+
+          caller_auth:
+            basic_auth:
+              enabled: false
+              username: ""
+              password: ""
+
+            oidc_bearer:
+              enabled: true
+              mode: "client_credentials"
+              token_endpoint: "https://authority.internal.example/oidc/token"
+              client_id: "edge-primary"
+              client_secret: ""
+              token_endpoint_auth_method: "private_key_jwt"
+              client_private_key_file: "${NAUTHILUS_CONF_DIR}/keys/edge-primary.key"
+              client_key_id: "edge-primary-rs256"
+              client_assertion_alg: "RS256"
+              audience: "https://authority.internal.example/oidc/token"
+              scopes:
+                - "nauthilus:authenticate"
+                - "nauthilus:lookup_identity"
+                - "nauthilus:list_accounts"
+                - "nauthilus:mfa_read"
+                - "nauthilus:mfa_verify"
+                - "nauthilus:mfa_write"
+                - "nauthilus:webauthn_read"
+                - "nauthilus:webauthn_write"
+                - "nauthilus:attribute_read"
+              static_token_file: ""
+              static_token_emergency_mode: false
+
+              token_cache:
+                backend: "redis"
+                key_prefix: "grpc:authority_tokens:"
+                refresh_before_expiry: 30s
+                refresh_lock_ttl: 10s
+
+observability:
+  log:
+    json: false
+    color: true
+    level: "info"
+    add_source: false
+    debug_modules: []
+
+  profiles:
+    pprof:
+      enabled: false
+    block:
+      enabled: false
+
+  tracing:
+    enabled: false
+    exporter: "none"
+    endpoint: ""
+    sampler_ratio: 0.1
+    service_name: "nauthilus"
+    propagators:
+      - "tracecontext"
+      - "baggage"
+    enable_redis: false
+    log_export_results: false
+
+    tls:
+      enabled: false
+      skip_verify: false
+      min_tls_version: "TLS1.2"
+      cert: ""
+      key: ""
+      ca_file: ""
+
+  metrics:
+    monitor_connections: false
+
+    prometheus_timer:
+      enabled: false
+      labels: []
+
+    endpoint_auth:
+      basic:
+        enabled: false
+        username: ""
+        password: ""
+
+storage:
+  redis:
+    protocol: 2
+    database_number: 0
+    prefix: "nt:"
+    password_nonce: ""
+    encryption_secret: ""
+    pool_size: 128
+    idle_pool_size: 32
+    positive_cache_ttl: 1h
+    negative_cache_ttl: 2h
+
+    primary:
+      address: "127.0.0.1:6379"
+      username: ""
+      password: ""
+
+    replica:
+      address: ""
+      addresses: []
+
+    sentinels:
+      master: ""
+      addresses: []
+      username: ""
+      password: ""
+
+    cluster:
+      addresses: []
+      username: ""
+      password: ""
+      route_by_latency: false
+      route_randomly: false
+      route_reads_to_replicas: false
+      max_redirects: 0
+
+    tls:
+      enabled: false
+      skip_verify: false
+      min_tls_version: "TLS1.2"
+      cert: ""
+      key: ""
+      ca_file: ""
+
+    pool_timeout: 1s
+    dial_timeout: 5s
+    read_timeout: 1s
+    write_timeout: 1s
+    pool_fifo: true
+    conn_max_idle_time: 90s
+    max_retries: 1
+    identity_enabled: false
+    maint_notifications_enabled: false
+
+    account_local_cache:
+      enabled: false
+      ttl: 1m
+      shards: 32
+      cleanup_interval: 5m
+      max_items: 10000
+
+    batching:
+      enabled: false
+      max_batch_size: 16
+      max_wait: 2ms
+      queue_capacity: 8192
+      skip_commands: []
+      pipeline_timeout: 5s
+
+    client_tracking:
+      enabled: false
+      bcast: false
+      noloop: false
+      opt_in: false
+      opt_out: false
+      prefixes: []
+
+auth:
+  request:
+    headers:
+      username: "Auth-User"
+      password: "Auth-Pass"
+      password_encoded: "X-Auth-Password-Encoded"
+      protocol: "Auth-Protocol"
+      login_attempt: "Auth-Login-Attempt"
+      auth_method: "Auth-Method"
+      local_ip: "X-Local-IP"
+      local_port: "X-Auth-Port"
+      client_ip: "Client-IP"
+      client_port: "X-Client-Port"
+      client_host: ""
+      client_id: "X-Client-ID"
+      oidc_cid: "X-OIDC-CID"
+      ssl: "X-SSL"
+      ssl_session_id: "X-SSL-Session-ID"
+      ssl_verify: "X-SSL-Client-Verify"
+      ssl_subject: "X-SSL-Client-DN"
+      ssl_client_cn: "X-SSL-Client-CN"
+      ssl_issuer: "X-SSL-Issuer"
+      ssl_client_not_before: "X-SSL-Client-NotBefore"
+      ssl_client_not_after: "X-SSL-Client-NotAfter"
+      ssl_subject_dn: "X-SSL-Subject-DN"
+      ssl_issuer_dn: "X-SSL-Issuer-DN"
+      ssl_client_subject_dn: "X-SSL-Client-Subject-DN"
+      ssl_client_issuer_dn: "X-SSL-Client-Issuer-DN"
+      ssl_cipher: "X-SSL-Cipher"
+      ssl_protocol: "X-SSL-Protocol"
+      ssl_serial: "Auth-SSL-Serial"
+      ssl_fingerprint: "Auth-SSL-Fingerprint"
+
+  backchannel:
+    basic_auth:
+      enabled: false
+      username: ""
+      password: ""
+
+    oidc_bearer:
+      enabled: false
+
+  pipeline:
+    max_concurrent_requests: 100
+    max_login_attempts: 15
+    wait_delay: 0
+    local_cache_ttl: 30s
+
+    password_history:
+      max_entries: 1000
+
+    master_user:
+      enabled: false
+      user_format: "{user}*{master_user}"
+
+  upstreams:
+    imap:
+      address: "127.0.0.1"
+      port: 143
+    pop3:
+      address: "127.0.0.1"
+      port: 110
+    smtp:
+      address: "127.0.0.1"
+      port: 25
+
+  backends:
+    order:
+      - "cache"
+      - "ldap"
+
+    ldap:
+      default:
+        lookup_pool_only: false
+        number_of_workers: 16
+        lookup_pool_size: 16
+        lookup_idle_pool_size: 4
+        auth_pool_size: 16
+        auth_idle_pool_size: 4
+        server_uri:
+          - "ldapi:///"
+
+      pools: {}
+      search: []
+
+    lua:
+      backend:
+        default:
+          package_path: "${NAUTHILUS_PLUGINS_DIR}/share/?.lua;${NAUTHILUS_CONF_DIR}/lua/?.lua"
+        named_backends: {}
+        search: []
+
+    remote:
+      default:
+        authority: "primary"
+        mode: "nauthilus"
+        timeout: 5s
+        allowed_operations:
+          - "auth"
+          - "lookup_identity"
+          - "list_accounts"
+          - "mfa_read"
+          - "mfa_verify"
+          - "mfa_write"
+          - "webauthn_read"
+          - "webauthn_write"
+          - "attribute_read"
+
+  controls:
+    enabled: []
+
+    tls_encryption:
+      allow_cleartext_networks: []
+
+    rbl:
+      threshold: 0
+      lists: []
+      ip_allowlist: []
+
+    relay_domains:
+      static: []
+      allowlist: {}
+
+    brute_force:
+      protocols: []
+      ip_allowlist: []
+      buckets: []
+      learning: []
+      custom_tolerations: []
+
+      ip_scoping:
+        rwp_ipv6_cidr: 128
+        tolerations_ipv6_cidr: 128
+
+      tolerate_ttl: 30m
+      rwp_window: 15m
+      rwp_allowed_unique_hashes: 3
+      tolerate_percent: 0
+      min_tolerate_percent: 10
+      max_tolerate_percent: 50
+      scale_factor: 1.0
+      adaptive_toleration: false
+      pw_history_for_known_accounts: false
+
+    lua:
+      hooks: []
+
+  services:
+    enabled:
+      - "backend_health_checks"
+
+    backend_health_checks:
+      connect_timeout: 5s
+      tls_timeout: 5s
+      deep_timeout: 5s
+      connect_interval: 10s
+      deep_interval: 10s
+      failure_threshold: 1
+      recovery_threshold: 1
+      targets:
+        - protocol: "imap"
+          host: "imap.internal.example"
+          port: 993
+          deep_check: true
+          test_username: "healthcheck@example.org"
+          test_password: "change-me"
+          auth_mechanism: "auto"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
+
+        - protocol: "smtp"
+          host: "smtp.internal.example"
+          port: 465
+          deep_check: true
+          test_username: "healthcheck@example.org"
+          test_password: "change-me"
+          auth_mechanism: "PLAIN"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
+
+        - protocol: "http"
+          host: "auth-api.internal.example"
+          port: 443
+          request_uri: "/health"
+          deep_check: true
+          test_username: "healthcheck"
+          test_password: "change-me"
+          auth_mechanism: "BASIC"
+          tls: true
+          tls_skip_verify: false
+          haproxy_v2: false
+
+  policy:
+    mode: "enforce"
+    default_policy: "standard_auth"
+    registry_scripts: []
+    attribute_exports: []
+    request_headers: []
+    request_metadata: []
+
+    attribute_sources:
+      lua:
+        environment: []
+        subject: []
+
+    obligation_targets:
+      lua:
+        actions: []
+
+    sets:
+      networks: {}
+      time_windows: {}
+
+    scheduler_guards: {}
+
+    report:
+      enabled: false
+      include_fsm: true
+      include_checks: true
+      include_attributes: false
+
+    checks: []
+    policies: []
+
+identity:
+  session:
+    remember_me_ttl: 0s
+
+  frontend:
+    enabled: false
+    encryption_secret: ""
+
+    assets:
+      html_static_content_path: ""
+      language_resources: ""
+
+    localization:
+      languages: []
+      default_language: "en"
+
+    links:
+      terms_of_service_url: ""
+      privacy_policy_url: ""
+      password_forgotten_url: ""
+
+    security_headers:
+      enabled: true
+
+  mfa:
+    totp:
+      issuer: "Nauthilus"
+      skew: 1
+
+    webauthn:
+      rp_display_name: "Nauthilus"
+      rp_id: "localhost"
+      rp_origins:
+        - "https://localhost"
+      authenticator_attachment: ""
+      resident_key: "discouraged"
+      user_verification: "preferred"
+
+  oidc:
+    enabled: false
+    issuer: ""
+    signing_keys: []
+    clients: []
+    custom_scopes: []
+    scopes_supported: []
+    response_types_supported: []
+    subject_types_supported: []
+    id_token_signing_alg_values_supported: []
+    token_endpoint_auth_methods_supported: []
+    code_challenge_methods_supported: []
+    claims_supported: []
+    access_token_type: "jwt"
+
+    consent:
+      ttl: 0s
+      mode: "all_or_nothing"
+
+    tokens:
+      default_access_token_lifetime: 1h
+      default_refresh_token_lifetime: 720h
+      revoke_refresh_token: true
+      token_endpoint_allow_get: false
+
+    logout:
+      front_channel_supported: true
+      front_channel_session_supported: false
+      back_channel_supported: true
+      back_channel_session_supported: false
+
+    device_flow:
+      code_expiry: 10m
+      polling_interval: 5
+      user_code_length: 8
+
+  saml:
+    enabled: false
+    entity_id: ""
+    cert: ""
+    cert_file: ""
+    key: ""
+    key_file: ""
+    signature_method: ""
+    default_expire_time: 1h
+    name_id_format: ""
+    service_providers: []
+
+    slo:
+      enabled: true
+      front_channel_enabled: true
+      back_channel_enabled: false
+      request_timeout: 3s
+      max_participants: 64
+      back_channel_max_retries: 1
+```
+
+## Split Edge/Authority Profiles
+
+The reference example above shows both the authority-side listener keys and the edge-side remote backend keys. In a real split deployment, use separate configuration files and separate Redis instances.
+
+An authority instance owns local backend credentials, persistent identity data, MFA/WebAuthn data, backend-reference handles, and authority-side token/cache state:
+
+```yaml
+runtime:
+  instance_name: "nauthilus-authority"
+
+  servers:
+    grpc:
+      authority:
+        enabled: true
+        address: "0.0.0.0:9444"
+
+        tls:
+          enabled: true
+          cert: "${NAUTHILUS_CONF_DIR}/tls/authority.crt"
+          key: "${NAUTHILUS_CONF_DIR}/tls/authority.key"
+          client_ca: "${NAUTHILUS_CONF_DIR}/tls/edge-client-ca.pem"
+          min_tls_version: "TLS1.3"
+          require_client_cert: true
+
+storage:
+  redis:
+    primary:
+      address: "authority-redis.internal:6379"
+
+auth:
+  backchannel:
+    oidc_bearer:
+      enabled: true
+
+  backends:
+    order:
+      - "ldap"
+    ldap:
+      default:
+        server_uri:
+          - "ldaps://ldap.internal.example:636"
+```
+
+An edge instance owns public IdP endpoints, browser sessions, OIDC/SAML flow state, and the cached caller token used for authority RPCs. A strict remote-only edge uses only the `remote` backend and does not configure LDAP or Lua backend credentials:
+
+```yaml
+runtime:
+  instance_name: "nauthilus-edge-a"
+
+  clients:
+    grpc:
+      nauthilus_authorities:
+        primary:
+          address: "authority.internal.example:9444"
+          timeout: 5s
+          edge_cluster_id: "dmz-edge"
+          edge_instance_id: "edge-a"
+          split_strict_mode: true
+          tls:
+            enabled: true
+            server_name: "authority.internal.example"
+            ca: "${NAUTHILUS_CONF_DIR}/tls/authority-ca.pem"
+            cert: "${NAUTHILUS_CONF_DIR}/tls/edge-a.crt"
+            key: "${NAUTHILUS_CONF_DIR}/tls/edge-a.key"
+            min_tls_version: "TLS1.3"
+          caller_auth:
+            oidc_bearer:
+              enabled: true
+              mode: "client_credentials"
+              token_endpoint: "https://authority.internal.example/oidc/token"
+              client_id: "edge-primary"
+              token_endpoint_auth_method: "private_key_jwt"
+              client_private_key_file: "${NAUTHILUS_CONF_DIR}/keys/edge-primary.key"
+              client_key_id: "edge-primary-rs256"
+              client_assertion_alg: "RS256"
+              audience: "https://authority.internal.example/oidc/token"
+              scopes:
+                - "nauthilus:authenticate"
+                - "nauthilus:lookup_identity"
+                - "nauthilus:list_accounts"
+                - "nauthilus:mfa_read"
+                - "nauthilus:mfa_verify"
+                - "nauthilus:mfa_write"
+                - "nauthilus:webauthn_read"
+                - "nauthilus:webauthn_write"
+                - "nauthilus:attribute_read"
+              token_cache:
+                backend: "redis"
+                key_prefix: "grpc:authority_tokens:"
+                refresh_before_expiry: 30s
+                refresh_lock_ttl: 10s
+
+storage:
+  redis:
+    primary:
+      address: "edge-redis.internal:6379"
+
+auth:
+  backends:
+    order:
+      - "remote"
+    remote:
+      default:
+        authority: "primary"
+        mode: "nauthilus"
+        timeout: 5s
+        allowed_operations:
+          - "auth"
+          - "lookup_identity"
+          - "list_accounts"
+          - "mfa_read"
+          - "mfa_verify"
+          - "mfa_write"
+          - "webauthn_read"
+          - "webauthn_write"
+          - "attribute_read"
+```
+
+Keep these boundaries intact:
+
+- the edge Redis address is different from the authority Redis address;
+- the edge token cache under `caller_auth.oidc_bearer.token_cache` uses edge Redis;
+- the authority stores backend references, idempotency outcomes, backend cache, MFA data, and WebAuthn data in authority-owned state;
+- the edge must not connect to authority Redis directly;
+- the authority must not connect to edge Redis directly;
+- the edge must not carry LDAP bind credentials or Lua backend secrets unless it is intentionally configured as a local fallback edge.
+
+For a step-by-step build guide, see [Distributed Identity Proxy](../guides/distributed-identity-proxy.md).

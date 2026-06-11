@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["code"],"properties":{"code":{"type":"string"}},"title":"TOTPRegisterRequest"},"schemaType":"response"}

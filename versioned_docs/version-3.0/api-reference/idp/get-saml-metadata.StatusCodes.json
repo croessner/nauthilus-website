@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"SAML metadata XML.","content":{"application/samlmetadata+xml":{"schema":{"type":"string"}},"application/xml":{"schema":{"type":"string"}}}}}}

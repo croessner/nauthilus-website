@@ -1,0 +1,67 @@
+---
+id: get-cbor-auth
+title: "Run the CBOR authentication endpoint without a CBOR body."
+description: "The GET form is primarily used for account listing or no-auth probes via the mode query parameter. List-account responses negotiate the response content type from the Accept header."
+sidebar_label: "Run the CBOR authentication endpoint without a CBOR body."
+hide_title: true
+hide_table_of_contents: true
+api: eJzVWNtu3DYQ/RVCz3ux2+Zl3xwnaZ0msWE7aIHUMCiKu8tYIlWSsrMw9t97hqSkvdtJ0CJ92hXFGZ45c+GMHjPPZy6bfMpOGj+X2ivBvTI6uxlkppY2PJwV2SSbSX/68vyStmWDrJBOWFWHrZPsei7Zr6+v2dTYiinHaqsqblW5YI2TBS0zLoRptGelcl7pGcOSNkMObdhtcunYveIMEFhlCsn+bqRdsJpbXkkv7Yi9g9ywVWKlq412ENJyZrziXgbRdp0Joz2MYX5RSza1pgqvT4SQtWdzyQuo/EvDDidFY5VfgIHHLOfiTsy51rJ8yZ0SWLxZDtbXJbfShhdgqMPngrzGA9ggA6BaETPBDjxY+XejrASRU146iYPFXFY8mzxmhBE7nbfgBVulbipySKIHK+WK7S4DpA36z8MfXjK+5kPWOTBwOsrIloRR6WElKxOwfS/Qox2QXinH81Ky7hxA0MobEg3x4OeIEzpMOs8egJo5CX8ZdrSGU3Ac/y9jDGd8Fb4bwpBCkE796eiIftbVrycUxWZT+sFaIgxW0yBuGAF0DNCgmZQMrzz3TXjcZ+gSxv05/EB6VNm44ZV0LqA4JAKZlCf0ltd1mbCORW7suqzR8nwagjxpMflnKfyaMz5l5g4LycDbqZJlgWfKHqnpH/c4Om88SKPksRSfXkUKIdpDzI0pJdcIhA1t21YMMm98fYs8tvLQrhZF/07B9BlyebkGbLJtIS8KFRPsYg1y2set5SGNvKxonXj1ypf07qRV/B70to7qXsJbVw1qknMh5A8xK62FS7ZYi8s7w2H1lNdh28oZm5h3sNqKR/6p/CLuSfFqoHx2e4LsGw+gdfnFj+uSqyeidx3Il+HDw8OQ7p9hY0upBQpe8UT4Q8UvuxL3TN/zUhXs7dX5B0rQtgqE1ZjMU440s5KSdU8KbTPzvBT6dkcHJ1+msvS8gNqRh2n9aU92Wtfl92dghTjnM3nYiDcknsJ193pv4U3rw+Mniy9qeaVQEmPjoaKDv8p7/4nPkj0/b9tzmWIQhqxc8uitUFxYidrmUgMUUTEngORHNfD4xV4DAR0Ock1eKU8PlSyoLaQ2DqZr4/Guro3Fux/Uuhe7SkrY2LWnPyTykKF+blKvT4nN0X1OsjGv1fj+eExxFzsDapvtfdv1ot5i12POnfxoy+XWcNB1JayQdWkWFTXmtJt9vHxHVNxjVKBGLGBPaiKFU46OCCrm3tduMh7rVtVIfuFVXcqRMNXWgSe5MyXu3O4QZqYhO3YiQUsneFmOiISbfiC4Ige0kDbHgo5ZApal/jM0LuH9JqCXvQIWNGw06qO2QdkYMvYfEzcM0p83uPY48fT2j+uDh5+fvTplUQZ2ox8asStTScaLSmmG9qg26IpcW0ZYSwblZNyT6sqSiAot5qkxd2q1qCNafpfdWCHi60Hbz3cevA265S0uVL6F+bUWdlGH8mbNA4KNpdNY1BfHynzB3r85YRXXuFaCL62hHm4UIl3pqQmwUsT3zn/fC5xcnFEAIpTjwffHW1hOkaiWC5+mApDiw9SAlPPISKpRmB+UlsMpF3TB/HZ9fUGKqYphZhixVwsYD6eLxnlMonOYwHD/cJpfLbIctFp0QKoKc+tUzZo4tY3YRZOjMrCz4iIcZ4TBjKd7VqK9DP5khRENmRR5IZx1LyySDTTzgpraOA/WiJ3klstGBxma8DenyDYs2INCecB1w+O23BSL0SZdj31h+x9/FUihvNKKgrUmVqVYFT9RnFPoUMCkMT3URpSQOeilHY9dTVzScpxeqWIWcfDs59e9FD53st8D+Q6J2H2PQM/T0JbQGj4fwndN8gdxrX6D+E5wXz3CHwTWfnToQd30t1T8KJRm9ODOKBTDaEVqa6AmLd0Vi8RoI2dl7k3XR56+PvVFVa+SFAJLCepxP6IMUA4v6d6NQJq0tDbv7ZO/4M49GFusyNdpKTbY/wAwIw7h
+sidebar_class_name: "get api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Run the CBOR authentication endpoint without a CBOR body."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/api/v1/auth/cbor"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+The GET form is primarily used for account listing or no-auth probes via the mode query parameter. List-account responses negotiate the response content type from the Accept header.
+
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./get-cbor-auth.ParamsDetails.json")}
+>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./get-cbor-auth.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./get-cbor-auth.StatusCodes.json")}
+>
+
+</StatusCodes>

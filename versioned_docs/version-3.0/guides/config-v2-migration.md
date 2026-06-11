@@ -1,0 +1,336 @@
+---
+title: Config v2 Migration
+description: Hard migration from the legacy monolithic layout to the current config-v2 structure
+keywords: [Configuration, Migration, v2]
+sidebar_position: 6
+---
+
+# Config v2 Migration
+
+This guide describes the migration from the legacy monolithic configuration layout to the current `config v2` structure.
+
+The migration is intentionally breaking:
+
+- legacy root nodes are removed
+- legacy aliases are removed where the v2 design requires a hard semantic cleanup
+- existing configuration files must be rewritten to the new root structure
+
+## Migration Goals
+
+Config v2 reorganizes the file around human-facing concerns instead of implementation history:
+
+- `runtime`: process, inbound HTTP and gRPC servers, shared timeouts, outbound clients
+- `observability`: logs, profiling, tracing, metrics
+- `storage`: Redis and related cache/storage behavior
+- `auth`: request model, backchannel auth, pipeline behavior, backends, controls, services
+- `identity`: frontend, MFA, OIDC, SAML, remember-me/session behavior
+
+## Hard Breaking Changes
+
+The following old roots are not part of the current surface anymore:
+
+- `server`
+- `ldap`
+- `lua`
+- `idp`
+- `realtime_blackhole_lists`
+- `relay_domains`
+- `brute_force`
+- `backend_server_monitoring`
+- `cleartext_networks`
+
+The following old names are replaced by canonical v2 names:
+
+- `backend_server_monitoring` -> `auth.services.backend_health_checks`
+- `default_http_request_header` -> `auth.request.headers`
+- `lua.custom_hooks` -> `auth.controls.lua.hooks`
+- `server.redis.primary` -> `storage.redis.primary`
+
+Removed legacy aliases include:
+
+- `soft_allowlist`
+- `soft_whitelist`
+- `storage.redis.master`
+- flat SAML SLO aliases such as `identity.saml.slo_enabled`
+
+## Root Mapping
+
+| Legacy root | v2 location |
+|---|---|
+| `server` | split across `runtime`, `observability`, `storage`, `auth`, `identity` |
+| `ldap` | `auth.backends.ldap` |
+| `lua` | split across `auth.backends.lua.backend`, `auth.policy.attribute_sources.lua`, `auth.policy.obligation_targets.lua`, and `auth.controls.lua.hooks` |
+| `idp` | `identity` |
+| `realtime_blackhole_lists` | `auth.controls.rbl` |
+| `relay_domains` | `auth.controls.relay_domains` |
+| `brute_force` | `auth.controls.brute_force` |
+| `backend_server_monitoring` | `auth.services.backend_health_checks` |
+| `cleartext_networks` | `auth.controls.tls_encryption.allow_cleartext_networks` |
+
+## Common Path Migrations
+
+| Legacy path | v2 path |
+|---|---|
+| `server.address` | `runtime.servers.http.address` |
+| `server.tls` | `runtime.servers.http.tls` |
+| `server.middlewares` | `runtime.servers.http.middlewares` |
+| `server.timeouts` | `runtime.timeouts` |
+| `server.http_client` | `runtime.clients.http` |
+| `server.dns` | `runtime.clients.dns` |
+| `server.log` | `observability.log` |
+| `server.insights.enable_pprof` | `observability.profiles.pprof.enabled` |
+| `server.insights.enable_block_profile` | `observability.profiles.block.enabled` |
+| `server.insights.tracing` | `observability.tracing` |
+| `server.prometheus_timer` | `observability.metrics.prometheus_timer` |
+| `server.redis` | `storage.redis` |
+| `server.default_http_request_header` | `auth.request.headers` |
+| `server.basic_auth` | `auth.backchannel.basic_auth` |
+| `server.oidc_auth` | `auth.backchannel.oidc_bearer` |
+| `server.backends` | `auth.backends.order` |
+| `server.brute_force_protocols` | `auth.controls.brute_force.protocols` |
+| `brute_force.learning` | `auth.controls.brute_force.learning` |
+| `ldap.config` | `auth.backends.ldap.default` |
+| `ldap.pools` | `auth.backends.ldap.pools` |
+| `ldap.search` | `auth.backends.ldap.search` |
+| `lua.config` | `auth.backends.lua.backend.default` |
+| `lua.optional_backends` | `auth.backends.lua.backend.named_backends` |
+| `lua.search` | `auth.backends.lua.backend.search` |
+| `lua.actions` | `auth.policy.obligation_targets.lua.actions` |
+| `lua.features` | `auth.policy.attribute_sources.lua.environment` |
+| `lua.filters` | `auth.policy.attribute_sources.lua.subject` |
+| `lua.custom_hooks` | `auth.controls.lua.hooks` |
+| `idp.remember_me_ttl` | `identity.session.remember_me_ttl` |
+| `server.frontend` | `identity.frontend` |
+| `server.frontend.totp_issuer` | `identity.mfa.totp.issuer` |
+| `server.frontend.totp_skew` | `identity.mfa.totp.skew` |
+| `idp.webauthn` | `identity.mfa.webauthn` |
+| `idp.oidc` | `identity.oidc` |
+| `idp.saml2` | `identity.saml` |
+
+## Lua Policy Rename for Versions Before 3.0.0
+
+Nauthilus 3.0.0 makes the Lua policy terminology a hard cut. The left column below describes the published pre-3.0 surface, as documented for the last stable 2.1 line. It does not include intermediate development names.
+
+| Before 3.0.0, published 2.1 surface | 3.0.0 and newer |
+|---|---|
+| `lua.features` | `auth.policy.attribute_sources.lua.environment` |
+| `lua.filters` | `auth.policy.attribute_sources.lua.subject` |
+| `lua.actions` | `auth.policy.obligation_targets.lua.actions` |
+| `lua.custom_hooks` | `auth.controls.lua.hooks` |
+| `lua.features[*].when_authenticated`, `when_unauthenticated`, `when_no_auth` | generated `auth.policy.checks[*].run_if.auth_state` and `operations` |
+| `lua.filters[*].when_authenticated`, `when_unauthenticated`, `when_no_auth` | generated `auth.policy.checks[*].run_if.auth_state` and `operations` |
+| `lua.config.feature_vm_pool_size` | `auth.backends.lua.backend.default.environment_vm_pool_size` |
+| `lua.config.filter_vm_pool_size` | `auth.backends.lua.backend.default.subject_vm_pool_size` |
+| `lua-plugins.d/features` | `lua-plugins.d/environment` |
+| `lua-plugins.d/filters` | `lua-plugins.d/subject` |
+
+Policy checks themselves are new in the 3.0 target model, so the pre-3.0 side has no check-type or policy-stage rows.
+
+Lua entry points and result constants changed with the same hard cut:
+
+| Before 3.0.0 | 3.0.0 and newer |
+|---|---|
+| `nauthilus_call_feature(request)` | `nauthilus_call_environment(request)` |
+| `nauthilus_call_filter(request)` | `nauthilus_call_subject(request)` |
+| `FEATURE_TRIGGER_*` | `ENVIRONMENT_TRIGGER_*` |
+| `FEATURES_ABORT_*` | `ENVIRONMENT_ABORT_*` |
+| `FEATURE_RESULT_*` | `ENVIRONMENT_RESULT_*` |
+| `FILTER_ACCEPT`, `FILTER_REJECT` | `SUBJECT_ACCEPT`, `SUBJECT_REJECT` |
+| `FILTER_RESULT_*` | `SUBJECT_RESULT_*` |
+
+## Policy Scheduling in Converted Output
+
+Current Nauthilus uses `auth.policy` for auth decision scheduling and decision selection. Converted output expresses execution goals through policy checks:
+
+| Scheduling goal | Generated policy location |
+|---|---|
+| Run for identity lookup | `auth.policy.checks[*].operations`, usually by adding `lookup_identity` |
+| Run only after successful backend authentication | `auth.policy.checks[*].run_if.auth_state: authenticated` |
+| Run only before or after failed authentication | `auth.policy.checks[*].run_if.auth_state: unauthenticated` |
+| Start one check after another check | `auth.policy.checks[*].after` |
+
+Lua environment and subject sources now keep only their script identity and script path. Policy checks reference those scripts through `config_ref`, for example `auth.policy.attribute_sources.lua.environment.geoip` or `auth.policy.attribute_sources.lua.subject.billing_lock`.
+
+See [Auth Policy Configuration Guide](auth-policy-configuration.md) for a manual migration walkthrough and [Auth Policy Reference](../configuration/auth-policy.md) for the complete schema.
+
+## Scheduler Guards for Former Implicit Exemptions
+
+Older configurations may have inherited implicit loopback or monitoring-client behavior from mechanism code. In the policy-controlled scheduler model, those exemptions are not hidden. They must be visible under `auth.policy.scheduler_guards` and attached to selected checks with `skip_if`.
+
+Use this pattern when you intentionally want a trusted source to skip a specific pre-auth check:
+
+```yaml
+auth:
+  policy:
+    sets:
+      networks:
+        pre_auth_exempt_sources:
+          - 127.0.0.0/8
+          - ::1
+
+    scheduler_guards:
+      pre_auth_exempt_source:
+        on_missing_attribute: run
+        if:
+          all:
+            - attribute: request.client.ip.present
+              is: true
+            - attribute: request.client.ip.trusted
+              is: true
+            - attribute: request.client.ip
+              cidr_contains: "@network.pre_auth_exempt_sources"
+
+    checks:
+      - name: rbl
+        type: builtin.rbl
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        skip_if: [pre_auth_exempt_source]
+        config_ref: auth.controls.rbl
+        output: checks.rbl
+```
+
+`on_missing_attribute: run` is the fail-closed behavior: if Nauthilus cannot prove that a trusted client IP is present and inside the configured set, the check runs. A skipped check does not satisfy `require_checks`, so rules that require the skipped check are non-applicable and later rules may still match.
+
+Do not translate "loopback used to work" into a blanket authorization rule. Loopback is an operational source, not universal proof of safety. Attach guards only to checks that should lose coverage for that source, and keep final permit or deny behavior in `auth.policy.policies`.
+
+## Example
+
+Legacy:
+
+```yaml
+server:
+  address: "[::]:9443"
+  log:
+    level: "info"
+  redis:
+    primary:
+      address: "redis:6379"
+  backends:
+    - cache
+    - ldap
+  brute_force_protocols:
+    - imap
+
+ldap:
+  config:
+    server_uri:
+      - "ldap://ldap:389"
+
+brute_force:
+  protocols:
+    - imap
+  learning:
+    - brute_force
+```
+
+Current:
+
+```yaml
+runtime:
+  servers:
+    http:
+      address: "[::]:9443"
+
+observability:
+  log:
+    level: "info"
+
+storage:
+  redis:
+    primary:
+      address: "redis:6379"
+
+auth:
+  backends:
+    order:
+      - cache
+      - ldap
+    ldap:
+      default:
+        server_uri:
+          - "ldap://ldap:389"
+  controls:
+    enabled:
+      - brute_force
+    brute_force:
+      protocols:
+        - imap
+      learning:
+        - brute_force
+```
+
+## Recommended Migration Order
+
+1. move runtime, log, and Redis settings
+2. move backend order and backend definitions
+3. move controls and services
+4. move frontend, MFA, OIDC, and SAML to `identity`
+5. validate with `--config-check`
+6. compare with `-n`
+
+## Migration Helper Script
+
+Nauthilus now ships a best-effort converter for legacy monolithic YAML files:
+
+```bash
+python3 scripts/convert-config-v1-to-v2.py legacy-nauthilus.yml --output nauthilus-v2.yml
+```
+
+Useful options:
+
+- `--report <path>`: write a migration report with warnings and dropped paths
+- `--validate`: run `nauthilus --config-check` against the converted output
+- `--dry-run --stdout`: print the converted YAML without writing files
+
+The helper currently also covers:
+
+- optional LDAP pools
+- optional Lua backends
+- legacy `server.features` aliases and published pre-3.0 `lua.features` entries
+- legacy dotted keys such as `server.oidc_auth.enabled`
+- top-level `x-*` extension roots, which are preserved as-is
+- best-effort `x-*` anchor reuse in the generated YAML when equivalent subtrees still exist
+- legacy mapping order where the converted structure still allows it
+- legacy `server.address`, `server.tls`, and HTTP runtime settings into `runtime.servers.http`
+- legacy `server.timeouts` into shared `runtime.timeouts`
+- generation of target `auth.policy` checks and policies for Lua scheduling behavior
+- conversion of source scheduler flags into `operations` and `run_if.auth_state`
+
+Example:
+
+```bash
+python3 scripts/convert-config-v1-to-v2.py \
+  legacy-nauthilus.yml \
+  --output nauthilus-v2.yml \
+  --report migration-report.txt \
+  --validate
+```
+
+Important limits:
+
+- current scope is single-file legacy YAML to single-file config-v2 YAML
+- the helper migrates legacy v1 roots; it does not rewrite already-v2 `runtime.listen` or `runtime.http` files
+- include tree refactoring is out of scope
+- unsupported legacy paths are reported for manual review instead of being silently guessed
+- comment preservation is out of scope
+
+Treat the script as a migration accelerator, not as a substitute for final review.
+
+## Operational Validation
+
+Use these commands during migration:
+
+```bash
+nauthilus --config /etc/nauthilus/nauthilus.yml --config-check
+```
+
+```bash
+nauthilus -n --config /etc/nauthilus/nauthilus.yml
+```
+
+```bash
+nauthilus -d
+```
+
+This is the fastest way to prove that your migrated file is aligned with the current schema and defaults.

@@ -137,7 +137,7 @@ The validator uses the same OpenAPI contract that Nauthilus serves at `/api/v1/o
 
 ### gRPC Authority Listener
 
-The gRPC authority listener is a separate optional listener. It exposes the gRPC AuthService with the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener. It also hosts the internal identity backend service used by split edge/authority deployments.
+The gRPC authority listener is a separate optional listener. It exposes the gRPC AuthService with the same authentication pipeline as the JSON and CBOR endpoints without sharing the HTTP/Gin listener. The internal identity backend service used by split edge/authority deployments is a separate opt-in capability on that listener.
 
 ```yaml
 runtime:
@@ -146,6 +146,8 @@ runtime:
       authority:
         enabled: true
         address: "127.0.0.1:9444"
+        backend_refs:
+          enabled: false
         tls:
           enabled: false
           cert: ""
@@ -156,6 +158,8 @@ runtime:
 ```
 
 The listener defaults to loopback. Plaintext gRPC is only valid on loopback addresses; non-loopback listeners require TLS. `min_tls_version` accepts `TLS1.2` and `TLS1.3` and defaults to `TLS1.2`. The gRPC listener always uses HTTP/2 ALPN and does not expose configurable cipher suites.
+
+`backend_refs.enabled` defaults to `false`. With that default, the listener registers only `nauthilus.auth.v1.AuthService` and does not create backend-reference state. Set it to `true` on an authority that serves remote Nauthilus edges; this also registers `nauthilus.identity.v1.IdentityBackendService` and requires a working Redis configuration at startup.
 
 Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings. See [gRPC Authority APIs](../grpc-api.md) for the service contract and [Split Identity Proxy Configuration](identity-proxy.md) for the distributed deployment model.
 

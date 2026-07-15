@@ -15,6 +15,7 @@ identity:
   session: {}
   frontend: {}
   mfa: {}
+  mfa_policy: {}
   oidc: {}
   saml: {}
 ```
@@ -26,6 +27,7 @@ This replaces the older split where IdP-related options were spread across `idp`
 - `identity.session`: remember-me/session behavior
 - `identity.frontend`: templates, assets, links, localization, security headers
 - `identity.mfa`: TOTP and WebAuthn settings
+- `identity.mfa_policy`: global mapping from MFA methods to assurance levels
 - `identity.oidc`: native OpenID Connect provider
 - `identity.saml`: native SAML IdP
 
@@ -58,6 +60,11 @@ identity:
       rp_id: "idp.example.com"
       rp_origins:
         - "https://idp.example.com"
+  mfa_policy:
+    levels:
+      recovery_codes: 1
+      totp: 2
+      webauthn: 3
   oidc:
     enabled: true
     issuer: "https://idp.example.com"
@@ -68,6 +75,7 @@ identity:
 
 ## Related Pages
 
+- [MFA Assurance Policy](mfa-assurance.md)
 - [OIDC](oidc.md)
 - [SAML](saml2.md)
 - [Reference](reference.md)

@@ -30,6 +30,12 @@ const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join(
 async function generateDocumentationSidebar(args) {
   const items = await args.defaultSidebarItemsGenerator(args);
 
+  // Generated OpenAPI documents belong to the current/Next docs tree. Keep
+  // frozen version sidebars on their own committed snapshot IDs.
+  if (args.version.versionName !== 'current') {
+    return items;
+  }
+
   if (!items.some(isAPIReferenceCategory)) {
     return items;
   }

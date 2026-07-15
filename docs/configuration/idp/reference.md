@@ -38,6 +38,11 @@ identity:
       authenticator_attachment: string
       resident_key: string
       user_verification: string
+  mfa_policy:
+    levels:
+      recovery_codes: int
+      totp: int
+      webauthn: int
   oidc: { ... }
   saml: { ... }
 ```
@@ -62,6 +67,22 @@ identity:
 
 `identity.mfa.webauthn` controls the Relying Party configuration used during registration and login ceremonies.
 
+## MFA Assurance
+
+`identity.mfa_policy.levels` defines the global method-to-assurance mapping. The built-in levels are
+`recovery_codes: 1`, `totp: 2`, and `webauthn: 3`.
+
+OIDC clients and SAML service providers support these related fields:
+
+| Field | Meaning |
+| --- | --- |
+| `require_mfa` | Methods that must be registered before issuing a successful response. |
+| `supported_mfa` | Methods eligible for challenges and registration. An empty list permits all available methods. |
+| `required_mfa_level` | Minimum level of the fresh MFA proof for browser SSO. |
+| `mfa_policy.levels` | Per-client or per-service-provider overrides merged over the global mapping. |
+
+See [MFA Assurance Policy](mfa-assurance.md) for evaluation order, validation, and examples.
+
 ## Frontend Assets
 
 Use `identity.frontend.assets` for template and language-resource paths.
@@ -70,5 +91,6 @@ Use `identity.frontend.assets` for template and language-resource paths.
 
 See:
 
+- [MFA Assurance Policy](mfa-assurance.md)
 - [OIDC](oidc.md)
 - [SAML](saml2.md)

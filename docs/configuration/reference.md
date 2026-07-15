@@ -28,6 +28,7 @@ Examples:
 | `runtime.servers.http.openapi_validation.enabled` | `NAUTHILUS_RUNTIME_SERVERS_HTTP_OPENAPI_VALIDATION_ENABLED` |
 | `runtime.servers.http.openapi_validation.operations` | `NAUTHILUS_RUNTIME_SERVERS_HTTP_OPENAPI_VALIDATION_OPERATIONS` |
 | `runtime.servers.grpc.authority.address` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_ADDRESS` |
+| `runtime.servers.grpc.authority.backend_refs.enabled` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_BACKEND_REFS_ENABLED` |
 | `runtime.servers.grpc.authority.tls.min_tls_version` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_TLS_MIN_TLS_VERSION` |
 | `runtime.clients.grpc.nauthilus_authorities.primary.address` | `NAUTHILUS_RUNTIME_CLIENTS_GRPC_NAUTHILUS_AUTHORITIES_PRIMARY_ADDRESS` |
 | `runtime.clients.grpc.nauthilus_authorities.primary.caller_auth.oidc_bearer.client_id` | `NAUTHILUS_RUNTIME_CLIENTS_GRPC_NAUTHILUS_AUTHORITIES_PRIMARY_CALLER_AUTH_OIDC_BEARER_CLIENT_ID` |
@@ -111,6 +112,14 @@ These top-level keys are loader mechanics, not runtime roots:
 
 They are processed before the final runtime configuration is built. Include paths and patch paths are loader controls and are not environment-template strings; final values produced by included files and patch payloads are expanded.
 
+## Native Plugin Configuration
+
+`plugins` is a normal top-level Config v2 section, not a loader-only root. Its shared fields configure artifact verification and module instances. The contents of each `plugins.modules[].config` mapping are deliberately opaque to the Nauthilus schema because the selected plugin owns their types and defaults.
+
+Opaque plugin config is not traversed by the normal config-dump schema and is omitted from plugin discovery output. Validate it by loading the corresponding module: the public plugin `ConfigView.Decode` path is strict and rejects unknown keys or incompatible types during registration/reload.
+
+Prefer YAML/includes or a mounted plugin-owned secret file for module config. Environment-variable derivation is well suited to fixed canonical scalar paths, but not to arbitrary keys inside a module list's opaque mapping. See [Native Go Plugins](native-go-plugins.md).
+
 ## Validation
 
 Validate a configuration file with:
@@ -193,4 +202,4 @@ Recommended operator workflow:
 
 This gives you a stable, canonical view of the current configuration surface without relying on internal Go struct names.
 
-For split edge/authority deployments, validate the authority config and every edge config separately. Confirm that the edge config has only remote backends in `auth.backends.order`, that authority-client caller auth is enabled, and that edge Redis and authority Redis addresses are different.
+For split edge/authority deployments, validate the authority config and every edge config separately. Confirm that the authority explicitly enables `runtime.servers.grpc.authority.backend_refs`, the edge config has only remote backends in `auth.backends.order`, authority-client caller auth is enabled, and edge Redis and authority Redis addresses are different. Backend references default to disabled and enabling them requires authority Redis.

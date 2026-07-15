@@ -158,6 +158,12 @@ identity:
         optional_scopes:
           - "profile"
           - "email"
+        require_mfa:
+          - "totp"
+        supported_mfa:
+          - "totp"
+          - "webauthn"
+        required_mfa_level: 2
 ```
 
 ## PKCE
@@ -165,6 +171,76 @@ identity:
 - only `S256` is supported
 - public clients must use PKCE
 - public means no `client_secret` or `token_endpoint_auth_method: none`
+
+## Client Types and Grant Boundaries
+
+Nauthilus enforces the security properties of each client type at configuration and request time:
+
+- `client_credentials` requires confidential client authentication. A public client configured for this grant is
+  rejected during configuration validation.
+- A `client_credentials` request must not request `openid`. Service tokens do not represent an end user and do not
+  receive an ID token or UserInfo claims; such a request fails with `invalid_scope`.
+- Confidential device-authorization clients must authenticate before Nauthilus allocates device-flow state.
+- When a request selects `private_key_jwt`, a failed assertion does not fall back to a client secret.
+- Public Authorization Code clients must use PKCE with `S256`.
+
+Client Credentials access tokens are bound to the Nauthilus backchannel resource. JWT tokens carry the issuer-owned
+claims `token_type=access_token` and `aud=nauthilus:backchannel`; opaque tokens resolve to the same claims during server
+validation. Backchannel authorization rejects ID tokens and access tokens for another audience.
+
+Do not include `openid` in the scope list of a machine-to-machine client:
+
+```yaml
+identity:
+  oidc:
+    clients:
+      - name: "Operations Client"
+        client_id: "operations-client"
+        client_secret: "change-me"
+        grant_types:
+          - "client_credentials"
+        token_endpoint_auth_method: "client_secret_basic"
+        scopes:
+          - "nauthilus:authenticate"
+          - "nauthilus:admin"
+          - "nauthilus:security"
+```
+
+## Redirect URI Validation
+
+Exact matching is the default for `identity.oidc.clients[].redirect_uris`. Controlled exceptions are available for
+native clients and explicitly configured wildcard patterns:
+
+- A trailing `*` is allowed only at the end of a configured URI and not after a query string.
+- Wildcard matching preserves parsed scheme, host, port, and path-segment boundaries. A prefix for
+  `https://app.example/callback/*` cannot match another host or `/callback-evil`.
+- Query and fragment components of the requested URI are ignored only while evaluating a permitted trailing wildcard.
+- A configured `*` matches HTTP and HTTPS redirect URIs and is strongly discouraged in production.
+- HTTP loopback redirects for `127.0.0.1`, `localhost`, and `::1` may use a dynamic port.
+- Wildcards are disabled for requested URIs with user-info or unsafe path traversal segments, including encoded forms.
+- `post_logout_redirect_uri` is always checked exactly against `post_logout_redirect_uris`.
+
+Prefer exact redirect URIs. Use a loopback exception only for native applications, and keep wildcard patterns within a
+dedicated callback path.
+
+## Token and Claim Boundaries
+
+UserInfo requires an access token whose granted scopes contain `openid`. ID tokens are identity assertions, not API
+credentials, and introspection reports them as inactive. Successful access-token introspection includes
+`token_type: "Bearer"`.
+
+Custom ID-token and access-token claim mappings cannot override issuer-owned protocol and security claims such as
+`iss`, `sub`, `aud`, `exp`, `iat`, `scope`, `client_id`, `nonce`, `auth_time`, or `token_type`. Keep application claims in
+distinct names instead of relying on collisions with standard claims.
+
+OIDC back-channel logout calls do not follow HTTP redirects. Configure `backchannel_logout_uri` as the final endpoint;
+a `3xx` response is a failed delivery.
+
+## MFA Assurance
+
+Each browser client may configure `require_mfa`, `supported_mfa`, `required_mfa_level`, and local
+`mfa_policy.levels`. Enrollment, offered challenges, and the strength of the current proof are evaluated separately.
+See [MFA Assurance Policy](mfa-assurance.md) for the complete model.
 
 ## Backchannel Bearer Access
 
@@ -182,6 +258,10 @@ Related request-header propagation for subject sources/logging lives at:
 - `auth.request.headers.oidc_cid`
 
 Clients that validate opaque OIDC bearer tokens through `/oidc/introspect` can authenticate with client secrets or `private_key_jwt`. For `private_key_jwt`, use the introspection endpoint URL as the client-assertion audience.
+
+Every Bearer-authenticated backchannel request also needs `nauthilus:authenticate`, even when the route has an
+additional administrative scope. See [REST API](../../rest-api.md#oidc-bearer-access-for-apiv1) for the route matrix and
+Basic-authentication behavior.
 
 ## Built-in Scope Families
 

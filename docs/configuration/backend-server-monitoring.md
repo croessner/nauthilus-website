@@ -48,7 +48,7 @@ auth:
           test_username: "healthcheck-user"
           test_password: "healthcheck-password"
           auth_mechanism: "auto"
-          tls: true
+          tls_mode: "implicit"
           tls_skip_verify: false
           haproxy_v2: false
           connect_timeout: 1s
@@ -61,7 +61,7 @@ auth:
 | Field | Default | Description |
 |---|---:|---|
 | `connect_timeout` | `5s` | Timeout for the TCP connect phase. |
-| `tls_timeout` | `5s` | Timeout for the TLS handshake when `tls: true` is configured on the target. |
+| `tls_timeout` | `5s` | Timeout for an implicit TLS or STARTTLS handshake. |
 | `deep_timeout` | `5s` | Timeout for the protocol-level deep check. |
 | `connect_interval` | `10s` | Interval for connect probes. A connect probe verifies TCP, optional HAProxy v2 preface, and optional TLS only. |
 | `deep_interval` | `10s` | Interval for protocol-level deep checks. When this equals `connect_interval`, Nauthilus runs one combined probe to preserve the previous default traffic pattern. |
@@ -80,6 +80,7 @@ Each target supports the connection and authentication fields below.
 - `test_password`
 - `auth_mechanism`
 - `deep_check`
+- `tls_mode`
 - `tls`
 - `tls_skip_verify`
 - `haproxy_v2`
@@ -91,6 +92,29 @@ The timeout fields can also be set per target:
 - `deep_timeout`
 
 Per-target timeout values override the global backend-health-check timeout values for that target only.
+
+## TLS Transport Mode
+
+Use target-local `tls_mode` for new configurations:
+
+| Value | Behavior |
+|---|---|
+| `plain` | Keep the backend connection unencrypted. A check that would send credentials still fails closed. |
+| `implicit` | Start TLS immediately after the optional PROXY v2 preface. |
+| `starttls` | Negotiate an application-protocol upgrade before authentication. |
+
+`starttls` requires `deep_check: true`. It is supported for SMTP, LMTP when the server advertises it, POP3, IMAP, and Sieve. HTTP rejects `starttls` because this health-check adapter has no corresponding in-band upgrade.
+
+The legacy Boolean `tls` field remains supported. `tls: true` means implicit TLS. A Sieve target with neither `tls_mode` nor `tls` keeps the historical STARTTLS default; other protocols default to `plain`. Combining `tls: true` with `tls_mode: plain` or `tls_mode: starttls` is invalid. The redundant combination of `tls: true` and `tls_mode: implicit` is accepted for migration compatibility.
+
+STARTTLS is required, not opportunistic. A missing capability, refused upgrade, TLS handshake failure, or failed protected capability refresh marks the target unhealthy. Nauthilus discards capabilities learned before TLS and selects an authentication mechanism only from the protected capability response.
+
+When `haproxy_v2: true` is configured, the probe writes the PROXY v2 header before implicit TLS or application-protocol negotiation. A STARTTLS probe therefore runs in this order:
+
+```text
+TCP -> PROXY v2 -> greeting -> capabilities -> STARTTLS or STLS
+    -> TLS handshake -> protected capabilities -> authentication
+```
 
 ## Authentication Mechanism
 
@@ -118,11 +142,11 @@ When `deep_check: true` and both `test_username` and `test_password` are set, Na
 
 | Protocol | Capability source | Supported health-check auth behavior |
 |---|---|---|
-| SMTP | `EHLO` `AUTH` and `AUTH=...` capabilities | Selects executable SASL mechanisms from the advertised `AUTH` list. |
-| LMTP | `LHLO` `AUTH` and `AUTH=...` capabilities | Uses the same selector as SMTP when credentials are configured. Without credentials, LMTP remains a capability and reachability check. |
-| IMAP | `CAPABILITY`, `AUTH=<mech>`, and `SASL-IR` | Selects executable SASL mechanisms from `AUTH=<mech>` tokens. `SASL-IR` controls whether an initial client response may be used. |
-| POP3 | `CAPA`, `SASL ...`, and optional native `USER` | Selects executable SASL mechanisms from `SASL ...`; native `USER`/`PASS` is represented as `USERPASS` only when native user authentication is advertised. |
-| Sieve | Greeting capabilities, `STARTTLS`, post-TLS `CAPABILITY`, `SASL`, and `SASL-IR` | Requires `STARTTLS`, evaluates capabilities again after TLS is established, then selects an executable SASL mechanism. `SASL-IR` controls whether an initial client response may be used. |
+| SMTP | `EHLO` `AUTH` and `AUTH=...` capabilities | Selects executable SASL mechanisms from the advertised `AUTH` list. In `starttls` mode it sends `STARTTLS` after `EHLO` and refreshes capabilities. |
+| LMTP | `LHLO` `AUTH` and `AUTH=...` capabilities | Uses the same selector as SMTP when credentials are configured. In `starttls` mode it upgrades only when advertised and then repeats `LHLO`. |
+| IMAP | `CAPABILITY`, `AUTH=<mech>`, and `SASL-IR` | Selects executable SASL mechanisms from `AUTH=<mech>` tokens. In `starttls` mode it issues tagged `STARTTLS` and refreshes `CAPABILITY`. |
+| POP3 | `CAPA`, `SASL ...`, and optional native `USER` | Selects executable SASL mechanisms from `SASL ...`; native `USER`/`PASS` is represented as `USERPASS` only when native user authentication is advertised. In `starttls` mode it uses `STLS` and refreshes `CAPA`. |
+| Sieve | Greeting capabilities, optional `STARTTLS`, post-TLS capabilities, `SASL`, and `SASL-IR` | Uses the configured TLS mode. The compatibility default is STARTTLS; after an upgrade it evaluates protected capabilities before selecting SASL. |
 | HTTP | Static adapter | Uses `BASIC` only. HTTP has no capability discovery. |
 
 The common selector validates explicit mechanisms against the adapter-reported mechanisms. `auto` uses the first executable option in this order: `PLAIN` with initial response, `PLAIN` classic, `LOGIN` with initial response, `LOGIN` classic, `USERPASS`, then `BASIC`.
@@ -149,7 +173,7 @@ Nauthilus does not log passwords or full authentication payloads. Diagnostic log
 
 Nauthilus separates backend checks into two phases:
 
-- connect phase: opens the TCP connection and performs optional HAProxy v2 and TLS setup
+- connect phase: opens the TCP connection and performs the optional PROXY v2 preface and implicit TLS setup
 - deep phase: performs the protocol-level login or request when `deep_check: true`
 
 A successful deep check also proves that the connect phase succeeded.

@@ -69,8 +69,14 @@ auth:
         - http_location: "status"
           http_method: "GET"
           script_path: "/etc/nauthilus/lua/hooks/status.lua"
+          public: false
           scopes:
             - "nauthilus:admin"
+
+        - http_location: "health-summary"
+          http_method: "GET"
+          script_path: "/etc/nauthilus/lua/hooks/health-summary.lua"
+          public: true
 
   policy:
     attribute_sources:
@@ -126,11 +132,59 @@ For the full migration workflow, see [Auth Policy Configuration Guide](../../gui
 
 ## Hook Authorization
 
-If `scopes` are configured on a Lua hook, the request must present a valid Bearer token and the token must include at least one required scope.
+Lua hooks are fail-closed unless their access model is explicit. `public` and `scopes` have the following semantics:
+
+| Hook configuration | Accepted authentication |
+| --- | --- |
+| `public: true` and no `scopes` | No authentication is required. |
+| No `public` marker and no `scopes` | Valid configured backchannel Basic authentication is required. |
+| One or more `scopes` | A valid Bearer access token containing at least one configured scope is required. |
+
+For a scoped hook, Basic authentication does not satisfy the scope requirement. If OIDC Bearer validation is unavailable,
+the scoped hook remains inaccessible. Missing or invalid credentials return `401`; a valid Bearer token without any
+required scope returns `403`.
+
+Do not set `public: true` merely to restore the pre-hardening behavior of an unscoped hook. Use it only when anonymous
+access to that script and its output is intentional. When `scopes` are present, the scoped Bearer policy takes
+precedence; omit `public` to keep the configuration unambiguous.
 
 Backchannel Bearer acceptance is configured under:
 
 - `auth.backchannel.oidc_bearer.enabled`
+
+Backchannel Basic credentials are configured under:
+
+- `auth.backchannel.basic_auth`
+
+Example of an explicitly public hook:
+
+```yaml
+auth:
+  controls:
+    lua:
+      hooks:
+        - http_location: "health-summary"
+          http_method: "GET"
+          script_path: "/etc/nauthilus/lua/hooks/health-summary.lua"
+          public: true
+```
+
+Example of a protected hook:
+
+```yaml
+auth:
+  controls:
+    lua:
+      hooks:
+        - http_location: "maintenance"
+          http_method: "POST"
+          script_path: "/etc/nauthilus/lua/hooks/maintenance.lua"
+          scopes:
+            - "nauthilus:admin"
+            - "nauthilus:security"
+```
+
+Scope matching is any-of: either scope in this example authorizes the request after Bearer validation.
 
 ## Notes
 

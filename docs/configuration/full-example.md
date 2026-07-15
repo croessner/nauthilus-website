@@ -86,6 +86,8 @@ runtime:
       authority:
         enabled: false
         address: "127.0.0.1:9444"
+        backend_refs:
+          enabled: false
 
         tls:
           enabled: false
@@ -469,7 +471,7 @@ auth:
           test_username: "healthcheck@example.org"
           test_password: "change-me"
           auth_mechanism: "auto"
-          tls: true
+          tls_mode: "implicit"
           tls_skip_verify: false
           haproxy_v2: false
 
@@ -480,7 +482,7 @@ auth:
           test_username: "healthcheck@example.org"
           test_password: "change-me"
           auth_mechanism: "PLAIN"
-          tls: true
+          tls_mode: "implicit"
           tls_skip_verify: false
           haproxy_v2: false
 
@@ -492,7 +494,7 @@ auth:
           test_username: "healthcheck"
           test_password: "change-me"
           auth_mechanism: "BASIC"
-          tls: true
+          tls_mode: "implicit"
           tls_skip_verify: false
           haproxy_v2: false
 
@@ -566,6 +568,12 @@ identity:
       resident_key: "discouraged"
       user_verification: "preferred"
 
+  mfa_policy:
+    levels:
+      recovery_codes: 1
+      totp: 2
+      webauthn: 3
+
   oidc:
     enabled: false
     issuer: ""
@@ -623,6 +631,14 @@ identity:
       back_channel_max_retries: 1
 ```
 
+The values under `identity.mfa_policy.levels` are the built-in assurance defaults. OIDC clients and SAML service
+providers can add `require_mfa`, `supported_mfa`, `required_mfa_level`, and local `mfa_policy.levels` overrides. See
+[MFA Assurance Policy](idp/mfa-assurance.md).
+
+Only direct peers listed in `runtime.servers.http.trusted_proxies` may supply forwarding headers or configured client-IP
+and client-port headers. When request decompression middleware is enabled, the expanded gzip, Brotli, or Zstandard body
+is capped at 1 MiB before handler parsing.
+
 ## Split Edge/Authority Profiles
 
 The reference example above shows both the authority-side listener keys and the edge-side remote backend keys. In a real split deployment, use separate configuration files and separate Redis instances.
@@ -638,6 +654,8 @@ runtime:
       authority:
         enabled: true
         address: "0.0.0.0:9444"
+        backend_refs:
+          enabled: true
 
         tls:
           enabled: true
@@ -743,6 +761,7 @@ auth:
 
 Keep these boundaries intact:
 
+- the split authority explicitly enables `runtime.servers.grpc.authority.backend_refs`, which requires authority Redis;
 - the edge Redis address is different from the authority Redis address;
 - the edge token cache under `caller_auth.oidc_bearer.token_cache` uses edge Redis;
 - the authority stores backend references, idempotency outcomes, backend cache, MFA data, and WebAuthn data in authority-owned state;

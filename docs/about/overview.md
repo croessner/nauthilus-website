@@ -38,6 +38,7 @@ flowchart TB
         as -. uses .-> redis[(Redis DB)]
         as -. may use .-> ldap[(LDAP)]
         as -. may use .-> lua[(Lua backend)]
+        as -. loads .-> goplugins[Native Go plugins]
         as -. may use .-> dns[(DNS Resolver)]
     end
     subgraph Metrics
@@ -70,12 +71,12 @@ flowchart TB
 
 Nauthilus provides a wide range of features, including:
 
-- Multiple authentication backends (LDAP, Lua scripts)
+- Multiple authentication backends (LDAP, Lua scripts, native Go plugins, remote authority)
 - Redis-based caching for performance optimization
 - Brute force attack protection
 - Realtime blackhole list (RBL) checking
 - Native Identity Provider (OIDC Authorization Code, Device Code, and Client Credentials) and SAML2 for Single Sign-On
-- Extensibility through Lua scripts
+- Extensibility through Lua scripts and the versioned native Go plugin API
 - Comprehensive monitoring via Prometheus metrics
 
 For a complete list of features, see the [Features](./current-features.md) page.

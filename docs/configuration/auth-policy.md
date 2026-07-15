@@ -55,6 +55,7 @@ auth:
 
     sets:
       networks: {}
+      strings: {}
       time_windows: {}
 
     scheduler_guards: {}
@@ -81,6 +82,7 @@ auth:
 | `attribute_sources.lua.subject` | list | `[]` | Lua subject sources that run in `subject_analysis` and can evaluate or enrich subject facts after backend identity material exists. |
 | `obligation_targets.lua.actions` | list | `[]` | Reusable Lua action scripts selected through policy obligations. |
 | `sets.networks` | map | `{}` | Named reusable IP/CIDR sets for policy conditions. |
+| `sets.strings` | map | `{}` | Named reusable exact string lists for scalar `in` and `not_in` conditions. |
 | `sets.time_windows` | map | `{}` | Named local-time windows for policy conditions. |
 | `scheduler_guards` | map | `{}` | Named opt-in scheduler conditions that may skip selected checks before their adapters run. |
 | `report.enabled` | bool | `false` | Enables optional redacted policy decision reports. This does not affect enforcement, logs, metrics, traces, or client responses. |
@@ -91,6 +93,62 @@ auth:
 | `policies` | list | `[]` | Ordered first-match decision rules. |
 
 Policy snapshots are built at startup and on reload. A candidate snapshot is activated only after complete validation succeeds. If a reload fails, the previous active snapshot remains in use.
+
+## Native Go Plugin Integration
+
+Loaded native modules extend the compiled policy snapshot before request processing. They can register typed policy attributes, environment or subject producers, and executable obligation/post-action IDs. The plugin must be configured and loaded before a check or obligation can reference its qualified component.
+
+Native check types are:
+
+| Check type | Stage | Component reference | Purpose |
+| --- | --- | --- | --- |
+| `plugin.environment` | `pre_auth` | `plugins.modules.<module>.environment` in `config_ref` | Binds the check to the module's registered native `EnvironmentSource` components. |
+| `backend.plugin` | `auth_backend` | qualified backend selected by `auth.backends.order` | Records native backend evaluation in the policy plan. |
+| `plugin.subject` | `subject_analysis` | `plugins.modules.<module>.subject` in `config_ref` | Runs the registered native `SubjectSource` identified by the check name. |
+
+Native environment binding is module-wide. Use the canonical check name `plugin_environment_<module>` with `config_ref: plugins.modules.<module>.environment`; all environment sources registered by that module report under that policy check, while their generated execution facts remain component-qualified.
+
+Native subject binding keeps the component identity in the check name instead of `config_ref`. Use `plugin_subject_<module>_<local>` with `config_ref: plugins.modules.<module>.subject`. The compiler reads the module from `config_ref` and derives the local subject component from the check name. Runtime-generated names replace dots in the qualified module/component name with underscores. Appending the local source to `config_ref`, such as `plugins.modules.<module>.<local>`, is not a supported native plugin check reference.
+
+Example:
+
+```yaml
+auth:
+  policy:
+    checks:
+      - name: plugin_environment_geoip
+        type: plugin.environment
+        stage: pre_auth
+        operations: [authenticate, lookup_identity]
+        config_ref: plugins.modules.geoip.environment
+
+    policies:
+      - name: deny_unexpected_country
+        stage: pre_auth
+        operations: [authenticate]
+        require_checks: [plugin_environment_geoip]
+        if:
+          attribute: plugin.environment.geoip.country_iso
+          not_in: [DE, AT, CH]
+        then:
+          decision: deny
+          response_marker: auth.response.fail
+```
+
+Native obligation and post-action target names are registered directly as qualified policy effect IDs, for example `clickhouse.post_action` or `haveibeenpwnd.post_action`. They appear in a decision's normal `obligations` list; policy YAML does not define the executable code.
+
+```yaml
+then:
+  decision: permit
+  response_marker: auth.response.ok
+  obligations:
+    - id: haveibeenpwnd.post_action
+    - id: clickhouse.post_action
+```
+
+Order is preserved in the detached mixed Lua/native post-action plan. Plan-local runtime deltas from one native step are visible to later steps, but they do not revise the selected decision or live request runtime.
+
+See [Native Go Plugins](native-go-plugins.md), [Requests, Runtime Values, and Effects](../developer/go-plugins/runtime-and-effects.md), and the [Policy API reference](../developer/go-plugins/api-reference/policy.md) for registration and validation semantics.
 
 ## Modes
 
@@ -901,8 +959,8 @@ if:
 | `is` | bool and exact scalar checks | Short exact comparison. |
 | `eq` | scalar or exact list | Exact equality. |
 | `ne` | scalar or exact list | Exact inequality. |
-| `in` | scalar attribute | Attribute value is in the configured list. |
-| `not_in` | scalar attribute | Attribute value is not in the configured list. |
+| `in` | scalar attribute | Attribute value is in an inline list or referenced string set. |
+| `not_in` | scalar attribute | Attribute value is not in an inline list or referenced string set. |
 | `matches` | string | Go RE2 regular expression match. |
 | `exists` | any attribute/detail | Presence test with boolean operand. |
 | `contains` | string-list attribute | List contains one string. |
@@ -917,7 +975,7 @@ Missing attributes are not equal to `false`, an empty string, zero, or an empty 
 
 ## Sets
 
-Network and time-window sets are reusable operands for conditions.
+Network, string, and time-window sets are reusable operands for conditions.
 
 ```yaml
 auth:
@@ -928,6 +986,12 @@ auth:
           - 10.0.0.0/8
           - 192.168.0.0/16
           - 2001:db8::/32
+
+      strings:
+        allowed_protocols:
+          - imap
+          - smtp
+          - submission
 
       time_windows:
         business_hours:
@@ -948,11 +1012,19 @@ if:
 
 ```yaml
 if:
+  attribute: request.protocol
+  in: "@string.allowed_protocols"
+```
+
+```yaml
+if:
   attribute: request.time.now
   within_time_window: "@time_window.business_hours"
 ```
 
-Set names must use lowercase letters, digits, and underscores. Time-window intervals use `HH:MM` and must not cross midnight; split cross-midnight windows into two intervals.
+Set names must use lowercase letters, digits, and underscores. String sets are supported only by scalar string `in` and `not_in` conditions. Their values are exact and case-sensitive; empty sets, empty values, duplicate values, unknown references, and references used with incompatible attribute types fail policy compilation. Inline lists remain supported. Nauthilus does not infer or maintain domain-specific membership for operator-defined string sets.
+
+Time-window intervals use `HH:MM` and must not cross midnight; split cross-midnight windows into two intervals.
 
 ## Decision Outputs
 

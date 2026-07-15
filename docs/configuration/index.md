@@ -18,6 +18,7 @@ The current configuration file is organized into these root sections:
 - `storage`
 - `auth`
 - `identity`
+- `plugins`
 
 This is a breaking redesign. Legacy root sections such as `server`, `ldap`, `lua`, `idp`, `realtime_blackhole_lists`, `relay_domains`, `brute_force`, `backend_server_monitoring`, and `cleartext_networks` are not part of the current public model anymore.
 
@@ -77,6 +78,7 @@ Examples of canonical paths:
 - [Brute Force Protection](brute-force.md): `auth.controls.brute_force`
 - [Authentication Pipeline](auth-pipeline.md): `auth.pipeline`
 - [Auth Policy Reference](auth-policy.md): `auth.policy`
+- [Native Go Plugins](native-go-plugins.md): trusted `.so` modules, verification, capabilities, and reload boundaries
 - [Password Nonce](password-nonce.md): `storage.redis.password_nonce`
 - [Environment, Validation, and Dumps](reference.md)
 - [Database Backends](database-backends/index.md)
@@ -120,5 +122,7 @@ Nauthilus still supports reloading configuration via signals. The exact semantic
 
 - send `HUP` to reload configuration and rebuild dependent resources
 - send `SIGUSR1` after that when runtime listener settings require a server restart
+
+Native Go plugin code and loader/trust settings are restart-only. SIGHUP can pass a changed `plugins.modules[].config` subtree only to an already loaded module that implements the public `ReloadablePlugin` interface. See [Native Go Plugins](native-go-plugins.md#reload-versus-restart) for the exact boundary.
 
 Environment variables still require a full process restart.

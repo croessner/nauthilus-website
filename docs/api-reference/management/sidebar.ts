@@ -132,19 +132,6 @@ const sidebar: SidebarsConfig = {
     },
     {
       type: "category",
-      label: "/api/v1/config",
-      collapsed: true,
-      items: [
-        {
-          type: "doc",
-          id: "api-reference/management/load-runtime-config",
-          label: "Return the loaded runtime configuration as JSON text.",
-          className: "api-method get",
-        },
-      ],
-    },
-    {
-      type: "category",
       label: "/api/v1/async",
       collapsed: true,
       items: [
@@ -357,12 +344,6 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
-          id: "api-reference/management/schemas/configloadresult",
-          label: "ConfigLoadResult",
-          className: "schema",
-        },
-        {
-          type: "doc",
           id: "api-reference/management/schemas/errorresponse",
           label: "ErrorResponse",
           className: "schema",
@@ -383,6 +364,12 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "api-reference/management/schemas/oidcsessions",
           label: "OIDCSessions",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "api-reference/management/schemas/oidcsessionsummary",
+          label: "OIDCSessionSummary",
           className: "schema",
         },
         {

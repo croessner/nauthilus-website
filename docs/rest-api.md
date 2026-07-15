@@ -170,6 +170,11 @@ Examples:
 
 The examples below still use the default header names such as `Auth-User`, `Auth-Pass`, and `Auth-Protocol`.
 
+For header-based authentication, configured client-IP and client-port headers are accepted only when the immediate
+network peer belongs to `runtime.servers.http.trusted_proxies`. Requests from any other peer cannot override the
+connection-derived client address with those headers. Configure only proxy addresses or narrow proxy networks that you
+operate; do not trust a general client network.
+
 CBOR authentication can be disabled independently from the JSON endpoint:
 
 ```yaml
@@ -205,6 +210,71 @@ auth:
       enabled: true
 ```
 
+Protected backchannel routes can use configured backchannel Basic authentication, OIDC Bearer authentication, or both.
+They have different authorization semantics:
+
+- A Bearer token must be an access token with `token_type=access_token`, audience `nauthilus:backchannel`, and the base
+  scope `nauthilus:authenticate` on every protected `/api/v1/*` request.
+- Routes with an additional scope check accept any one of the listed route scopes.
+- Configured backchannel Basic authentication is the administrative management credential. After it succeeds, it is not
+  subject to Bearer scope checks.
+- Missing or invalid authentication returns `401`. A valid Bearer token that lacks the base or route scope returns
+  `403`.
+
+The current route-specific Bearer requirements are:
+
+| Route family | Additional Bearer scope, any-of |
+| --- | --- |
+| Authentication routes and management OpenAPI documents | None beyond `nauthilus:authenticate`. |
+| Cache flush, brute-force list/flush, and asynchronous job status | `nauthilus:security` or `nauthilus:admin`. |
+| OIDC session list/delete | `nauthilus:security` or `nauthilus:admin`. |
+| Add/delete TOTP or recovery-code state | `nauthilus:mfa_write` or `nauthilus:admin`. |
+| Read WebAuthn credential descriptors | `nauthilus:webauthn_read` or `nauthilus:admin`. |
+| Save/update/delete WebAuthn credentials | `nauthilus:webauthn_write` or `nauthilus:admin`. |
+
+Grant only the route scopes the client needs. The built-in IdP issues suitable machine-to-machine tokens with the
+Client Credentials Grant; do not request `openid` for such clients.
+
+## OIDC Session Administration
+
+`GET /api/v1/oidc/sessions/{user_id}` returns token-safe metadata rather than stored token material:
+
+```json
+{
+  "sessions": [
+    {
+      "id": "a stable SHA-256-derived session identifier",
+      "client_id": "example-web",
+      "user_id": "alice",
+      "username": "alice@example.test",
+      "display_name": "Alice Example",
+      "redirect_uri": "https://app.example.com/callback",
+      "mfa_method": "webauthn",
+      "scopes": ["openid", "profile"],
+      "auth_time": "2026-07-10T08:30:00Z",
+      "mfa_completed": true
+    }
+  ]
+}
+```
+
+The `id` is derived from the stored access token and is safe to display; it is not the access token. The single-session
+delete route still accepts the raw token in its `{token}` path parameter and verifies that it belongs to `{user_id}`.
+Use the all-sessions delete route when the raw token is unavailable.
+
+## Request Decompression Boundary
+
+When `runtime.servers.http.middlewares.request_decompression` is enabled, Nauthilus accepts gzip, Brotli, and Zstandard
+request encodings. The expanded body is capped at 1 MiB before the handler parses it. This limit
+applies after decompression and prevents a small compressed request from expanding without a bound.
+
+## Sensitive Authentication Output
+
+Backend attributes may contain password, token, private-key, TOTP-secret, or recovery-code material needed internally.
+Nauthilus removes attributes classified as secret-bearing from JSON/CBOR authentication response objects and from
+generated authentication response headers. Configured deployment-specific TOTP secret and recovery fields are also
+filtered. Clients must not depend on receiving those fields from an authentication response.
+
 ## OpenAPI Contracts and Runtime Validation
 
 Nauthilus serves its management OpenAPI contract at:
@@ -218,19 +288,6 @@ The public IdP contract is served at:
 - `/.well-known/openapi.json`
 
 These documents are the stable machine-readable contracts used by the generated client checks and by the website API reference. Runtime request validation is optional and default-off. When enabled, it validates only selected management operation IDs such as cache flush and brute-force list/flush requests. See [Runtime, Observability, and Storage](configuration/server-configuration.md#openapi-runtime-request-validation) for the configuration block and the current operation allowlist.
-
-## Configuration Endpoint Example
-
-If you call the configuration endpoint, the returned object now reflects the current config-v2 shape. For example:
-
-```json
-{
-  "session": "8a7c4c5b-6cf9-4af7-bfde-0a94cfd79f4f",
-  "object": "config",
-  "operation": "load",
-  "result": "{\"observability\":{\"log\":{\"level\":\"info\"}}}"
-}
-```
 
 ## Identity Endpoints
 

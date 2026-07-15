@@ -12,6 +12,8 @@ sidebar_position: 2
 - unified authentication hub for mail, HTTP, OIDC, and SAML flows
 - Redis-backed caching and operational state
 - LDAP and Lua authentication backends
+- versioned native Go plugin API with typed backends, policy sources/effects, hooks, and host service facades
+- bundled GeoIP/ASN, ClickHouse, and Have I Been Pwned Go plugins
 - remote authority backend for split edge/authority deployments
 - canonical config-v2 structure with validation and dump tooling
 
@@ -22,6 +24,7 @@ sidebar_position: 2
 - relay-domain validation
 - TLS enforcement with cleartext allowlists
 - Lua environment and subject sources
+- native Go environment and subject sources with registered typed policy facts
 
 ## Services and Observability
 
@@ -38,5 +41,6 @@ sidebar_position: 2
 - edge-hosted OIDC/SAML flows backed by a private Nauthilus authority over gRPC
 - integrated frontend
 - TOTP and WebAuthn MFA
+- configurable MFA assurance levels with global and per-OIDC-client/SAML-SP policy
 - authority-owned TOTP, recovery-code, and WebAuthn persistence for distributed IdP deployments
 - remember-me/session controls

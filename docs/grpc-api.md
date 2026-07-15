@@ -25,6 +25,8 @@ runtime:
       authority:
         enabled: true
         address: "127.0.0.1:9444"
+        backend_refs:
+          enabled: false
         tls:
           enabled: false
           cert: ""
@@ -35,6 +37,8 @@ runtime:
 ```
 
 The default address is loopback-only. Plaintext gRPC is only accepted on loopback addresses. Use TLS and usually mTLS before exposing the listener to another host or container network.
+
+Enabling the listener always registers `nauthilus.auth.v1.AuthService`. Backend references are opt-in and default to disabled. Set `runtime.servers.grpc.authority.backend_refs.enabled: true` only when this listener must also serve `nauthilus.identity.v1.IdentityBackendService`, as required by a split edge/authority deployment. Enabling backend references requires Redis; startup fails if no Redis-backed or injected backend-reference store is available.
 
 `min_tls_version` accepts `TLS1.2` and `TLS1.3`; unset values default to `TLS1.2`. The gRPC listener always advertises HTTP/2 through ALPN and does not expose configurable cipher suites.
 
@@ -151,6 +155,8 @@ message ListAccountsResponse {
 
 ## IdentityBackendService
 
+This service is registered only when `runtime.servers.grpc.authority.backend_refs.enabled` is explicitly set to `true`. Leaving the setting unset keeps the listener usable for `AuthService` clients without exposing the persistent identity/MFA continuation surface.
+
 ```proto
 package nauthilus.identity.v1;
 
@@ -249,6 +255,8 @@ message BackendRef {
 
 The opaque token is a handle to authority Redis state. It is not a serialized backend credential. The authority validates it on every follow-up operation.
 
+The authority issues opaque backend-reference tokens only while `runtime.servers.grpc.authority.backend_refs.enabled` is `true`. The default-disabled mode returns normal `AuthService` results without creating authority-side backend-reference state.
+
 Backend references bind to the authority-side backend, username, operation family, caller identity, and edge metadata. Missing, expired, malformed, or wrong-purpose references fail closed. Edges must not reconstruct backend state locally.
 
 ## Operation Status
@@ -289,10 +297,12 @@ When caller auth uses OIDC bearer tokens, the authority checks scopes independen
 | `nauthilus:list_accounts` | `AuthService.ListAccounts` |
 | `nauthilus:mfa_read` | `GetMFAState`, MFA state included in `ResolveUser` |
 | `nauthilus:mfa_verify` | `VerifyTOTP`, `UseRecoveryCode` |
-| `nauthilus:mfa_write` | `BeginTOTPRegistration`, `FinishTOTPRegistration`, `DeleteTOTP`, `GenerateRecoveryCodes`, `DeleteRecoveryCodes` |
+| `nauthilus:mfa_write` | `BeginTOTPRegistration`, `FinishTOTPRegistration`, `DeleteTOTP`, `GenerateRecoveryCodes`, `UseRecoveryCode`, `DeleteRecoveryCodes` |
 | `nauthilus:webauthn_read` | `GetWebAuthnCredentials`, WebAuthn credentials included in `GetMFAState` |
 | `nauthilus:webauthn_write` | `SaveWebAuthnCredential`, `UpdateWebAuthnCredential`, `DeleteWebAuthnCredential` |
 | `nauthilus:attribute_read` | Attribute release through `ResolveUser` |
+
+Scope requirements are cumulative. The authority checks every scope required for an RPC, so listing an RPC in more than one row means AND semantics, not alternatives. In particular, `IdentityBackendService.UseRecoveryCode` requires both `nauthilus:mfa_verify` and `nauthilus:mfa_write`: it verifies the submitted code and consumes persistent recovery-code state. A token carrying only one of these scopes is denied.
 
 Grant only the scopes the caller needs. For a split edge, keep the local remote backend `allowed_operations` list aligned with the authority scopes.
 

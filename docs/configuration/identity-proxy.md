@@ -47,6 +47,8 @@ runtime:
       authority:
         enabled: true
         address: "0.0.0.0:9444"
+        backend_refs:
+          enabled: true
         tls:
           enabled: true
           cert: "/etc/nauthilus/tls/authority.crt"
@@ -57,6 +59,14 @@ runtime:
 ```
 
 Non-loopback authority listeners must use TLS. Split deployments should use mTLS so the authority can bind backend references to the edge client identity.
+
+`backend_refs.enabled` is deliberately `false` by default. A split authority must enable it explicitly so that Nauthilus registers `IdentityBackendService` and issues the opaque references needed by identity, MFA, and WebAuthn continuation calls. The authority must also have Redis available; otherwise listener startup fails. A listener used only for direct `AuthService` calls can leave backend references disabled.
+
+:::warning Split deployment upgrade
+
+Split authority configurations created before this opt-in existed must add `backend_refs.enabled: true` before upgrading. Without it, `AuthService` remains available but `IdentityBackendService` is not registered, so edge identity, MFA, and WebAuthn continuation RPCs cannot run.
+
+:::
 
 ### Authority Caller Authentication
 
@@ -332,6 +342,8 @@ runtime:
     grpc:
       authority:
         enabled: true
+        backend_refs:
+          enabled: false
 
 auth:
   backends:
@@ -339,4 +351,4 @@ auth:
       - ldap
 ```
 
-In that shape, the same process owns the IdP endpoints, the local backend, and optionally the gRPC authority listener. Do not configure `auth.backends.order: [remote]` against itself unless you explicitly want to test the remote path; local backends are the normal standalone model.
+In that shape, the same process owns the IdP endpoints, the local backend, and optionally the gRPC authority listener. It can leave backend references disabled when only `AuthService` is needed. Do not configure `auth.backends.order: [remote]` against itself unless you explicitly want to test the remote path; local backends are the normal standalone model.

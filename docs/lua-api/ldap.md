@@ -1,22 +1,47 @@
 ---
 title: LDAP
-description: LDAP related functions
-keywords: [Lua]
+description: Perform bounded LDAP searches and modifications from Lua
+keywords: [Lua, LDAP, Security]
 sidebar_position: 6
 ---
+
 # Backend LDAP
 
-It is possible to send LDAP search requests to the main LDAP worker pool, if the **ldap** backend is enabled.
+Lua scripts can submit searches and modifications to the configured LDAP worker pool when the LDAP backend is enabled.
 
 ```lua
 local nauthilus_ldap = require("nauthilus_ldap")
 ```
 
-## nauthilus_ldap.ldap_endpoint
+## Security Model
 
-Resolves the LDAP endpoint (host and port) for a given LDAP worker pool.
+LDAP operations are bounded by default. An untrusted operation must declare `allowed_base_dn`; the search base or modify
+DN must be equal to that DN or a descendant of it.
 
-This helper inspects the configured server_uri list of the selected pool and returns the hostname and port derived from the first URI. If the URI does not specify a port, a default is applied based on the scheme (ldaps → 636, otherwise 389). The function also ensures the pool is currently active (has workers registered).
+For searches, prefer `filter_attr` and `filter_value`. Nauthilus validates the attribute description and escapes the
+value before constructing an LDAP equality filter. A raw `filter` is accepted only together with `trusted = true`.
+
+::::warning
+Do not set `trusted = true` for data derived from requests, users, headers, tokens, or other external input. Trusted mode
+removes the mandatory subtree boundary when `allowed_base_dn` is omitted and permits a raw LDAP filter.
+::::
+
+The safe and trusted search forms are mutually exclusive in practice:
+
+```lua
+-- Safe equality filter: filter_value is escaped by Nauthilus.
+filter_attr = "uid"
+filter_value = user
+
+-- Raw filter: use only for a static, application-controlled expression.
+filter = "(&(objectClass=person)(accountStatus=active))"
+trusted = true
+```
+
+## `nauthilus_ldap.ldap_endpoint`
+
+Resolves the LDAP endpoint for a worker pool. The helper reads the first configured `server_uri`. If the URI does not
+contain a port, it returns 636 for `ldaps` and 389 for other TCP schemes. The selected pool must have active workers.
 
 ### Syntax
 
@@ -26,209 +51,213 @@ local server, port, err = nauthilus_ldap.ldap_endpoint(pool_name)
 
 ### Parameters
 
-- `pool_name` (string, optional): The name of the LDAP connection pool. If omitted, the main/default pool is used.
+- `pool_name` (string, optional): configured pool name. Omit it for the default pool.
 
 ### Returns
 
-- `server` (string or nil): Hostname of the LDAP endpoint on success; `nil` on error
-- `port` (number or nil): TCP port of the LDAP endpoint on success; `nil` on error
-- `err` (string or nil): Error message when resolution fails; `nil` on success
+- `server` (string or `nil`): endpoint hostname on success.
+- `port` (number or `nil`): endpoint port on success.
+- `err` (string or `nil`): error message on failure.
 
-### Possible errors
+For an `ldapi` URI, the helper returns the socket path as `server` and `0` as `port`.
 
-- `ldap pool not active: <name>` — The requested pool has no active workers
-- `ldap pool config not found: <name>` — The named pool has no configuration
-- `no LDAP server_uri configured for pool: <name>` — The pool has no server URIs configured
-- `invalid LDAP server_uri: <uri>` — The first configured URI is malformed
+### Possible Errors
+
+- `ldap pool not active: <name>`
+- `ldap pool config not found: <name>`
+- `no LDAP server_uri configured for pool: <name>`
+- `invalid LDAP server_uri: <uri>`
 
 ### Example
 
 ```lua
 local nauthilus_ldap = require("nauthilus_ldap")
 
--- Default pool
 local host, port, err = nauthilus_ldap.ldap_endpoint()
 if err ~= nil then
   error("ldap_endpoint failed: " .. err)
 end
+
 print("LDAP host:", host, "port:", port)
 
--- Optional named pool "directory_eu"
-local host2, port2, err2 = nauthilus_ldap.ldap_endpoint("directory_eu")
-if err2 == nil then
-  print("EU LDAP host:", host2, "port:", port2)
+local eu_host, eu_port, eu_err = nauthilus_ldap.ldap_endpoint("directory_eu")
+if eu_err == nil then
+  print("EU LDAP host:", eu_host, "port:", eu_port)
 end
 ```
 
-## nauthilus\_ldap.ldap\_search
+## `nauthilus_ldap.ldap_search`
 
-Performs an LDAP search request using the main LDAP worker pool.
+Performs an LDAP search through the selected worker pool.
 
 ### Syntax
 
 ```lua
-local result, error = nauthilus_ldap.ldap_search(search_params)
+local result, err = nauthilus_ldap.ldap_search(search_params)
 ```
 
 ### Parameters
 
-- `search_params` (table): A Lua table containing the search parameters:
-  - `pool_name` (string, optional): The name of the LDAP connection pool to use (defaults to the main pool if not specified)
-  - `session` (string): The session identifier from the calling function
-  - `basedn` (string): The base DN for the LDAP search
-  - `filter` (string): The LDAP search filter
-  - `attributes` (table): A Lua table listing the attributes to retrieve
-  - `scope` (string): The search scope (e.g., "sub", "base", "one")
-  - `raw_result` (boolean, optional): When set to `true`, returns the raw LDAP entries instead of the processed result (available since version 1.7.10)
+`search_params` is a table with these fields:
+
+| Field | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `pool_name` | string | yes | Configured pool name. Use `"default"` for the default pool. |
+| `session` | string | yes | Request/session identifier used for correlation. |
+| `basedn` | string | yes | Search base DN. |
+| `allowed_base_dn` | string | unless trusted | Maximum subtree available to the operation. |
+| `filter_attr` | string | for safe form | LDAP attribute description for an equality filter. |
+| `filter_value` | string | for safe form | Equality value; Nauthilus escapes it with LDAP filter escaping. |
+| `filter` | string | trusted form only | Complete raw LDAP filter. Requires `trusted = true`. |
+| `trusted` | boolean | no | Enables the raw-filter form and permits omitting `allowed_base_dn`. Defaults to `false`. |
+| `attributes` | table | yes | Array of attribute names to retrieve. |
+| `scope` | string | yes | `base`, `one`, or `sub`. |
+| `raw_result` | boolean | no | Return entries with their DNs instead of the merged attribute map. |
+
+Only conservative LDAP attribute descriptions are accepted for `filter_attr`. The base DN and allowed DN must both be
+valid LDAP DNs, and the base must stay inside the allowed subtree.
 
 ### Returns
 
-When `raw_result` is `false` or not specified:
-- `result` (table): A Lua table where:
-  - **Keys** are the LDAP attribute names
-  - **Values** are tables containing all values for that attribute (multi-value support)
-- `error` (string): An error message if the search fails
+With `raw_result` omitted or `false`, `result` is a table whose keys are LDAP attribute names and whose values are
+arrays containing all values for that attribute.
 
-When `raw_result` is `true`:
-- `result` (table): A Lua table containing the raw LDAP entries, where each entry is a table with:
-  - `dn` (string): The distinguished name of the entry
-  - `attributes` (table): A table where keys are attribute names and values are tables containing all values for that attribute
-- `error` (string): An error message if the search fails
+With `raw_result = true`, `result` is an array of entries:
 
-### Example
+```lua
+{
+  {
+    dn = "uid=bob,ou=people,dc=example,dc=com",
+    attributes = {
+      uid = { "bob" },
+      mail = { "bob@example.com" }
+    }
+  }
+}
+```
+
+On a worker or LDAP error, the function returns `nil, err`.
+
+### Safe Search Example
 
 ```lua
 local nauthilus_ldap = require("nauthilus_ldap")
 
-local user = "bob"
-
-local result, error = nauthilus_ldap.ldap_search({
-  session = request.session, -- request: from the calling function
-  basedn = "dc=acme,dc=com",
-  filter = "(|(uniqueIdentifier=" .. user .. ")(uid=" .. user .. "))",
+local user = request.username
+local result, err = nauthilus_ldap.ldap_search({
+  pool_name = "default",
+  session = request.session,
+  basedn = "ou=people,dc=example,dc=com",
+  allowed_base_dn = "ou=people,dc=example,dc=com",
+  filter_attr = "uid",
+  filter_value = user,
   attributes = {
-    [1] = "some_attr1",
-    [2] = "some_attr2",
+    "uid",
+    "mail",
+    "displayName",
   },
   scope = "sub"
 })
 
-local attributes = {} -- may be applied in a filter
-if result then
-  if type(result) == "table" then
-    for key, value in pairs(result) do
-      attributes[key] = value[1] -- LDAP single value example
-    end
-  end
-end 
+if err ~= nil then
+  error("LDAP search failed: " .. err)
+end
+
+local first_mail = result.mail and result.mail[1]
 ```
 
-If anything went fine, the **result** contains a Lua table, where the key represents the LDAP attribute name and the values
-are Lua tables with all values (multi value).
+Even if `user` contains LDAP filter metacharacters, Nauthilus treats it as a value rather than filter syntax.
 
-### Example with raw_result
+### Raw Result Example
 
 ```lua
-local nauthilus_ldap = require("nauthilus_ldap")
-
-local user = "bob"
-
-local result, error = nauthilus_ldap.ldap_search({
-  session = request.session, -- request: from the calling function
-  basedn = "dc=acme,dc=com",
-  filter = "(|(uniqueIdentifier=" .. user .. ")(uid=" .. user .. "))",
-  attributes = {
-    [1] = "some_attr1",
-    [2] = "some_attr2",
-  },
+local result, err = nauthilus_ldap.ldap_search({
+  pool_name = "default",
+  session = request.session,
+  basedn = "ou=people,dc=example,dc=com",
+  allowed_base_dn = "ou=people,dc=example,dc=com",
+  filter_attr = "uid",
+  filter_value = request.username,
+  attributes = { "uid", "mail" },
   scope = "sub",
   raw_result = true
 })
 
-if result then
-  for i, entry in ipairs(result) do
-    print("DN: " .. entry.dn)
-    for attr_name, attr_values in pairs(entry.attributes) do
-      print("Attribute: " .. attr_name)
-      for j, value in ipairs(attr_values) do
-        print("  Value " .. j .. ": " .. value)
-      end
+if err ~= nil then
+  error("LDAP search failed: " .. err)
+end
+
+for _, entry in ipairs(result) do
+  print("DN: " .. entry.dn)
+  for name, values in pairs(entry.attributes) do
+    for _, value in ipairs(values) do
+      print(name .. ": " .. value)
     end
   end
 end
 ```
 
-When using `raw_result = true`, the result is a table of entries, where each entry contains the DN and all attributes with their values. This format preserves the structure of the LDAP entries and can be useful when you need to process multiple entries or need to know which attributes belong to which entry.
-
 ::::warning
-LDAP search requests are blocking operations!
+LDAP search requests are blocking operations. Keep searches narrow and use request timeouts appropriate for the calling
+Lua extension point.
 ::::
 
-## nauthilus\_ldap.ldap\_modify
+## `nauthilus_ldap.ldap_modify`
 
-Performs an LDAP modify operation using the main LDAP worker pool.
+Performs one LDAP modify operation through the selected worker pool.
 
 ### Syntax
 
 ```lua
-local result, error = nauthilus_ldap.ldap_modify(modify_params)
+local result, err = nauthilus_ldap.ldap_modify(modify_params)
 ```
 
 ### Parameters
 
-- `modify_params` (table): A Lua table containing the modify parameters:
-  - `pool_name` (string, optional): The name of the LDAP connection pool to use (defaults to the main pool if not specified)
-  - `session` (string): The session identifier from the calling function
-  - `dn` (string): The distinguished name of the LDAP entry to modify
-  - `operation` (string): The type of modify operation to perform:
-    - **add**: Add the specified attributes/values to the entry
-    - **delete**: Remove the specified attributes/values from the entry
-    - **replace**: Replace the specified attributes/values in the entry
-  - `attributes` (table): A Lua table where:
-    - **Keys** are the attribute names
-    - **Values** are tables containing the values for that attribute
+`modify_params` is a table with these fields:
+
+| Field | Type | Required | Meaning |
+| --- | --- | --- | --- |
+| `pool_name` | string | yes | Configured pool name. Use `"default"` for the default pool. |
+| `session` | string | yes | Request/session identifier used for correlation. |
+| `dn` | string | yes | Exact entry DN to modify. |
+| `allowed_base_dn` | string | unless trusted | Maximum subtree available to the operation. |
+| `trusted` | boolean | no | Permits omitting `allowed_base_dn`. Defaults to `false`. |
+| `operation` | string | yes | `add`, `delete`, or `replace`. |
+| `attributes` | table | yes | Map of attribute name to a single string value for this operation. |
+
+The entry DN must be equal to or below `allowed_base_dn`. Prefer a narrow subtree such as an organizational unit rather
+than the directory root.
 
 ### Returns
 
-- `result` (string): "OK" if the operation was successful
-- `error` (string): An error message if the operation fails
+- `"OK"` on success.
+- `nil, err` when the LDAP worker reports an error.
 
 ### Example
 
 ```lua
 local nauthilus_ldap = require("nauthilus_ldap")
 
--- Example: Add a new attribute to a user
-local result, error = nauthilus_ldap.ldap_modify({
-  session = request.session, -- request: from the calling function
-  dn = "uid=bob,ou=people,dc=acme,dc=com",
-  operation = "add",
-  attributes = {
-    telephoneNumber = { "+1 555 123 4567" }
-  }
-})
-
--- Example: Delete an attribute from a user
-local result, error = nauthilus_ldap.ldap_modify({
+local result, err = nauthilus_ldap.ldap_modify({
+  pool_name = "default",
   session = request.session,
-  dn = "uid=bob,ou=people,dc=acme,dc=com",
-  operation = "delete",
-  attributes = {
-    telephoneNumber = { "+1 555 123 4567" }
-  }
-})
-
--- Example: Replace an attribute value
-local result, error = nauthilus_ldap.ldap_modify({
-  session = request.session,
-  dn = "uid=bob,ou=people,dc=acme,dc=com",
+  dn = "uid=bob,ou=people,dc=example,dc=com",
+  allowed_base_dn = "ou=people,dc=example,dc=com",
   operation = "replace",
   attributes = {
-    mail = { "bob.new@acme.com" }
+    telephoneNumber = "+1 555 123 4567"
   }
 })
+
+if err ~= nil then
+  error("LDAP modify failed: " .. err)
+end
 ```
 
+Use separate calls for separate modify operations or values.
+
 ::::warning
-LDAP modify requests are blocking operations!
+LDAP modify requests are blocking and mutate directory state. Keep `allowed_base_dn` narrow and never enable trusted mode
+for user-controlled DNs.
 ::::

@@ -118,6 +118,22 @@ auth:
 
 The authority can also run its own public IdP endpoints when desired, but that is separate from the split edge profile.
 
+## Authority Prerequisite
+
+The remote backend's identity, MFA, WebAuthn, and attribute operations require the authority to register `IdentityBackendService`. Backend references are disabled by default, so the authority configuration must opt in explicitly:
+
+```yaml
+runtime:
+  servers:
+    grpc:
+      authority:
+        enabled: true
+        backend_refs:
+          enabled: true
+```
+
+Enabling backend references requires authority Redis. If Redis is unavailable or unconfigured, the authority listener fails during startup instead of silently exposing a partial split-deployment service. An `AuthService`-only authority can leave this option disabled, but it is not sufficient for the full remote edge profile documented here.
+
 ## Backend References
 
 Successful authority operations can return an opaque `backend_ref`. The edge stores that reference in its encrypted session and uses it for follow-up MFA, WebAuthn, and identity operations. The reference is not self-contained. The authority stores the real payload in authority Redis and validates it on every follow-up call.

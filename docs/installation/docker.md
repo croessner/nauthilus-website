@@ -62,13 +62,12 @@ storage:
     primary:
       address: "redis:6379"
     password_nonce: "replace-with-a-long-random-string"
-
-auth:
-  backends:
-    order:
-      - cache
-      - ldap
 ```
+
+This intentionally starts only Nauthilus and Redis so that the process and
+health endpoint can be verified. It does not configure an authentication
+backend. Add and configure LDAP, Lua, a remote authority, or a native Go plugin
+backend before sending authentication traffic.
 
 Then start the stack:
 
@@ -146,6 +145,18 @@ docker run --rm -v "$PWD/nauthilus.yml:/etc/nauthilus/nauthilus.yml:ro" \
   ghcr.io/croessner/nauthilus:latest \
   -n --config /etc/nauthilus/nauthilus.yml
 ```
+
+## Bundled Native Go Plugins
+
+Current stable and debug images build `geoip.so`, `clickhouse.so`, and `haveibeenpwnd.so` from the same source tree and Go toolchain as the server. The artifacts are installed below:
+
+```text
+/usr/local/lib/nauthilus/plugins/
+```
+
+Release image builds place detached `.minisig` files beside the artifacts. Loading is opt-in: configure the root-level `plugins` section, trust the public build signer, and select only the modules you need. Do not copy a plugin artifact between image versions or architectures and assume Go ABI compatibility.
+
+See [Native Go Plugin Configuration](../configuration/native-go-plugins.md) and [Reference Plugins](../developer/go-plugins/reference-plugins/index.md).
 
 ## Next Steps
 

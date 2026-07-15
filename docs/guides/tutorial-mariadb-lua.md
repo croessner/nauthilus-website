@@ -113,7 +113,7 @@ services:
       retries: 20
 
   nauthilus:
-    image: ghcr.io/croessner/nauthilus:v3.0.0
+    image: ghcr.io/croessner/nauthilus:v3.1.0-beta.37
     depends_on:
       valkey:
         condition: service_healthy
@@ -242,8 +242,14 @@ local DB_CONFIG = {
     read_only = true,
 }
 
-local function sql_string(value)
-    return string.format("%q", tostring(value or ""))
+local function mysql_query(mysql, query, ...)
+    local statement, err_statement = mysql:stmt(query)
+    nauthilus_util.if_error_raise(err_statement)
+
+    local result, err_query = statement:query(...)
+    nauthilus_util.if_error_raise(err_query)
+
+    return result
 end
 
 local function row_to_record(result, row)
@@ -262,12 +268,11 @@ function nauthilus_backend_verify_password(request)
     local mysql, err_open = db.open("mysql", DB_DSN, DB_CONFIG)
     nauthilus_util.if_error_raise(err_open)
 
-    local identifier = sql_string(request.username)
-    local query = "SELECT username, account, password, display_name, mail FROM accounts WHERE username = " ..
-        identifier .. " OR account = " .. identifier .. " LIMIT 1;"
-
-    local result, err_query = mysql:query(query)
-    nauthilus_util.if_error_raise(err_query)
+    local result = mysql_query(mysql,
+        "SELECT username, account, password, display_name, mail " ..
+        "FROM accounts WHERE username = ? OR account = ? LIMIT 1;",
+        request.username,
+        request.username)
 
     if result.rows == nil or #result.rows == 0 then
         backend_result:user_found(false)
@@ -329,6 +334,8 @@ The Lua backend does not replace Nauthilus. It only owns the part that is specif
 - caching through Valkey
 - request parsing
 - backend result handling
+
+The account lookup uses a prepared statement with bound parameters. Do not build SQL by quoting or concatenating `request.username`, account names, or any other request value. Read-only database credentials reduce impact, but they do not make string-built SQL safe.
 
 That split is the main design idea. YAML wires the system together; Lua contains the custom business logic.
 

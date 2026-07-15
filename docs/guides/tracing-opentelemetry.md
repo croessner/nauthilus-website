@@ -58,3 +58,15 @@ observability:
 - current tracing settings are no longer documented below `server.insights.tracing`
 - Redis tracing is controlled by `observability.tracing.enable_redis`
 - Lua scripts can create child spans through the Lua OpenTelemetry module when tracing is enabled
+
+## Native Go Plugins
+
+The host wraps native request-time component calls with spans from the `nauthilus/plugin/runtime` instrumentation scope. Automatic attributes identify only bounded module, component, extension point, method, and result values.
+
+Plugin code can create child spans through `Host.Tracer(scope)`. `Tracer.Start` accepts the current call context and returns a derived context plus a host-owned span supporting events, attributes, error recording, and `End`.
+
+Plugins are responsible for the sensitivity and cardinality of their own attributes. `Span.RecordError` records the supplied error, and non-primitive attribute values are stringified; redact before recording. Do not attach usernames, client IPs, accounts, tokens, credentials, raw LDAP/SQL, message bodies, or unbounded external errors.
+
+Use the derived context for `Host.HTTP`, `Host.LDAP`, Redis, or plugin-owned downstream calls so trace parentage and propagation remain intact. `Host.Go` preserves trace/context values for supervised work but replaces request cancellation with host-lifetime cancellation.
+
+See [Host Services](../developer/go-plugins/host-services.md#tracing) and the [Tracing API reference](../developer/go-plugins/api-reference/services.md#tracing).

@@ -252,6 +252,8 @@ runtime:
       authority:
         enabled: true
         address: "0.0.0.0:9444"
+        backend_refs:
+          enabled: true
         tls:
           enabled: true
           cert: "/etc/nauthilus/tls/authority.crt"
@@ -266,7 +268,7 @@ auth:
       enabled: true
 ```
 
-The gRPC authority listener registers the auth service and the identity backend service. It enforces caller auth and maps missing caller credentials to transport-level authentication errors.
+The gRPC authority listener always registers the auth service. `backend_refs.enabled` is an explicit opt-in that also registers the identity backend service and enables authority-issued backend references. It defaults to `false`; the split profile sets it to `true` and therefore requires authority Redis. Missing caller credentials map to transport-level authentication errors.
 
 ## 6. Configure Authority Caller Tokens
 
@@ -472,6 +474,7 @@ Confirm:
 - caller auth is enabled;
 - token cache uses edge Redis;
 - authority listener requires caller auth and uses TLS/mTLS;
+- authority listener has `backend_refs.enabled: true`;
 - edge Redis and authority Redis addresses are different.
 
 ## 12. Validate The Network
@@ -545,6 +548,7 @@ Use this checklist before exposing the deployment:
 - [ ] Edge backend order is remote-only.
 - [ ] Edge has no LDAP/Lua backend credentials.
 - [ ] Authority has the local backend credentials and can authenticate users.
+- [ ] Authority has `runtime.servers.grpc.authority.backend_refs.enabled: true`.
 - [ ] Edge Redis and authority Redis are separate.
 - [ ] Network policy blocks cross-Redis access.
 - [ ] Edge-to-authority gRPC uses mTLS.

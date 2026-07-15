@@ -52,3 +52,24 @@ scrape_configs:
 ```
 
 For scrapes that cross a trust boundary, use HTTPS or a private scrape network in addition to Basic authentication.
+
+## Native Go Plugin Metrics
+
+The native plugin runner exports bounded call metrics for every request-time component:
+
+```text
+plugin_calls_total{module,component,extension_point,method,result}
+plugin_call_duration_seconds{module,component,extension_point,method,result}
+```
+
+Plugins can also register counters, gauges, histograms, and summaries through the public `Host.Metrics(scope)` facade. Their collectors use the `nauthilus_plugin_<scope>_...` namespace and a host-owned `plugin_scope` label. Metric names and labels must use Prometheus-compatible syntax; `plugin_scope` is reserved.
+
+Every observation must supply exactly the declared labels. Invalid observations are dropped because the public observation methods do not return an error. Plugin authors must keep labels bounded and must not use usernames, IP addresses, account names, URLs, queries, session IDs, or error strings.
+
+Bundled reference plugins add:
+
+- GeoIP: `geoip_lookup_total`, `geoip_lookup_seconds`, and `geoip_database_records` below its plugin namespace;
+- ClickHouse: queued-row, flush-batch, and flush-duration metrics;
+- Have I Been Pwned: check, HTTP-duration, and mail-attempt metrics.
+
+See [Host Services](../developer/go-plugins/host-services.md#metrics) and the [Metrics API reference](../developer/go-plugins/api-reference/services.md#metrics).

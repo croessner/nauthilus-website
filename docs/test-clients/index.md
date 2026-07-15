@@ -14,6 +14,7 @@ This section documents dedicated test clients and request helpers for Nauthilus 
 - [OIDC Test Client](oidc-test-client.md)
 - [SAML2 Test Client](saml2-test-client.md)
 - [CBOR Auth Request Client](cbor-auth-request.md)
+- [Authentication Load Test Client](load-test-client.md)
 
 ## Planned
 

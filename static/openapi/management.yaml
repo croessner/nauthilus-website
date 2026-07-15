@@ -563,6 +563,8 @@ paths:
           $ref: "#/components/responses/JSONValidationError"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/Error"
   /api/v1/cache/flush/async:
@@ -585,26 +587,6 @@ paths:
           $ref: "#/components/responses/AsyncAccepted"
         "400":
           $ref: "#/components/responses/JSONValidationError"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/Error"
-  /api/v1/config/load:
-    get:
-      tags:
-        - Config
-      operationId: loadRuntimeConfig
-      summary: Return the loaded runtime configuration as JSON text.
-      security:
-        - backchannelBasic: []
-        - backchannelBearer: []
-      responses:
-        "200":
-          description: Runtime configuration wrapped in the standard result envelope.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ConfigLoadResult"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
@@ -795,7 +777,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Active sessions keyed by token or session identifier.
+          description: Active sessions without raw token material.
           content:
             application/json:
               schema:
@@ -804,6 +786,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/Error"
     delete:
@@ -827,6 +811,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/Error"
   /api/v1/oidc/sessions/{user_id}/{token}:
@@ -856,6 +842,8 @@ paths:
           $ref: "#/components/responses/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/Error"
 components:
@@ -1606,14 +1594,6 @@ components:
           properties:
             result:
               $ref: "#/components/schemas/CacheFlushPayload"
-    ConfigLoadResult:
-      allOf:
-        - $ref: "#/components/schemas/ResultEnvelope"
-        - type: object
-          properties:
-            result:
-              type: string
-              description: JSON-encoded runtime configuration.
     ErrorResponse:
       type: object
       required:
@@ -1639,7 +1619,45 @@ components:
             $ref: "#/components/schemas/FieldError"
     OIDCSessions:
       type: object
-      additionalProperties: true
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OIDCSessionSummary"
+    OIDCSessionSummary:
+      type: object
+      required:
+        - id
+        - client_id
+        - user_id
+        - auth_time
+      properties:
+        id:
+          type: string
+          description: Stable non-secret session identifier derived from the stored token.
+        client_id:
+          type: string
+        user_id:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        redirect_uri:
+          type: string
+        mfa_method:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        auth_time:
+          type: string
+          format: date-time
+        mfa_completed:
+          type: boolean
     PageInfo:
       type: object
       required:

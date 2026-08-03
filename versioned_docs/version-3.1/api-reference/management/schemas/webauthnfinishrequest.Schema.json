@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["name","credential"],"properties":{"name":{"type":"string"},"credential":{"type":"object","additionalProperties":true}},"title":"WebAuthnFinishRequest"},"schemaType":"response"}

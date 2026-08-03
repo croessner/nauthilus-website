@@ -41,7 +41,7 @@ for header_key, header_value_table in pairs(header_table) do
   for index, header_value in ipairs(header_value_table) do
     print("header_value[" .. tostring(index) .. "]: " .. header_value)
   end
-end 
+end
 ```
 
 ## nauthilus\_http\_request.get\_http\_request\_header

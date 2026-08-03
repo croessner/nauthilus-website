@@ -31,7 +31,7 @@ flowchart TB
     end
     subgraph Keycloak
         direction TB
-        keycloak[Keycloak OIDC/SAML] --> nauthiluskeycloak[Nauthilus-Keycloak] 
+        keycloak[Keycloak OIDC/SAML] --> nauthiluskeycloak[Nauthilus-Keycloak]
         nauthiluskeycloak --> as
     end
     subgraph Resources

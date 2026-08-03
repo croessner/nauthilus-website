@@ -56,7 +56,7 @@ Never expose secrets through:
 - discovery metadata;
 - response headers or hook bodies.
 
-Treat `PostActionRequest.PasswordHash` as credential material. It is normally a short derived value, but development mode can expose prepared nonce-plus-password bytes through this field, and the field is passed independently of the credentials capability. A post-action credential provider also relies on plugin discipline for request scoping; never retain either value for later use.
+Treat `PostActionRequest.PasswordHash` as sensitive password-derived material. It is the host-owned lowercase 64-character SHA-256 digest of the prepared nonce-plus-password bytes, remains hashed in development mode, and is passed independently of the credentials capability. A post-action credential provider also relies on plugin discipline for request scoping; never retain either value for later use.
 
 `Host.Config()` is the complete process-start configuration view and can contain inline configured secrets. Prefer the module subtree and least data access; do not assume the host-wide view is redacted or refreshed by SIGHUP.
 

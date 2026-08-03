@@ -249,7 +249,7 @@ Its `ObligationResult` may report application state, temporary failure, status/l
 
 ## Detached post-actions
 
-A `PostActionTarget` accepts or skips work after policy selection. It receives effect args and facts, an optional credential provider, and the host-generated compatible short password hash when a password existed.
+A `PostActionTarget` accepts or skips work after policy selection. It receives effect args and facts, an optional credential provider, and the host-generated canonical password hash when a password existed.
 
 Native and Lua post-actions are executed as one detached plan in final-obligation order. Of the current `PostActionEnqueueResult` fields, only `RuntimeDelta` is applied by the host; `Status`, `Logs`, `QueuedID`, `Enqueued`, and `Temporary` are currently ignored. A returned error or an invalid delta aborts the remaining mixed plan.
 
@@ -262,7 +262,7 @@ The delta is visible only to later steps in that plan. It does not change:
 
 Use `Host.Go` for supervised background work and return promptly after acceptance. Post-action results do not add new facts to the completed decision.
 
-`PostActionRequest.PasswordHash` normally contains the host-compatible eight-character short hash. In development mode the public password helper returns the prepared `nonce + NUL + password` bytes as a string, so the field can contain recoverable cleartext material. Treat it as a credential, regardless of capability grants, and never log or persist it.
+`PostActionRequest.PasswordHash` contains the host-owned lowercase 64-character SHA-256 digest of `nonce + NUL + password`. Development mode does not change this representation. Treat it as sensitive password-derived material, regardless of capability grants, and never log or persist it. The bundled ClickHouse integrations validate the full digest and export only its first eight characters to their established analytics schema.
 
 Ordering can be semantically important. The bundled HIBP action must precede ClickHouse when the ClickHouse row should include the fresh `plugin.exchange.haveibeenpwnd.hash_info` value.
 

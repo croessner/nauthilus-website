@@ -19,7 +19,7 @@ local nauthilus_http_response = require("nauthilus_http_response")
 
 Notes
 - Availability: This module is available in Hooks. It may also be used by environment and subject sources, but with strict limitations (see below). It is not available in non-HTTP contexts (e.g., pure backend workers without an HTTP response).
-- If you write generic Lua code that may also run in non-HTTP contexts, guard calls with `pcall(...)`. 
+- If you write generic Lua code that may also run in non-HTTP contexts, guard calls with `pcall(...)`.
 - Header names are case-insensitive on the wire; use canonical forms for readability.
 - Important: environment and subject sources MUST NOT send a response body. They may set or add/remove HTTP response headers to signal state to the frontend, and they may set an HTTP status code if appropriate, but they must not write the response body or use helpers that emit a body (see Prohibited operations in environment and subject sources).
 

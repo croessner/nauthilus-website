@@ -47,10 +47,10 @@ defaults
     timeout server          1m
     timeout check           10s
     maxconn                 3000
-    
+
 userlist basic-auth-list
     user YOUR-USER password $5$....
-    
+
 frontend nauthilus
     mode http
     bind ....:443 ssl crt /path/to/crt alpn h2,http/1.1

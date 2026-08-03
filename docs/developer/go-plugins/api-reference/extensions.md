@@ -243,7 +243,7 @@ type PostActionRequest struct {
 | `Snapshot` | Final request snapshot available to the enqueue decision. |
 | `Runtime` | Read-only runtime values. |
 | `Credentials` | Capability-gated provider. Use only synchronously inside `Enqueue`; never retain or pass to detached work. |
-| `PasswordHash` | Host-generated password-derived value, delivered to all post-action targets regardless of credentials capability. Normally it is the first eight hex characters of SHA-256 over `nonce || NUL || password`. In host development mode it is the raw prepared bytes converted to a string and can therefore contain nonce plus the plaintext password. Treat it as a credential, never log/trace/store/expose it, and do not assume it is always an eight-character hash. |
+| `PasswordHash` | Host-generated password-derived value, delivered to all post-action targets regardless of credentials capability. It is the lowercase 64-character SHA-256 digest of `nonce || NUL || password` in every runtime mode. Treat it as sensitive, never log/trace/store/expose it, and validate the full digest before deriving any shortened integration-specific representation. |
 | `Args` | Read-only post-action arguments. |
 | `Facts` | Facts available at the post-decision stage. |
 

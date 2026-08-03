@@ -153,6 +153,7 @@ identity:
         grant_types:
           - "authorization_code"
         token_endpoint_auth_method: "client_secret_basic"
+        require_pkce: true
         required_scopes:
           - "openid"
         optional_scopes:
@@ -171,6 +172,7 @@ identity:
 - only `S256` is supported
 - public clients must use PKCE
 - public means no `client_secret` or `token_endpoint_auth_method: none`
+- confidential clients can require PKCE by setting `require_pkce: true`
 
 ## Client Types and Grant Boundaries
 
@@ -183,6 +185,7 @@ Nauthilus enforces the security properties of each client type at configuration 
 - Confidential device-authorization clients must authenticate before Nauthilus allocates device-flow state.
 - When a request selects `private_key_jwt`, a failed assertion does not fall back to a client secret.
 - Public Authorization Code clients must use PKCE with `S256`.
+- Confidential Authorization Code clients with `require_pkce: true` must also use PKCE with `S256`.
 
 Client Credentials access tokens are bound to the Nauthilus backchannel resource. JWT tokens carry the issuer-owned
 claims `token_type=access_token` and `aud=nauthilus:backchannel`; opaque tokens resolve to the same claims during server

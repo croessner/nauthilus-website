@@ -10,7 +10,7 @@ sidebar_position: 2
 
 :::note Since 1.8.9
 When multiple Lua environment/subject sources run in parallel and set a status message, Nauthilus uses the first non-empty message encountered during aggregation. Do not rely on ordering between scripts.
-::: 
+:::
 
 Sets a custom status message to be returned when a client request is rejected.
 

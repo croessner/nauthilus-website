@@ -1,0 +1,1 @@
+{"title":"Body","body":{"required":true,"content":{"application/x-www-form-urlencoded":{"schema":{"type":"object","properties":{"username":{"type":"string"},"password":{"type":"string","format":"password"}},"title":"LoginForm"}}}}}

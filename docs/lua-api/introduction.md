@@ -195,7 +195,7 @@ incoming request.
 
 ### Subject Sources
 
-There may exist remote services that may be contacted after the main backend authentication proccess returned its first  
+There may exist remote services that may be contacted after the main backend authentication proccess returned its first
 result. Think of something like GeoIP service or some IP white/blacklisting. Even a request that might have authenticated
 correctly may be rejected to a policy violation from such a service. Therefor subject sources have the power to overwrite the
 result from a backend.

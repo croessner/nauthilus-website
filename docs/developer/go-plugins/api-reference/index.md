@@ -46,7 +46,7 @@ The statements about current behavior describe the Nauthilus 3.1 development lin
 | [Policy declarations](./policy.md) | policy stages, operations, types, categories, details and fact/log identifiers |
 | [Validation](./validation.md) | public sentinel errors, name grammars and validation/building functions |
 | [`helpers` package](./helpers.md) | account hash tags, IP scoping and routability checks |
-| [`password` package](./password.md) | password comparison, salted SHA parsing/generation and short hashes |
+| [`password` package](./password.md) | password comparison, salted SHA parsing/generation and full SHA-256 hashes |
 | [`exchange` package](./exchange.md) | standard runtime keys, feature values and deterministic analytics views |
 
 ## Compatibility boundary

@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"Userinfo claims.","content":{"application/json":{"schema":{"type":"object","additionalProperties":true}}}},"401":{"description":"OAuth error response.","content":{"application/json":{"schema":{"type":"object","required":["error"],"properties":{"error":{"type":"string"},"error_description":{"type":"string"}},"title":"OAuthError"}}}}}}

@@ -1,7 +1,7 @@
 ---
 title: password Package
-description: Complete password comparison, salted SHA, preparation, and short-hash helper reference
-keywords: [pluginapi password, CompareHash, CryptPassword, GenerateHash, ShortHash]
+description: Complete password comparison, salted SHA, preparation, and full-hash helper reference
+keywords: [pluginapi password, CompareHash, CryptPassword, GenerateHash, FullHash]
 sidebar_position: 12
 ---
 
@@ -152,9 +152,9 @@ type HashOptions struct {
 }
 ```
 
-`Nonce` is prepended before a NUL separator. It is not copied by the struct. `DevMode` changes the result from a short digest to raw prepared credential material and is dangerous outside tightly controlled development.
+`Nonce` is prepended before a NUL separator. It is not copied by the struct. `DevMode` is retained for source compatibility and no longer changes the generated hash.
 
-## Short-hash functions
+## Full-hash functions
 
 ### `GenerateHash`
 
@@ -178,7 +178,7 @@ String convenience wrapper around `GenerateHashBytes`.
 func GenerateHashBytes(password []byte, options HashOptions) string
 ```
 
-Builds the prepared byte sequence, defers `clear` on that temporary slice, and calls `ShortHash`. It cannot clear caller-owned password/nonce inputs or the returned string.
+Builds the prepared byte sequence, defers `clear` on that temporary slice, and calls `FullHash`. It cannot clear caller-owned password/nonce inputs or the returned string.
 
 ### `PrepareBytes`
 
@@ -194,15 +194,10 @@ nonce || 0x00 || password
 
 The separator is present even for an empty nonce. Caller owns and should clear the returned slice after use.
 
-### `ShortHash`
+### `FullHash`
 
 ```go
-func ShortHash(value []byte, devMode bool) string
+func FullHash(value []byte) string
 ```
 
-When `devMode` is false, returns the first eight lowercase hexadecimal characters of SHA-256 over `value` (32 bits, suitable only as a short correlation value, not password storage or authorization). When true, it returns `string(value)` unchanged.
-
-:::danger Development-mode credential exposure
-
-With the normal prepared input, development mode returns `nonce || NUL || plaintext password` as a Go string. The host uses the same helper for `PostActionRequest.PasswordHash`, which is delivered to all post-action targets regardless of credentials capability. Always treat that field as a credential and never log, trace, persist, or expose it.
-:::
+Returns the canonical lowercase 64-character SHA-256 digest of `value`. `GenerateHash`, `GenerateHashString`, and `GenerateHashBytes` use this full digest in every runtime mode. The host supplies the same form through `PostActionRequest.PasswordHash`; integrations that need a bounded correlation field must validate the digest before deriving their own shortened representation.

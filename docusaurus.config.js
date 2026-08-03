@@ -9,20 +9,20 @@ import { createRequire } from 'module';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Determine the latest product release including patch (e.g. 3.0.0).
+// Determine the latest product release including patch (e.g. 3.1.0).
 const require = createRequire(import.meta.url);
 const latestProductVersion =
   process.env.NAUTHILUS_LATEST_VERSION ||
   (() => {
     try {
       // optional JSON file maintained by CI
-      // { "version": "3.0.0" }
+      // { "version": "3.1.0" }
       return require('./latest-version.json').version;
     } catch (_) {
       return undefined;
     }
   })() ||
-  '3.0.0';
+  '3.1.0';
 
 // The docs dropdown should display major.minor only.
 const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');
@@ -153,15 +153,19 @@ const config = {
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
           // `lastVersion` must reference an existing docs snapshot id from `versions.json`.
-          // The latest snapshot on disk is `3.0`; the navbar badge reflects the full product release `3.0.0`.
-          lastVersion: '3.0',
+          // The latest snapshot on disk is `3.1`; the navbar badge reflects the full product release `3.1.0`.
+          lastVersion: '3.1',
           versions: {
             current: {
               label: 'Next',
               banner: 'unreleased',
             },
-            '3.0': {
+            '3.1': {
               label: latestDocsVersionLabel,
+              banner: 'none',
+            },
+            '3.0': {
+              label: '3.0',
               banner: 'none',
             },
             '2.1': {

@@ -181,12 +181,14 @@ python3 contrib/client/nauthilus-admin.py oidc sessions list alice
 # Delete all sessions for a user.
 python3 contrib/client/nauthilus-admin.py oidc sessions delete alice
 
-# Delete one session when the raw access token is available.
+# Delete one session using the non-secret id returned by the list command.
 python3 contrib/client/nauthilus-admin.py \
-  oidc sessions delete alice --token "$ACCESS_TOKEN"
+  oidc sessions delete alice --token "$SESSION_ID"
 ```
 
-The session-list `id` is a non-secret derived identifier, not the raw token expected by `--token`.
+The option remains named `--token` for compatibility, but its value is the non-secret session-list `id`. Raw access
+tokens are not returned by the management API. Use the all-sessions delete operation for complete user-wide access and
+refresh-token revocation, including dynamic-client token families.
 
 ### Authentication Test
 

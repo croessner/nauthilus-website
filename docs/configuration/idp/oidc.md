@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
-description: Native OIDC configuration in config v2
-keywords: [Identity Provider, OIDC, Authorization Code, Device Code, Client Credentials]
+description: Native OIDC and restricted dynamic client registration configuration in config v2
+keywords: [Identity Provider, OIDC, Authorization Code, Device Code, Client Credentials, Dynamic Client Registration]
 ---
 
 # OIDC
@@ -11,6 +11,7 @@ Nauthilus provides a built-in OpenID Connect provider with:
 - Authorization Code
 - Device Authorization
 - Client Credentials
+- restricted RFC 7591 Dynamic Client Registration for public native mail clients
 
 The current configuration root is:
 
@@ -19,6 +20,7 @@ The current configuration root is:
 ## Endpoints
 
 - `GET /.well-known/openid-configuration`
+- `POST /oidc/register` when restricted Dynamic Client Registration is enabled
 - `GET /oidc/authorize`
 - `POST /oidc/token`
 - `POST /oidc/introspect`
@@ -167,6 +169,49 @@ identity:
         required_mfa_level: 2
 ```
 
+## Restricted Native Dynamic Client Registration
+
+Nauthilus can expose an anonymous `POST /oidc/register` endpoint for public native mail clients. This is a constrained
+RFC 7591 profile named `mail-client-v1`, not a general-purpose registration service. It permits only Authorization Code
+with PKCE `S256`, literal IPv4 or IPv6 loopback redirects, public client authentication, RS256 ID tokens, and short-lived
+opaque access tokens.
+
+The feature is disabled by default. A minimal policy is:
+
+```yaml
+identity:
+  oidc:
+    enabled: true
+    issuer: "https://idp.example.com"
+    auto_key_rotation: true
+    custom_scopes:
+      - name: "mail:imap"
+        description: "Access IMAP mail"
+        claims:
+          - name: "mail_access"
+            type: "string"
+      - name: "mail:smtp"
+        description: "Submit mail through SMTP"
+        claims:
+          - name: "mail_submit"
+            type: "string"
+    dynamic_client_registration:
+      enabled: true
+      required_scopes: ["openid"]
+      optional_scopes: ["offline_access", "mail:imap", "mail:smtp"]
+      allow_refresh_tokens: true
+      source_hmac_key: "${NAUTHILUS_DCR_SOURCE_HMAC_KEY}"
+```
+
+Every required or optional scope must also be present in `scopes_supported` or `custom_scopes`. The mail scope names and
+their resource-server meaning are deployment-owned; Nauthilus does not assign IMAP or SMTP semantics automatically.
+
+When enabled, discovery publishes `registration_endpoint`. Registration responses never contain a client secret,
+registration access token, or registration management URI. RFC 7592 client management is outside this profile.
+
+See [Operating OIDC Dynamic Client Registration](../../guides/oidc-dynamic-client-registration.md) for the complete
+configuration reference, registration examples, lifecycle behavior, monitoring, revocation, and troubleshooting.
+
 ## PKCE
 
 - only `S256` is supported
@@ -211,8 +256,8 @@ identity:
 
 ## Redirect URI Validation
 
-Exact matching is the default for `identity.oidc.clients[].redirect_uris`. Controlled exceptions are available for
-native clients and explicitly configured wildcard patterns:
+The rules in this section apply to static `identity.oidc.clients[]`. Exact matching is the default, with controlled
+exceptions for native clients and explicitly configured wildcard patterns:
 
 - A trailing `*` is allowed only at the end of a configured URI and not after a query string.
 - Wildcard matching preserves parsed scheme, host, port, and path-segment boundaries. A prefix for
@@ -225,6 +270,11 @@ native clients and explicitly configured wildcard patterns:
 
 Prefer exact redirect URIs. Use a loopback exception only for native applications, and keep wildcard patterns within a
 dedicated callback path.
+
+Dynamic `mail-client-v1` registrations use a separate, narrower redirect policy. They reject `localhost`, HTTPS,
+private-use schemes, wildcards, query strings, fragments, userinfo, encoded paths, and path traversal. Only
+`http://127.0.0.1/<path>` and `http://[::1]/<path>` are accepted, with an optional numeric port that may change during
+authorization.
 
 ## Token and Claim Boundaries
 

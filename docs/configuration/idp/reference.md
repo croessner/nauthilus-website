@@ -93,4 +93,5 @@ See:
 
 - [MFA Assurance Policy](mfa-assurance.md)
 - [OIDC](oidc.md)
+- [Operating OIDC Dynamic Client Registration](../../guides/oidc-dynamic-client-registration.md)
 - [SAML](saml2.md)

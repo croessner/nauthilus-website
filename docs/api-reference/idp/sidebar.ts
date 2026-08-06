@@ -38,6 +38,12 @@ const sidebar: SidebarsConfig = {
       items: [
         {
           type: "doc",
+          id: "api-reference/idp/register-oidc-dynamic-client",
+          label: "Register a restricted public native OIDC client.",
+          className: "api-method post",
+        },
+        {
+          type: "doc",
           id: "api-reference/idp/authorize-oidc",
           label: "Start or continue an OIDC authorization request.",
           className: "api-method get",
@@ -277,6 +283,30 @@ const sidebar: SidebarsConfig = {
           type: "doc",
           id: "api-reference/idp/schemas/oidcdiscovery",
           label: "OIDCDiscovery",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "api-reference/idp/schemas/dynamicclientregistrationrequest",
+          label: "DynamicClientRegistrationRequest",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "api-reference/idp/schemas/dynamicclientregistrationresponse",
+          label: "DynamicClientRegistrationResponse",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "api-reference/idp/schemas/dynamicclientregistrationerror",
+          label: "DynamicClientRegistrationError",
+          className: "schema",
+        },
+        {
+          type: "doc",
+          id: "api-reference/idp/schemas/httperror",
+          label: "HTTPError",
           className: "schema",
         },
         {

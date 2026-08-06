@@ -37,6 +37,8 @@ sidebar_position: 2
 ## Identity
 
 - native OIDC provider
+- restricted RFC 7591 Dynamic Client Registration for public native mail clients with RFC 8252 loopback redirects and
+  mandatory PKCE `S256`
 - native SAML IdP
 - edge-hosted OIDC/SAML flows backed by a private Nauthilus authority over gRPC
 - integrated frontend

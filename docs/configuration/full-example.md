@@ -589,6 +589,39 @@ identity:
     claims_supported: []
     access_token_type: "jwt"
 
+    dynamic_client_registration:
+      enabled: false
+      profile: "mail-client-v1"
+      profile_version: 1
+      required_scopes:
+        - "openid"
+      optional_scopes: []
+      allow_refresh_tokens: false
+      consent_mode: "all_or_nothing"
+      required_mfa_level: 0
+      access_token_lifetime: 15m
+      refresh_token_lifetime: 720h
+      source_hmac_key: ""
+
+      limits:
+        request_body_bytes: 16384
+        redirect_uris: 4
+        scopes: 16
+        client_name_runes: 128
+        string_bytes: 1024
+        active_clients: 10000
+        source_window: 10m
+        source_registrations: 5
+        source_daily_registrations: 20
+        global_window: 1m
+        global_registrations: 100
+
+      lifecycle:
+        unused_ttl: 24h
+        inactivity_ttl: 720h
+        maximum_ttl: 8760h
+        tombstone_ttl: 720h
+
     consent:
       ttl: 0s
       mode: "all_or_nothing"

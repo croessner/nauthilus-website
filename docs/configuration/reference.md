@@ -187,6 +187,7 @@ Examples of values redacted by default:
 - `auth.request.headers.password`
 - `auth.request.headers.password_encoded`
 - `auth.backends.ldap.default.bind_pw`
+- `identity.oidc.dynamic_client_registration.source_hmac_key`
 - `identity.saml.key`
 
 File paths such as `client_private_key_file` and `static_token_file` are not themselves redacted secrets, but the files they point to must be readable only by trusted Nauthilus runtime users.

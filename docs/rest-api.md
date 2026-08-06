@@ -258,9 +258,10 @@ Client Credentials Grant; do not request `openid` for such clients.
 }
 ```
 
-The `id` is derived from the stored access token and is safe to display; it is not the access token. The single-session
-delete route still accepts the raw token in its `{token}` path parameter and verifies that it belongs to `{user_id}`.
-Use the all-sessions delete route when the raw token is unavailable.
+The `id` is derived from the stored access-token reference and is safe to display; it is not the access token. Pass this
+`id` to the single-session delete route as its historical `{token}` path parameter. Dynamic-client bearer material is
+never exposed by the list operation. The all-sessions delete route revokes both static and dynamic access and refresh
+state for the user and is the correct operation for complete user-wide revocation.
 
 ## Request Decompression Boundary
 

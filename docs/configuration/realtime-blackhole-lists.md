@@ -63,7 +63,7 @@ auth:
 
 ## Policy Attributes
 
-When `builtin.rbl` is part of `auth.policy.checks`, Nauthilus exports aggregate RBL facts and generated per-list facts.
+When a checkpoint schedules `authn/builtin/rbl`, Nauthilus exports aggregate RBL facts and generated per-list facts.
 
 Aggregate attributes include:
 

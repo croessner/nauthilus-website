@@ -498,37 +498,45 @@ auth:
           tls_skip_verify: false
           haproxy_v2: false
 
-  policy:
-    mode: "enforce"
-    default_policy: "standard_auth"
-    registry_scripts: []
-    attribute_exports: []
-    request_headers: []
-    request_metadata: []
-
-    attribute_sources:
-      lua:
-        environment: []
-        subject: []
-
-    obligation_targets:
-      lua:
-        actions: []
-
-    sets:
-      networks: {}
-      time_windows: {}
-
-    scheduler_guards: {}
-
-    report:
-      enabled: false
-      include_fsm: true
-      include_checks: true
-      include_attributes: false
-
-    checks: []
-    policies: []
+policy:
+  namespaces:
+    authn:
+      domain_plans:
+        password:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: brute_force
+                  use: authn/builtin/brute_force
+                  actions: [authenticate]
+                - name: tls_encryption
+                  use: authn/builtin/tls_encryption
+                  actions: [authenticate]
+                - name: relay_domains
+                  use: authn/builtin/relay_domains
+                  actions: [authenticate]
+                - name: rbl
+                  use: authn/builtin/rbl
+                  actions: [authenticate]
+            auth_backend:
+              providers:
+                - name: ldap_backend
+                  use: authn/builtin/ldap_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/password
+      report:
+        enabled: false
+        include_fsm: true
+        include_checks: true
+        include_attributes: false
 
 identity:
   session:

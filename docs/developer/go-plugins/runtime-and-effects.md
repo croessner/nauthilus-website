@@ -123,7 +123,7 @@ A `PolicyFact` is typed evidence for the policy engine:
 
 ```go
 pluginapi.PolicyFact{
-    Attribute: "plugin.environment.geoip.country_iso",
+    Attribute: "plugin.geoip.country_iso",
     Value:     "DE",
 }
 ```

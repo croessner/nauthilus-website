@@ -28,7 +28,7 @@ Important:
 - Lua backend config lives under `auth.backends.lua.backend`
 - remote authority backend config lives under `auth.backends.remote`
 - native Go backends are registered by a configured module and selected as `plugin(<module>.<backend>)`
-- Lua policy scripts live under `auth.policy.attribute_sources.lua` and `auth.policy.obligation_targets.lua`; hooks live under `auth.controls.lua.hooks`
+- Lua Policy providers and effects live under `policy.namespaces.authn.providers` and `policy.namespaces.authn.effects`; hooks live under `auth.controls.lua.hooks`
 
 ## Topics
 

@@ -1,13 +1,13 @@
 ---
 title: GeoIP and ASN Plugin
 description: Complete configuration, lifecycle, policy, runtime, and operations reference for the bundled GeoIP plugin
-keywords: [GeoIP, ASN, MaxMind, environment source, plugin.environment, plugin.exchange.geoip]
+keywords: [GeoIP, ASN, MaxMind, Decision Fact Provider, plugin.geoip]
 sidebar_position: 2
 ---
 
 # GeoIP and ASN Plugin
 
-The bundled `geoip` plugin is a pre-auth environment source. It requires a local primary GeoIP database and can add ASN organization, routing-prefix, registry allocation, and network-privacy evidence from optional sources. It demonstrates database initialization, request-time evaluation, policy-fact registration, runtime exchange, supervised refresh workers, persistent source caches, metrics, tracing, and atomic config reload.
+The bundled `geoip` plugin registers one target-aware generic `DecisionFactProvider`. It requires a local primary GeoIP database and can add ASN organization, routing-prefix, registry allocation, and network-privacy evidence from optional sources. Top-level Policy binds its canonical ID `authn/plugin.geoip.environment` and qualifies its outputs under `plugin.geoip.*`. The plugin does not register an authentication-shaped `EnvironmentSource` or a second request-time adapter.
 
 The container artifact is:
 
@@ -23,14 +23,14 @@ The container artifact is:
 | Product version | `0.1.0` |
 | Interfaces | `Plugin`, `RuntimePlugin`, `ReloadablePlugin` |
 | Registered lifecycle component | `InitTask` named `database` |
-| Registered request component | `EnvironmentSource` named `environment` |
-| Standard qualified source | `geoip.environment` |
+| Registered request component | `DecisionFactProvider` named `geoip.environment` |
+| Canonical Policy provider | `authn/plugin.geoip.environment` |
 | Source timeout | current `lookup_timeout`, default `50ms` |
 | Abort policy | `none` |
 | Sensitive capabilities | none |
 | Local debug modules | none; use the automatic `plugin.<module>` selector |
 
-The configured module name is the namespace. If the same artifact is configured as `geoip_edge`, its source is `geoip_edge.environment`, while `Metadata().Name` remains `geoip`.
+The configured module name participates in Policy binding. The reviewed example configures the module as `geoip`; a differently named module must use a matching provider declaration and exact descriptor ownership.
 
 ## Strict configuration schema
 
@@ -230,36 +230,36 @@ The privacy downloader uses the host HTTP facade. The older routing and registry
 
 ## Fact contract
 
-All attributes are registered for `pre_auth`, category `environment`, producer type `plugin.environment`, and operations `authenticate` and `lookup_identity`.
+All outputs are declared by the generic provider as environment facts for the exact `authn/authenticate` and `authn/lookup_identity` targets.
 
 | Fact | Type | Emission |
 | --- | --- | --- |
-| `plugin.environment.geoip.matched` | boolean | Always: `true` for a primary match, otherwise `false`. |
-| `plugin.environment.geoip.country_iso` | string | When nonempty. |
-| `plugin.environment.geoip.country_name` | string | When nonempty. |
-| `plugin.environment.geoip.city_name` | string | When nonempty. |
-| `plugin.environment.geoip.asn` | number | When greater than zero. |
-| `plugin.environment.geoip.asn_org` | string | When nonempty. |
-| `plugin.environment.geoip.asn_prefix` | string | When nonempty. |
-| `plugin.environment.geoip.asn_registry` | string | When nonempty. |
-| `plugin.environment.geoip.asn_country_iso` | string | When nonempty. |
-| `plugin.environment.geoip.asn_allocated` | string | When nonempty. |
-| `plugin.environment.geoip.asn_status` | string | When nonempty. |
-| `plugin.environment.geoip.privacy_lookup_state` | string | Whenever privacy intelligence is enabled: `evaluated`, `stale`, `unavailable`, `no_sources`, or `invalid_ip`. |
-| `plugin.environment.geoip.privacy_data_stale` | boolean | Whenever privacy intelligence is enabled. |
-| `plugin.environment.geoip.privacy_detected` | boolean | In `evaluated` or `stale` state. Hosting-only evidence remains `false`. |
-| `plugin.environment.geoip.privacy_classes` | string list | In `evaluated` or `stale` state, including an explicit empty list. |
-| `plugin.environment.geoip.privacy_primary_class` | string | When retained evidence selects a primary class. |
-| `plugin.environment.geoip.privacy_confidence` | number | With a primary class. |
-| `plugin.environment.geoip.privacy_source_authorities` | string list | When retained evidence has contributing authorities. |
-| `plugin.environment.geoip.privacy_data_age_seconds` | number | With contributing authorities; age of the oldest retained evidence. |
-| `plugin.environment.geoip.is_tor_exit_node` | boolean | Explicit true or false in `evaluated` or `stale` state. |
-| `plugin.environment.geoip.is_known_vpn_exit` | boolean | Explicit true or false in `evaluated` or `stale` state. |
-| `plugin.environment.geoip.is_community_vpn_exit` | boolean | Explicit true or false in `evaluated` or `stale` state. |
-| `plugin.environment.geoip.is_public_proxy` | boolean | Explicit true or false in `evaluated` or `stale` state. |
-| `plugin.environment.geoip.is_privacy_relay` | boolean | Explicit true or false in `evaluated` or `stale` state. |
-| `plugin.environment.geoip.is_hosting_network` | boolean | Explicit true or false in `evaluated` or `stale` state. |
-| `plugin.environment.geoip.is_shared_egress` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.matched` | boolean | Always: `true` for a primary match, otherwise `false`. |
+| `plugin.geoip.country_iso` | string | When nonempty. |
+| `plugin.geoip.country_name` | string | When nonempty. |
+| `plugin.geoip.city_name` | string | When nonempty. |
+| `plugin.geoip.asn` | number | When greater than zero. |
+| `plugin.geoip.asn_org` | string | When nonempty. |
+| `plugin.geoip.asn_prefix` | string | When nonempty. |
+| `plugin.geoip.asn_registry` | string | When nonempty. |
+| `plugin.geoip.asn_country_iso` | string | When nonempty. |
+| `plugin.geoip.asn_allocated` | string | When nonempty. |
+| `plugin.geoip.asn_status` | string | When nonempty. |
+| `plugin.geoip.privacy_lookup_state` | string | Whenever privacy intelligence is enabled: `evaluated`, `stale`, `unavailable`, `no_sources`, or `invalid_ip`. |
+| `plugin.geoip.privacy_data_stale` | boolean | Whenever privacy intelligence is enabled. |
+| `plugin.geoip.privacy_detected` | boolean | In `evaluated` or `stale` state. Hosting-only evidence remains `false`. |
+| `plugin.geoip.privacy_classes` | string list | In `evaluated` or `stale` state, including an explicit empty list. |
+| `plugin.geoip.privacy_primary_class` | string | When retained evidence selects a primary class. |
+| `plugin.geoip.privacy_confidence` | number | With a primary class. |
+| `plugin.geoip.privacy_source_authorities` | string list | When retained evidence has contributing authorities. |
+| `plugin.geoip.privacy_data_age_seconds` | number | With contributing authorities; age of the oldest retained evidence. |
+| `plugin.geoip.is_tor_exit_node` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.is_known_vpn_exit` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.is_community_vpn_exit` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.is_public_proxy` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.is_privacy_relay` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.is_hosting_network` | boolean | Explicit true or false in `evaluated` or `stale` state. |
+| `plugin.geoip.is_shared_egress` | boolean | Explicit true or false in `evaluated` or `stale` state. |
 
 An invalid client IP is treated as a nonmatching result rather than a plugin error. When privacy intelligence is enabled, it also emits `privacy_lookup_state: invalid_ip` and omits classification booleans. A database lookup or privacy deadline error is returned to the host.
 
@@ -271,72 +271,11 @@ Privacy state is deliberately tri-state rather than a simple boolean:
 
 The plugin does not deny a request merely because data is stale or unavailable. For fail-closed enforcement, make a source `required` to reject startup without any valid initial snapshot and write policy that requires `privacy_lookup_state: evaluated` and `privacy_data_stale: false` before trusting negative classifications.
 
-## Runtime exchange and public logs
+## Generic provider boundary
 
-The runtime delta is stored under:
+The provider accepts only the admitted `input.auth.client_ip` fact. It receives no credential, raw transport, response, or scheduling authority. Its result contains the declared `plugin.geoip.*` facts and a safe error class only; request logging and Policy diagnostics remain host-owned.
 
-```text
-plugin.exchange.geoip
-```
-
-It always contains `matched`. A match may add:
-
-```text
-guid                 request session, when nonempty
-country_iso          primary location country code
-country_name         primary location country name
-city_name            primary location city
-asn                  final ASN
-asn_org              final organization
-asn_prefix           routed or ASN database prefix
-asn_registry         final registry
-asn_country_iso      final ASN allocation country
-asn_allocated        allocation date
-asn_status           allocation status
-privacy_lookup_state availability/freshness state
-privacy_detected     any retained non-hosting privacy evidence
-privacy_classes      deterministic retained class list
-privacy_primary_class highest-authority presentation class
-privacy_confidence   confidence of the primary class
-privacy_source_authorities contributing authority categories
-privacy_data_stale   stale or missing required evidence
-privacy_data_age_seconds age of the oldest retained evidence
-is_tor_exit_node
-is_known_vpn_exit
-is_community_vpn_exit
-is_public_proxy
-is_privacy_relay
-is_hosting_network
-is_shared_egress
-```
-
-Privacy fields follow the same availability rules as their policy facts. The plugin also returns intentionally public central-log fields for base GeoIP values when they exist:
-
-- `policy_fact_geoip_country_iso`
-- `policy_fact_geoip_asn_country_iso`
-- `policy_fact_geoip_asn`
-
-With `privacy_intelligence.public_log_fields: true`, an `evaluated` or `stale` lookup can additionally emit:
-
-- `policy_fact_geoip_privacy_primary_class` and `policy_fact_geoip_privacy_confidence` when a primary class exists
-- `policy_fact_geoip_privacy_data_stale`
-- `policy_fact_geoip_is_tor_exit_node`
-- `policy_fact_geoip_is_known_vpn_exit`
-- `policy_fact_geoip_is_public_proxy`
-- `policy_fact_geoip_is_hosting_network`
-- `policy_fact_geoip_is_shared_egress`
-
-The public log surface intentionally omits source IDs, providers, URLs, license metadata, override reasons, raw evidence, `is_community_vpn_exit`, and `is_privacy_relay`.
-
-Policy facts remain the decision authority. `plugin.exchange.geoip` is request-local analytics data for later components such as the ClickHouse post-action.
-
-:::warning Legacy Lua bridge mismatch
-
-The current plugin writes `plugin.exchange.geoip`, but the checked-in legacy `nauthilus_geoip_bridge.lua` still reads `plugin.environment.geoip`. No automatic alias is currently provided by the environment runtime merger. The bridge therefore does not consume this plugin's current delta until the Lua source is corrected or an explicit compatibility alias is introduced.
-
-Do not document or build new integrations against `plugin.environment.geoip` as a runtime key. That prefix remains valid for the policy facts listed above, not for runtime exchange.
-
-:::
+There is no registered `plugin.exchange.geoip` execution path and no runtime alias for the removed `plugin.environment.geoip.*` fact family. Analytics consumers project the already collected `plugin.geoip.*` facts into their typed views instead of invoking a second GeoIP adapter.
 
 ## Metrics, spans, and debug
 
@@ -344,7 +283,7 @@ The plugin names below are `pluginapi.MetricDefinition.Name` values, not the fin
 
 | Plugin definition name | Exported Prometheus family | Labels | Meaning |
 | --- | --- | --- | --- |
-| `geoip_lookup_total` | `nauthilus_plugin_geoip_geoip_lookup_total` | `plugin_scope="geoip"`, `result=matched|miss|invalid_ip|error` | Environment lookup attempts. |
+| `geoip_lookup_total` | `nauthilus_plugin_geoip_geoip_lookup_total` | `plugin_scope="geoip"`, `result=matched|miss|invalid_ip|error` | Generic provider lookup attempts. |
 | `geoip_lookup_seconds` | `nauthilus_plugin_geoip_geoip_lookup_seconds` | `plugin_scope="geoip"`, same result label | Lookup latency when a positive duration was recorded. The histogram exposes the usual `_bucket`, `_sum`, and `_count` series. |
 | `geoip_database_records` | `nauthilus_plugin_geoip_geoip_database_records` | `plugin_scope="geoip"`, `state=loaded` | Combined primary and optional ASN database record indicator. |
 | `geoip_privacy_source_refresh_total` | `nauthilus_plugin_geoip_geoip_privacy_source_refresh_total` | `plugin_scope="geoip"`, `source=<configured ID>`, `result=success|error` | Background privacy refresh attempts. |
@@ -484,49 +423,118 @@ plugins:
               confidence: 55
               max_age: 24h
 
-auth:
-  policy:
-    checks:
-      - name: plugin_environment_geoip
-        type: plugin.environment
-        stage: pre_auth
-        operations:
-          - authenticate
-          - lookup_identity
-        config_ref: plugins.modules.geoip.environment
-    policies:
-      - name: deny_current_tor_password_auth
-        stage: pre_auth
-        operations:
-          - authenticate
-        require_checks:
-          - plugin_environment_geoip
-        if:
-          all:
-            - attribute: plugin.environment.geoip.is_tor_exit_node
-              is: true
-            - attribute: plugin.environment.geoip.privacy_lookup_state
-              is: evaluated
-            - attribute: plugin.environment.geoip.privacy_data_stale
-              is: false
-        then:
-          decision: deny
-          response_marker: auth.response.fail
-      - name: deny_unexpected_country
-        stage: pre_auth
-        operations:
-          - authenticate
-        require_checks:
-          - plugin_environment_geoip
-        if:
-          all:
-            - attribute: plugin.environment.geoip.matched
-              is: true
-            - attribute: plugin.environment.geoip.country_iso
-              not_in: [DE, AT, CH]
-        then:
-          decision: deny
-          response_marker: auth.response.fail
+policy:
+  namespaces:
+    authn:
+      condition_sets:
+        strings:
+          allowed_country_iso:
+            - DE
+            - AT
+            - CH
+      providers:
+        environment:
+          kind: native
+          module: geoip
+          targets:
+            - action: authenticate
+            - action: lookup_identity
+          produced_facts:
+            - plugin.geoip.matched
+            - plugin.geoip.country_iso
+            - plugin.geoip.country_name
+            - plugin.geoip.city_name
+            - plugin.geoip.asn
+            - plugin.geoip.asn_org
+            - plugin.geoip.asn_prefix
+            - plugin.geoip.asn_registry
+            - plugin.geoip.asn_country_iso
+            - plugin.geoip.asn_allocated
+            - plugin.geoip.asn_status
+            - plugin.geoip.privacy_lookup_state
+            - plugin.geoip.privacy_detected
+            - plugin.geoip.privacy_classes
+            - plugin.geoip.privacy_primary_class
+            - plugin.geoip.privacy_confidence
+            - plugin.geoip.privacy_source_authorities
+            - plugin.geoip.privacy_data_stale
+            - plugin.geoip.privacy_data_age_seconds
+            - plugin.geoip.is_tor_exit_node
+            - plugin.geoip.is_known_vpn_exit
+            - plugin.geoip.is_community_vpn_exit
+            - plugin.geoip.is_public_proxy
+            - plugin.geoip.is_privacy_relay
+            - plugin.geoip.is_hosting_network
+            - plugin.geoip.is_shared_egress
+          failure: indeterminate
+          timeout: 50ms
+      domain_plans:
+        geoip:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: brute_force
+                  use: authn/builtin/brute_force
+                  actions: [authenticate]
+                - name: plugin_environment_geoip
+                  use: authn/plugin.geoip.environment
+                  actions: [authenticate, lookup_identity]
+            auth_backend:
+              providers:
+                # Replace this binding when authentication uses another backend.
+                - name: ldap_backend
+                  use: authn/builtin/ldap_backend
+                  actions: [authenticate, lookup_identity]
+            auth_decision:
+              providers: []
+      policy_sets:
+        geoip:
+          visibility: private
+          rules:
+            - name: deny_current_tor_password_auth
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [plugin_environment_geoip]
+              if:
+                all:
+                  - attribute: plugin.geoip.is_tor_exit_node
+                    is: true
+                  - attribute: plugin.geoip.privacy_data_stale
+                    is: false
+              then:
+                decision: deny
+                response_marker: auth.response.fail
+            - name: deny_unexpected_country
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [plugin_environment_geoip]
+              if:
+                all:
+                  - attribute: plugin.geoip.matched
+                    is: true
+                  - attribute: plugin.geoip.country_iso
+                    not_in: "@string.allowed_country_iso"
+                  - attribute: plugin.geoip.asn_registry
+                    not_in:
+                      - ripencc
+                      - arin
+              then:
+                decision: deny
+                response_marker: auth.response.fail
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      domain_plan: authn/geoip
+      default_policy: authn/standard_auth
+      plans:
+        pre_auth:
+          policy_sets: [authn/geoip]
+    - namespace: authn
+      action: lookup_identity
+      schema: authn/lookup_identity/v1
+      domain_plan: authn/geoip
+      default_policy: authn/standard_auth
 ```
 
 The specific policy grammar must match the active Nauthilus config generation. The stable contracts supplied by this plugin are the source name and registered fact IDs.

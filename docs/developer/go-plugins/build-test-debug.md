@@ -18,7 +18,7 @@ Current Nauthilus container builds compile the server and bundled plugins from o
 - vendored dependencies;
 - `netgo` plus any selected release build tags;
 - `-trimpath`;
-- the same `github.com/croessner/nauthilus/v3` package sources.
+- the same `github.com/croessner/nauthilus/v4` package sources.
 
 A corresponding plugin build is:
 
@@ -122,7 +122,7 @@ import (
     "os"
     "plugin"
 
-    pluginapi "github.com/croessner/nauthilus/v3/pluginapi/v1"
+    pluginapi "github.com/croessner/nauthilus/v4/pluginapi/v1"
 )
 
 func main() {

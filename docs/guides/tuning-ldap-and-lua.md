@@ -25,9 +25,9 @@ Lua backend:
 
 Lua environment and subject sources:
 
-- `auth.policy.attribute_sources.lua.environment`
-- `auth.policy.attribute_sources.lua.subject`
-- `auth.policy.obligation_targets.lua.actions`
+- `policy.namespaces.authn.providers` with `kind: lua_environment`
+- `policy.namespaces.authn.providers` with `kind: lua_subject`
+- `policy.namespaces.authn.effects` with `kind: lua_action`
 - `auth.controls.lua.hooks`
 
 ## LDAP: Small Stable Starting Point

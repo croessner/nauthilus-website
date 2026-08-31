@@ -8,7 +8,7 @@ sidebar_position: 13
 # `exchange` Package
 
 ```go
-import "github.com/croessner/nauthilus/v3/pluginapi/v1/exchange"
+import "github.com/croessner/nauthilus/v4/pluginapi/v1/exchange"
 ```
 
 The package defines a conventional runtime keyspace shared by native and compatible plugin features. Builders return JSON/runtime-compatible maps and `pluginapi.RuntimeDelta` values; readers create defensive views for analytics and cross-plugin consumption.

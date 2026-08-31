@@ -18,7 +18,7 @@ The container artifact is:
 The native policy effect ID for a module named `clickhouse` is:
 
 ```text
-clickhouse.post_action
+authn/plugin.clickhouse.post_action
 ```
 
 Nauthilus does not invoke this external effect implicitly. A selected policy must include the obligation for every outcome that should create a row.
@@ -31,7 +31,7 @@ Nauthilus does not invoke this external effect implicitly. A selected policy mus
 | Product version | `0.1.0` |
 | Interfaces | `Plugin`, `RuntimePlugin`, `ReloadablePlugin` |
 | Registered component | `PostActionTarget` named `post_action` |
-| Standard qualified target | `clickhouse.post_action` |
+| Authn Policy effect | `authn/plugin.clickhouse.post_action` |
 | Sensitive capabilities | none |
 | Local debug module | `batch` |
 | Main features | JSONEachRow, Redis deduplication, process-cache batching, reconfigure |
@@ -157,7 +157,7 @@ The plugin emits all 75 keys on every encoded row because the struct fields do n
 | Network and protocol | `client_ip`, `client_port`, `client_net`, `client_id`, `hostname`, `proto`, `method`, `user_agent`, `local_ip`, `local_port` | `RequestSnapshot` |
 | Identity and credential analytics | `display_name`, `account`, `username`, `password_hash`, `pwnd_info` | snapshot, validated eight-character ClickHouse export derived from the host-owned full password hash, HIBP exchange |
 | Brute-force and IDP | `brute_force_bucket`, `brute_force_counter`, `oidc_cid`, `saml_entity_id`, `grant_type`, `mfa_method`, `failed_login_count`, `failed_login_rank`, `failed_login_recognized` | snapshot diagnostics/IDP plus failed-login exchange |
-| GeoIP | `geoip_guid`, `geoip_country`, `geoip_iso_codes`, `geoip_status`, `geoip_source`, `geoip_matched`, `geoip_country_name`, `geoip_city_name`, `geoip_asn`, `geoip_asn_org`, `geoip_asn_prefix`, `geoip_asn_registry`, `geoip_asn_country`, `geoip_asn_allocated`, `geoip_asn_status` | `plugin.exchange.geoip` |
+| GeoIP | `geoip_guid`, `geoip_country`, `geoip_iso_codes`, `geoip_status`, `geoip_source`, `geoip_matched`, `geoip_country_name`, `geoip_city_name`, `geoip_asn`, `geoip_asn_org`, `geoip_asn_prefix`, `geoip_asn_registry`, `geoip_asn_country`, `geoip_asn_allocated`, `geoip_asn_status` | Canonical `plugin.geoip.*` Policy facts; optional legacy analytics projection |
 | Reputation | `reputation_score`, `reputation_positive_score`, `reputation_negative_score`, `reputation_ip_score`, `reputation_asn_score`, `reputation_country_score`, `reputation_asn_country_score`, `reputation_samples`, `reputation_source`, `reputation_decision` | GeoIP reputation exchange, with policy-fact fallback |
 | Global protection | `gp_attempts`, `gp_unique_ips`, `gp_unique_users`, `gp_ips_per_user`, `prot_active`, `prot_reason`, `prot_backoff`, `prot_delay_ms`, `dyn_threat`, `dyn_response` | global-pattern, account-protection, and dynamic-response exchange |
 | Outcome and TLS | `repeating`, `rwp`, `user_found`, `authenticated`, `xssl_protocol`, `xssl_cipher`, `ssl_fingerprint`, `latency`, `http_status`, `status_msg` | request runtime flags, legacy TLS snapshot, diagnostics |
@@ -166,7 +166,7 @@ The plugin emits all 75 keys on every encoded row because the struct fields do n
 
 ### Exchange inputs
 
-The row builder reads these standard values when present:
+The row builder reads canonical Policy facts and these standard exchange values when present. The generic GeoIP provider needs no `plugin.exchange.geoip` value:
 
 - `plugin.exchange.decision_sources`
 - `plugin.exchange.feature.<name>` markers
@@ -189,8 +189,8 @@ Order HIBP before ClickHouse when analytics needs HIBP data:
 ```yaml
 then:
   obligations:
-    - id: haveibeenpwnd.post_action
-    - id: clickhouse.post_action
+    - id: authn/plugin.haveibeenpwnd.post_action
+    - id: authn/plugin.clickhouse.post_action
 ```
 
 HIBP's positive result writes `plugin.exchange.haveibeenpwnd` into the detached plan runtime. ClickHouse can read it only if HIBP has already completed. Reversing the order produces a valid ClickHouse row with an empty `pwnd_info`.
@@ -272,35 +272,46 @@ plugins:
         max_response_bytes: 8192
         auth_dedup_ttl: 300s
 
-auth:
-  policy:
-    policies:
-      - name: record_auth_success
-        stage: auth_decision
-        operations: [authenticate]
-        if:
-          attribute: auth.authenticated
-          is: true
-        then:
-          decision: permit
-          outcome_marker: auth.outcome.auth_success
-          fsm_event_marker: auth.fsm.event.auth_permit
-          response_marker: auth.response.ok
-          obligations:
-            - id: clickhouse.post_action
-      - name: record_auth_failure
-        stage: auth_decision
-        operations: [authenticate]
-        if:
-          attribute: auth.authenticated
-          is: false
-        then:
-          decision: deny
-          outcome_marker: auth.outcome.auth_failure
-          fsm_event_marker: auth.fsm.event.auth_deny
-          response_marker: auth.response.fail
-          obligations:
-            - id: clickhouse.post_action
+policy:
+  namespaces:
+    authn:
+      domain_plans:
+        clickhouse_post_action:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: brute_force
+                  use: authn/builtin/brute_force
+                  actions: [authenticate]
+            auth_backend:
+              providers:
+                - name: ldap_backend
+                  use: authn/builtin/ldap_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+      policy_sets:
+        clickhouse_post_action:
+          rules:
+            - name: persist_successful_authentication
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: backend.authenticated
+                is: true
+              then:
+                decision: permit
+                obligations:
+                  - id: authn/plugin.clickhouse.post_action
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      domain_plan: authn/clickhouse_post_action
+      default_policy: authn/standard_auth
+      plans:
+        auth_decision:
+          policy_sets: [authn/clickhouse_post_action]
 ```
 
 Protect the ClickHouse password through the surrounding configuration-delivery mechanism. The plugin currently accepts a string and has no plugin-specific `password_file` field.

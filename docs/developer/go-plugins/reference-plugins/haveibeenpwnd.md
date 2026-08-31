@@ -18,7 +18,7 @@ The container artifact is:
 The native effect ID with the standard module name is:
 
 ```text
-haveibeenpwnd.post_action
+authn/plugin.haveibeenpwnd.post_action
 ```
 
 ## Public contract
@@ -29,7 +29,7 @@ haveibeenpwnd.post_action
 | Product version | `0.1.0` |
 | Interfaces | `Plugin`, `RuntimePlugin`, `ReloadablePlugin` |
 | Registered component | `PostActionTarget` named `post_action` |
-| Standard qualified target | `haveibeenpwnd.post_action` |
+| Authn Policy effect | `authn/plugin.haveibeenpwnd.post_action` |
 | Metadata capabilities | `credentials`, `mail` |
 | Always required capability | `credentials` |
 | Conditionally required capability | `mail` when `mail.enabled: true` at registration |
@@ -333,22 +333,46 @@ plugins:
         mail:
           enabled: false
 
-auth:
-  policy:
-    policies:
-      - name: check_authenticated_password
-        stage: auth_decision
-        operations: [authenticate]
-        if:
-          attribute: auth.authenticated
-          is: true
-        then:
-          decision: permit
-          outcome_marker: auth.outcome.auth_success
-          fsm_event_marker: auth.fsm.event.auth_permit
-          response_marker: auth.response.ok
-          obligations:
-            - id: haveibeenpwnd.post_action
+policy:
+  namespaces:
+    authn:
+      domain_plans:
+        haveibeenpwnd_post_action:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: brute_force
+                  use: authn/builtin/brute_force
+                  actions: [authenticate]
+            auth_backend:
+              providers:
+                - name: ldap_backend
+                  use: authn/builtin/ldap_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+      policy_sets:
+        haveibeenpwnd_post_action:
+          rules:
+            - name: inspect_successful_authentication
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: backend.authenticated
+                is: true
+              then:
+                decision: permit
+                obligations:
+                  - id: authn/plugin.haveibeenpwnd.post_action
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      domain_plan: authn/haveibeenpwnd_post_action
+      default_policy: authn/standard_auth
+      plans:
+        auth_decision:
+          policy_sets: [authn/haveibeenpwnd_post_action]
 ```
 
 To enable mail, add `mail` to `allow_capabilities` before restart and configure the transport:

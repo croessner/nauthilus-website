@@ -11,9 +11,9 @@ Nauthilus ships three native Go plugin artifacts in its stable and debug contain
 
 | Plugin | Extension point | Qualified component with the standard module name | Primary purpose |
 | --- | --- | --- | --- |
-| [GeoIP/ASN](./geoip.md) | `InitTask`, `EnvironmentSource` | `geoip.environment` | Add local GeoIP and ASN evidence before authentication policy runs. |
-| [ClickHouse](./clickhouse.md) | `PostActionTarget` | `clickhouse.post_action` | Write batched authentication analytics as ClickHouse JSONEachRow data. |
-| [Have I Been Pwned](./haveibeenpwnd.md) | `PostActionTarget` | `haveibeenpwnd.post_action` | Check an authenticated request password through the HIBP k-anonymity API and optionally send mail. |
+| [GeoIP/ASN](./geoip.md) | Generic native Decision Fact Provider | `authn/plugin.geoip.environment` | Add local GeoIP and ASN evidence before authentication policy runs. |
+| [ClickHouse](./clickhouse.md) | `PostActionTarget` | `authn/plugin.clickhouse.post_action` | Write batched authentication analytics as ClickHouse JSONEachRow data. |
+| [Have I Been Pwned](./haveibeenpwnd.md) | `PostActionTarget` | `authn/plugin.haveibeenpwnd.post_action` | Check an authenticated request password through the HIBP k-anonymity API and optionally send mail. |
 
 All three artifacts:
 
@@ -64,7 +64,7 @@ When using the Nauthilus container image, prefer its bundled `.so` and matching 
 
 The plugins demonstrate three distinct data paths:
 
-- GeoIP emits registered policy facts under `plugin.environment.geoip.*` and analytics/runtime data under `plugin.exchange.geoip`.
+- GeoIP contributes generic Policy facts under `plugin.geoip.*` and no runtime exchange delta.
 - HIBP returns a plan-local `PostActionEnqueueResult.RuntimeDelta` under `plugin.exchange.haveibeenpwnd` for later post-action steps.
 - ClickHouse consumes request snapshots, policy facts, and `plugin.exchange.*` data, but emits no policy facts and no runtime delta of its own.
 
@@ -74,7 +74,7 @@ Policy facts are validated decision evidence. Runtime exchange values are JSON-c
 
 The pages describe the plugin implementation as it exists now, including known inconsistencies:
 
-- GeoIP writes `plugin.exchange.geoip`; the legacy Lua GeoIP bridge still reads `plugin.environment.geoip` and is incompatible until corrected or given an explicit host alias.
+- GeoIP has one generic provider authority; there is no authentication-shaped environment source or runtime exchange alias.
 - The checked-in ClickHouse schema and Kubernetes initialization assets do not currently cover every field emitted by the native plugin. They must be aligned before being treated as a validated deployment.
 - ClickHouse has threshold-based flushing only; there is no timer flush or shutdown flush.
 - HIBP mail uses `Host.Mail("mail")`, runs only after a fresh positive HTTP lookup, and does not retry after a mail gate has been claimed and rendering or sending fails.

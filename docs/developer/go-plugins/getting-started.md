@@ -28,19 +28,19 @@ mkdir customer-risk-plugin
 cd customer-risk-plugin
 go mod init example.com/customer-risk-plugin
 # Replace <host-tag-or-commit> with the exact Nauthilus source used by the server.
-go get github.com/croessner/nauthilus/v3@<host-tag-or-commit>
+go get github.com/croessner/nauthilus/v4@<host-tag-or-commit>
 ```
 
 Use only the public packages when writing the plugin:
 
 ```text
-github.com/croessner/nauthilus/v3/pluginapi/v1
-github.com/croessner/nauthilus/v3/pluginapi/v1/exchange
-github.com/croessner/nauthilus/v3/pluginapi/v1/helpers
-github.com/croessner/nauthilus/v3/pluginapi/v1/password
+github.com/croessner/nauthilus/v4/pluginapi/v1
+github.com/croessner/nauthilus/v4/pluginapi/v1/exchange
+github.com/croessner/nauthilus/v4/pluginapi/v1/helpers
+github.com/croessner/nauthilus/v4/pluginapi/v1/password
 ```
 
-Do not import `github.com/croessner/nauthilus/v3/server/...`. Those packages are host internals and are neither a public source contract nor a safe shared-library boundary.
+Do not import `github.com/croessner/nauthilus/v4/server/...`. Those packages are host internals and are neither a public source contract nor a safe shared-library boundary.
 
 ## Implement the factory and plugin
 
@@ -54,7 +54,7 @@ import (
     "fmt"
     "time"
 
-    pluginapi "github.com/croessner/nauthilus/v3/pluginapi/v1"
+    pluginapi "github.com/croessner/nauthilus/v4/pluginapi/v1"
 )
 
 const riskFact = "plugin.environment.customer_risk.suspicious"
@@ -186,25 +186,33 @@ See [Configure native Go plugins](../../configuration/native-go-plugins.md) for 
 
 ## Use the fact in policy
 
-The plugin registers the attribute contract, but an active policy check still determines where the source runs and which policy consumes its output. A representative check uses the native environment producer and the fully qualified component:
+The plugin registers the attribute contract, but an active checkpoint provider instance still determines where the source runs and which policy consumes its output. A representative v4 declaration uses the configured module and an exact qualified provider identity:
 
 ```yaml
-auth:
-  policy:
-    checks:
-      - name: customer_risk_check
-        type: plugin.environment
-        stage: pre_auth
-        operations: [authenticate]
-        config_ref: plugins.modules.customer_risk.environment
+policy:
+  namespaces:
+    authn:
+      providers:
+        plugin.customer_risk.environment:
+          kind: plugin
+          module: customer_risk
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+      domain_plans:
+        password:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: customer_risk_check
+                  use: authn/plugin.customer_risk.environment
+                  actions: [authenticate]
 ```
 
-The environment check selects the configured module-level environment stage, so
-its `config_ref` always ends in `.environment`; it does not use the source's
-local name. Reference the registered
+The provider declaration selects the configured module-level environment source;
+the checkpoint uses its exact qualified `use` identity. Reference the registered
 `plugin.environment.customer_risk.suspicious` attribute from the relevant
-policy expression. Keep the check name and component name conceptually separate:
-a `ProducerCheck` refers to the compiled policy check name, while
+policy expression. Keep the instance name and component name conceptually separate:
+a scheduled provider instance refers to the compiled plan-local name, while
 `customer_risk.risk` identifies the registered source component.
 
 This sample is intended as one configured module instance. Its fixed `riskFact`

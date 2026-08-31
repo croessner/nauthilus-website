@@ -106,26 +106,31 @@ nauthilus_policy.emit_attribute({
 Policy rule:
 
 ```yaml
-auth:
-  policy:
-    registry_scripts:
-      - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
-
-    policies:
-      - name: deny_geoip_rejection
-        stage: auth_decision
-        operations: [authenticate]
-        if:
-          attribute: lua.plugin.geoip.rejected
-          is: true
-        then:
-          decision: deny
-          response_marker: auth.response.fail
-          response_message:
-            from: attribute_detail
-            attribute: lua.plugin.geoip.rejected
-            detail: status_message
-            fallback: "Invalid login or password"
+policy:
+  namespaces:
+    authn:
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
+      policy_sets:
+        configured:
+          visibility: private
+          rules:
+            - name: deny_geoip_rejection
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: lua.plugin.geoip.rejected
+                is: true
+              then:
+                decision: deny
+                response_marker: auth.response.fail
+                response_message:
+                  from: attribute_detail
+                  attribute: lua.plugin.geoip.rejected
+                  detail: status_message
+                  fallback: "Invalid login or password"
 ```
 
 For the bundled plugin attributes, see [Lua Policy Plugins](../guides/lua-policy-plugins.md).
@@ -156,7 +161,7 @@ then:
   response_marker: auth.response.fail
   response_message:
     from: i18n
-    i18n_key: auth.policy.company.account_locked
+    i18n_key: policy.company.account_locked
     fallback: "Login failed because the account is locked."
 ```
 
@@ -181,7 +186,7 @@ then:
     fallback: en
   response_message:
     from: i18n
-    i18n_key: auth.policy.company.account_locked
+    i18n_key: policy.company.account_locked
     fallback: "Login failed because the account is locked."
 ```
 

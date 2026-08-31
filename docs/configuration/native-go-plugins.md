@@ -358,7 +358,7 @@ An artifact must match the deployed server's:
 - Go toolchain, including patch-level compatibility where package hashes differ;
 - build tags, including `netgo` and any additional release tags;
 - `-trimpath` and relevant build shape;
-- exact `github.com/croessner/nauthilus/v3` source version;
+- exact `github.com/croessner/nauthilus/v4` source version;
 - shared dependency versions and module graph.
 
 `pluginapi.APIVersion == "nauthilus.plugin.v1"` validates the semantic contract after load; it cannot override Go's package-hash checks. Rebuild external plugins for the exact host release or commit.

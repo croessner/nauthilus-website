@@ -8,7 +8,7 @@ sidebar_position: 12
 # `password` Package
 
 ```go
-import "github.com/croessner/nauthilus/v3/pluginapi/v1/password"
+import "github.com/croessner/nauthilus/v4/pluginapi/v1/password"
 ```
 
 This package works with credentials. Avoid the string/byte convenience functions when a request-scoped `pluginapi.Secret` is available; they make secret lifetime and copying harder to control.

@@ -8,7 +8,7 @@ sidebar_position: 11
 # `helpers` Package
 
 ```go
-import "github.com/croessner/nauthilus/v3/pluginapi/v1/helpers"
+import "github.com/croessner/nauthilus/v4/pluginapi/v1/helpers"
 ```
 
 This package contains deterministic, non-secret standalone functions. Unlike `Host.Helpers()`, callers supply explicit options.

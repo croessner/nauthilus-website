@@ -72,7 +72,7 @@ auth:
 
 ## Policy Attributes
 
-When `builtin.brute_force` is part of `auth.policy.checks`, Nauthilus exports both global brute-force facts and generated per-bucket facts. Bucket names become policy-safe identifier segments:
+When a checkpoint schedules `authn/builtin/brute_force`, Nauthilus exports both global brute-force facts and generated per-bucket facts. Bucket names become policy-safe identifier segments:
 
 | Bucket name | Policy segment | Example attribute |
 |---|---|---|

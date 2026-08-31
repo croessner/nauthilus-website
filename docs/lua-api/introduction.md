@@ -29,7 +29,7 @@ Synchronous Lua actions are configured with action types such as `brute_force`, 
 
 The triggering check, environment control, or environment source only emits facts. The action runs only when the selected decision includes the dispatch obligation. This keeps reports, observe-mode comparisons, and mutable side effects aligned with the same policy decision.
 
-Lua POST-Actions use the `post` action type. They run after the request-time decision context is known and must not change the final decision, response marker, response message, or FSM terminal state. In `auth.policy` authoritative paths, POST-Action enqueueing is requested through the registered obligation `auth.obligation.lua_post_action.enqueue`. Brute-force counter and learning updates are requested through `auth.obligation.brute_force.update`.
+Lua POST-Actions use the `post` action type. They run after the request-time decision context is known and must not change the final decision, response marker, response message, or FSM terminal state. In top-level Policy authoritative paths, POST-Action enqueueing is requested through the registered obligation `auth.obligation.lua_post_action.enqueue`. Brute-force counter and learning updates are requested through `auth.obligation.brute_force.update`.
 
 Observe-mode policy evaluation reports planned custom obligations but never executes them, so it does not dispatch synchronous Lua actions, enqueue custom POST-Actions, or mutate brute-force state.
 

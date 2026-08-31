@@ -15,7 +15,7 @@ This guide explains how to compile Nauthilus from source instead of using a pre-
 - Git.
 - A C toolchain when the selected target or native Go plugins require CGO.
 
-Nauthilus uses the Go module path `github.com/croessner/nauthilus/v3` and the `runtimesecret` Go experiment. Use the
+Nauthilus uses the Go module path `github.com/croessner/nauthilus/v4` and the `runtimesecret` Go experiment. Use the
 toolchain version declared by `go.mod` and keep `GOEXPERIMENT=runtimesecret` enabled for builds and tests.
 
 Verify the local toolchain before building:
@@ -37,10 +37,10 @@ you intend to deploy:
 
 ```bash
 git fetch --tags
-git checkout v3.x.x
+git checkout v4.x.x
 ```
 
-Replace `v3.x.x` with an existing release tag.
+Replace `v4.x.x` with an existing v4 release tag. The upcoming `v4.0.0-alpha.1` tag can be used only after it is published.
 
 ## Build with Make
 

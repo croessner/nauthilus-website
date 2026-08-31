@@ -12,7 +12,7 @@ Native Go plugins extend Nauthilus with trusted code compiled into a Go shared o
 The public boundary is:
 
 ```text
-github.com/croessner/nauthilus/v3/pluginapi/v1
+github.com/croessner/nauthilus/v4/pluginapi/v1
 ```
 
 Every artifact exports exactly one factory with this signature:

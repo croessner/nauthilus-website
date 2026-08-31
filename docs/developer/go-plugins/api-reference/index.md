@@ -10,10 +10,10 @@ sidebar_position: 1
 This reference documents every exported constant, variable, type, function, method, interface method, and public struct field in the four supported packages:
 
 ```text
-github.com/croessner/nauthilus/v3/pluginapi/v1
-github.com/croessner/nauthilus/v3/pluginapi/v1/exchange
-github.com/croessner/nauthilus/v3/pluginapi/v1/helpers
-github.com/croessner/nauthilus/v3/pluginapi/v1/password
+github.com/croessner/nauthilus/v4/pluginapi/v1
+github.com/croessner/nauthilus/v4/pluginapi/v1/exchange
+github.com/croessner/nauthilus/v4/pluginapi/v1/helpers
+github.com/croessner/nauthilus/v4/pluginapi/v1/password
 ```
 
 It describes the public source contract and the behavior of the current Nauthilus production adapters separately. This distinction matters: an exported field can be available to plugin code while a particular adapter leaves it empty, or a result field can be accepted by the type system while the current runtime does not act on it.

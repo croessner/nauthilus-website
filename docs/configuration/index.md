@@ -53,7 +53,7 @@ Important behavior:
 - `-d` and `-n` are mutually exclusive.
 - Without `-P`, secrets and other sensitive values are printed as `***REDACTED***`.
 - Dump output uses canonical v2 paths.
-- Legacy monolithic YAML files can be rewritten with `python3 scripts/convert-config-v1-to-v2.py`.
+- The v4 Policy hard cut has no supported converter; migrate decision configuration manually with the field-complete guide.
 
 ## Configuration Errors
 
@@ -77,7 +77,7 @@ Examples of canonical paths:
 - [Backend Health Checks](backend-server-monitoring.md): `auth.services.backend_health_checks`
 - [Brute Force Protection](brute-force.md): `auth.controls.brute_force`
 - [Authentication Pipeline](auth-pipeline.md): `auth.pipeline`
-- [Auth Policy Reference](auth-policy.md): `auth.policy`
+- [Policy Configuration](auth-policy.md): top-level `policy`
 - [Native Go Plugins](native-go-plugins.md): trusted `.so` modules, verification, capabilities, and reload boundaries
 - [Password Nonce](password-nonce.md): `storage.redis.password_nonce`
 - [Environment, Validation, and Dumps](reference.md)

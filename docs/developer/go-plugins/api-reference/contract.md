@@ -10,7 +10,7 @@ sidebar_position: 2
 Package import:
 
 ```go
-import pluginapi "github.com/croessner/nauthilus/v3/pluginapi/v1"
+import pluginapi "github.com/croessner/nauthilus/v4/pluginapi/v1"
 ```
 
 ## `APIVersion`

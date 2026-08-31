@@ -34,7 +34,7 @@ Use `static` for known relay domains and `allowlist` for explicit login exceptio
 
 ## Policy Attributes
 
-When `builtin.relay_domains` is part of `auth.policy.checks`, Nauthilus exports these relay-domain facts:
+When a checkpoint schedules `authn/builtin/relay_domains`, Nauthilus exports these relay-domain facts:
 
 - `auth.relay_domain.present`: the username contains a valid domain part.
 - `auth.relay_domain.known`: the domain is known to the configured static list.

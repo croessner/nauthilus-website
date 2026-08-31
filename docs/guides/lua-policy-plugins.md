@@ -7,17 +7,20 @@ sidebar_position: 8
 
 # Lua Policy Plugins
 
-Nauthilus Lua plugins can emit typed policy attributes directly into the active request decision context. This lets a plugin collect a signal once and then let `auth.policy.policies` decide what the final effect should be.
+Nauthilus Lua plugins can emit typed policy attributes directly into the active request decision context. This lets a plugin collect a signal once and then let a top-level Policy rule decide the final effect.
 
 ## Enable the Bundled Registry
 
 The bundled policy-aware plugins emit attributes below `lua.plugin.*`. Register these attributes before using them in policies:
 
 ```yaml
-auth:
-  policy:
-    registry_scripts:
-      - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
+policy:
+  namespaces:
+    authn:
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
 ```
 
 The registry is loaded when the policy snapshot is built. If a plugin emits an unknown attribute, the Lua execution fails instead of silently creating a loose fact.
@@ -112,35 +115,58 @@ All attributes below are registered by `lua-plugins.d/policy/registry.lua`.
 ## Policy Example
 
 ```yaml
-auth:
-  policy:
-    registry_scripts:
-      - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
-
-    checks:
-      - name: lua_subject_geoip
-        type: lua.subject
-        stage: subject_analysis
-        operations: [authenticate]
-        config_ref: auth.policy.attribute_sources.lua.subject.geoip
-
-    policies:
-      - name: deny_geoip_rejection
-        stage: auth_decision
-        operations: [authenticate]
-        require_checks: [lua_subject_geoip]
-        if:
-          attribute: lua.plugin.geoip.rejected
-          is: true
-        then:
-          decision: deny
-          reason: geoip_policy_rejected
-          response_marker: auth.response.fail
-          response_message:
-            from: attribute_detail
-            attribute: lua.plugin.geoip.rejected
-            detail: status_message
-            fallback: "Invalid login or password"
+policy:
+  namespaces:
+    authn:
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
+      providers:
+        lua_subject_geoip:
+          kind: lua_subject
+          script_path: /etc/nauthilus/lua-plugins.d/subject/geoip.lua
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+      domain_plans:
+        password:
+          checkpoints:
+            subject_analysis:
+              providers:
+                - name: geoip
+                  use: authn/lua_subject_geoip
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+      policy_sets:
+        configured:
+          visibility: private
+          rules:
+            - name: deny_geoip_rejection
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: lua.plugin.geoip.rejected
+                is: true
+              then:
+                decision: deny
+                reason: geoip_policy_rejected
+                response_marker: auth.response.fail
+                response_message:
+                  from: attribute_detail
+                  attribute: lua.plugin.geoip.rejected
+                  detail: status_message
+                  fallback: "Invalid login or password"
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/password
+      plans:
+        auth_decision:
+          policy_sets: [authn/configured]
 ```
 
 ## Writing Your Own Emitter

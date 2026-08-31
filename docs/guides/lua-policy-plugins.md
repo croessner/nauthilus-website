@@ -210,3 +210,58 @@ policy.emit_master_user({
 ```
 
 This records `auth.master_user.active` for the active `authenticate` request and attaches `master_user` and `target_user` details when provided.
+
+## Generic Target-Aware Lua Providers
+
+The emitter interface above belongs to the authentication pipeline. A generic Policy target instead uses a provider
+with `kind: lua` and one or both exact callbacks:
+
+```lua
+_G["policy.facts.collect"] = function(request)
+    return {
+        facts = {
+            {name = "risk_score", value = {kind = "integer", value = "42"}},
+        },
+    }
+end
+
+_G["policy.effects.execute"] = function(request)
+    return {state = "succeeded"}
+end
+```
+
+Each invocation receives a fresh restricted Lua state. Generic scripts have deterministic base, table, string, and math
+operations, but no `io`, `os`, `package`, `require`, file loading, dynamic loading, or legacy Nauthilus modules. Host
+deadlines and cancellation stop execution, and globals cannot leak into the next request.
+
+`policy.facts.collect` receives detached, redacted `target`, `caller`, and admitted `facts` views. It returns either a
+bounded fact list or one closed `error_class` (`invalid_input`, `unavailable`, `timeout`, or `internal`). Local names are
+host-qualified as `lua.<module>.<name>` and must match `produced_facts`, the target schema, source `lua`, type, and bounds.
+Unknown fields, duplicate facts, foreign authorities, or invalid values are contract violations and fail closed.
+
+`policy.effects.execute` is called only for a policy-selected obligation whose typed parameters already passed the
+effect schema. Its closed results are `succeeded`, `failed`, and `outcome_unknown`; failed and unknown outcomes require
+an error class. Lua cannot select a decision, change plan ordering, authorize a target, mutate a response, request a
+retry, or detach its own work. The host owns synchronous finalization and accepted `host_post_action` scheduling.
+
+```yaml
+policy:
+  namespaces:
+    dkim2:
+      providers:
+        risk:
+          kind: lua
+          module: reputation
+          script_path: /etc/nauthilus/lua/reputation.lua
+          targets: [{action: sign-message}]
+          produced_facts: [lua.reputation.risk_score]
+          executions: [host_sync]
+          failure: indeterminate
+          timeout: 100ms
+```
+
+Every value uses the same strict Policy representation: strings and booleans are native, signed integers are base-10
+strings, doubles must be finite, byte values use standard Base64, timestamps use UTC RFC 3339, and string lists are
+dense and ordered. Empty lists and missing values remain distinct. Records are schema-defined ordered field lists; they
+cannot nest records recursively. See [Generic Policy API](./generic-policy-api.md) for the wire form and
+[Policy configuration](../configuration/auth-policy.md) for plans, schemas, failure handling, and effects.

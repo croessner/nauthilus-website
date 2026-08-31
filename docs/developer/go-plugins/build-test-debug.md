@@ -13,7 +13,7 @@ Test plugin logic directly first, then prove the shared-object boundary with a s
 
 Current Nauthilus container builds compile the server and bundled plugins from one source tree with:
 
-- Go 1.26 from the repository toolchain declaration;
+- Go 1.27 from the repository toolchain declaration;
 - `GOEXPERIMENT=runtimesecret`;
 - vendored dependencies;
 - `netgo` plus any selected release build tags;

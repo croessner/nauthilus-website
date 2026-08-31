@@ -11,7 +11,7 @@ This guide explains how to compile Nauthilus from source instead of using a pre-
 
 ## Prerequisites
 
-- Go 1.26 or later. The project CI and container build currently use Go 1.26.5.
+- Go 1.27 or later. The project CI and container build for this release use Go 1.27.0.
 - Git.
 - A C toolchain when the selected target or native Go plugins require CGO.
 
@@ -37,10 +37,10 @@ you intend to deploy:
 
 ```bash
 git fetch --tags
-git checkout v4.x.x
+git checkout v4.0.0-alpha.1
 ```
 
-Replace `v4.x.x` with an existing v4 release tag. The upcoming `v4.0.0-alpha.1` tag can be used only after it is published.
+For another release, replace the tag with the exact published version you intend to build.
 
 ## Build with Make
 

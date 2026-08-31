@@ -13,7 +13,7 @@ sidebar_position: 2
 - Redis-backed caching and operational state
 - LDAP and Lua authentication backends
 - versioned native Go plugin API with typed backends, policy sources/effects, hooks, and host service facades
-- bundled GeoIP/ASN, ClickHouse, and Have I Been Pwned Go plugins
+- bundled GeoIP/ASN, ClickHouse, and Have I Been Pwned Go plugins, plus a source-level DKIM2 reputation reference
 - remote authority backend for split edge/authority deployments
 - canonical config-v2 structure with validation and dump tooling
 
@@ -25,6 +25,8 @@ sidebar_position: 2
 - TLS enforcement with cleartext allowlists
 - Lua environment and subject sources
 - native Go environment and subject sources with registered typed policy facts
+- protected Generic Policy REST and gRPC evaluation with strict typed values, ordered records, caller admission, and bounded effects
+- generic native Go and sandboxed Lua fact/effect providers
 
 ## Services and Observability
 
@@ -43,6 +45,8 @@ sidebar_position: 2
 - edge-hosted OIDC/SAML flows backed by a private Nauthilus authority over gRPC
 - integrated frontend
 - TOTP and WebAuthn MFA
+- password-authenticated MFA self-service portal for TOTP, WebAuthn credentials, and recovery codes
 - configurable MFA assurance levels with global and per-OIDC-client/SAML-SP policy
 - authority-owned TOTP, recovery-code, and WebAuthn persistence for distributed IdP deployments
 - remember-me/session controls
+- opaque browser-session envelopes with typed, revisioned Redis state for OIDC, SAML, MFA, consent, and logout flows

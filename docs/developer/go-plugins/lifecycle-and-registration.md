@@ -83,7 +83,7 @@ func (p *Plugin) Metadata() pluginapi.Metadata {
             pluginapi.CapabilityCredentials,
         },
         Build: pluginapi.BuildInfo{
-            GoVersion: "go1.26.x",
+            GoVersion: "go1.27.x",
             GitCommit: "replace-at-build-time",
             BuildTime: "replace-at-build-time",
             BuildTags: []string{"netgo"},

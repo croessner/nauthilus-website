@@ -145,4 +145,5 @@ requirements, the level mapping, or the required assurance level.
 - Treat `require_mfa` as registration policy, not proof that the method was used in this session.
 - Test transitions between applications with different levels, not only the initial login.
 
-See [OIDC](oidc.md) and [SAML](saml2.md) for protocol-specific client and service-provider examples.
+See [MFA Self-Service](../../guides/mfa-self-service.md) for the direct portal and mutation flows, and see
+[OIDC](oidc.md) and [SAML](saml2.md) for protocol-specific client and service-provider examples.

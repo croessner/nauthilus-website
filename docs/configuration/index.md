@@ -18,6 +18,7 @@ The current configuration file is organized into these root sections:
 - `storage`
 - `auth`
 - `identity`
+- `policy`
 - `plugins`
 
 This is a breaking redesign. Legacy root sections such as `server`, `ldap`, `lua`, `idp`, `realtime_blackhole_lists`, `relay_domains`, `brute_force`, `backend_server_monitoring`, and `cleartext_networks` are not part of the current public model anymore.

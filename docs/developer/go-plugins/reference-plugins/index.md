@@ -1,21 +1,24 @@
 ---
 title: Bundled Reference Plugins
 description: Source-level reference for the native Go plugins bundled with Nauthilus
-keywords: [Go plugins, GeoIP, ClickHouse, Have I Been Pwned, reference plugins]
+keywords: [Go plugins, GeoIP, ClickHouse, Have I Been Pwned, DKIM2, reference plugins]
 sidebar_position: 1
 ---
 
 # Bundled Reference Plugins
 
-Nauthilus ships three native Go plugin artifacts in its stable and debug container images. They are production-oriented integrations and source examples for different `pluginapi/v1` extension points:
+Nauthilus ships three native Go plugin artifacts in its stable and debug container images and keeps the DKIM2
+reputation provider as a source-level reference that operators build separately. They demonstrate different
+`pluginapi/v1` extension points:
 
 | Plugin | Extension point | Qualified component with the standard module name | Primary purpose |
 | --- | --- | --- | --- |
 | [GeoIP/ASN](./geoip.md) | Generic native Decision Fact Provider | `authn/plugin.geoip.environment` | Add local GeoIP and ASN evidence before authentication policy runs. |
 | [ClickHouse](./clickhouse.md) | `PostActionTarget` | `authn/plugin.clickhouse.post_action` | Write batched authentication analytics as ClickHouse JSONEachRow data. |
 | [Have I Been Pwned](./haveibeenpwnd.md) | `PostActionTarget` | `authn/plugin.haveibeenpwnd.post_action` | Check an authenticated request password through the HIBP k-anonymity API and optionally send mail. |
+| [DKIM2 Reputation](./dkim2-reputation.md) | Generic native `DecisionFactProvider` | `dkim2/plugin.dkim2_reputation.assessment` | Source-only reference: validate and assess an admitted DKIM2 verifier projection without selecting the decision. |
 
-All three artifacts:
+The three bundled artifacts:
 
 - are trusted in-process Go plugins, not sandboxed services;
 - export `NauthilusPlugin() (pluginapi.Plugin, error)`;
@@ -52,7 +55,10 @@ go build \
   ./contrib/plugins/<plugin>
 ```
 
-Replace `<plugin>` with `geoip`, `clickhouse`, or `haveibeenpwnd`. If the host uses additional build tags, add the exact same tags. Build from the exact Nauthilus tag or commit used for the host; `pluginapi.APIVersion` compatibility alone does not guarantee that Go's plugin loader will accept the artifact.
+Replace `<plugin>` with `geoip`, `clickhouse`, or `haveibeenpwnd`. Build the source-only DKIM2 reference from its own
+directory as documented on its page. If the host uses additional build tags, add the exact same tags. Build from the
+exact Nauthilus tag or commit used for the host; `pluginapi.APIVersion` compatibility alone does not guarantee that
+Go's plugin loader will accept the artifact.
 
 :::tip Prefer the bundled artifact
 
@@ -65,6 +71,7 @@ When using the Nauthilus container image, prefer its bundled `.so` and matching 
 The plugins demonstrate three distinct data paths:
 
 - GeoIP contributes generic Policy facts under `plugin.geoip.*` and no runtime exchange delta.
+- DKIM2 Reputation contributes an ordered assessed-chain Policy fact and no decision, SMTP action, or runtime exchange delta.
 - HIBP returns a plan-local `PostActionEnqueueResult.RuntimeDelta` under `plugin.exchange.haveibeenpwnd` for later post-action steps.
 - ClickHouse consumes request snapshots, policy facts, and `plugin.exchange.*` data, but emits no policy facts and no runtime delta of its own.
 

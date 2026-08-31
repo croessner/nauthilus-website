@@ -1,0 +1,31 @@
+---
+id: policydecisionresponse
+title: "PolicyDecisionResponse"
+description: ""
+sidebar_label: "PolicyDecisionResponse"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"request_id":"string","decision_id":"string","effect":"permit","status":{"code":"string","message":"string","retryable":true,"details":[{"field":"string","reason":"string"}]},"obligations":[{"id":"string","parameters":{}}],"advice":[{"id":"string","parameters":{}}],"diagnostics":{"entries":{}}}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"PolicyDecisionResponse"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./policydecisionresponse.Schema.json")}
+>
+
+</Schema>

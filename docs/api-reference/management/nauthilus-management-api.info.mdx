@@ -52,6 +52,66 @@ Contract for the stable protected machine-facing HTTP API subset. Dynamic custom
   >
     <TabItem
       label={"HTTP: Basic Auth"}
+      value={"policyBasic"}
+    >
+
+
+      Dedicated Policy client credentials; never management Basic credentials.
+
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <th>
+                Security Scheme Type:
+              </th><td>
+                http
+              </td>
+            </tr><tr>
+              <th>
+                HTTP Authorization Scheme:
+              </th><td>
+                basic
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </TabItem><TabItem
+      label={"HTTP: Bearer Auth"}
+      value={"policyBearer"}
+    >
+
+
+      Policy-resource Bearer token with nauthilus:policy_evaluate scope.
+
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <th>
+                Security Scheme Type:
+              </th><td>
+                http
+              </td>
+            </tr><tr>
+              <th>
+                HTTP Authorization Scheme:
+              </th><td>
+                bearer
+              </td>
+            </tr><tr>
+              <th>
+                Bearer format:
+              </th><td>
+                JWT
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </TabItem><TabItem
+      label={"HTTP: Basic Auth"}
       value={"backchannelBasic"}
     >
 
@@ -105,33 +165,6 @@ Contract for the stable protected machine-facing HTTP API subset. Dynamic custom
                 Bearer format:
               </th><td>
                 JWT
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </TabItem><TabItem
-      label={"API Key: sessionCookie"}
-      value={"sessionCookie"}
-    >
-
-
-      Encrypted browser session cookie used by MFA management routes.
-
-      <div>
-        <table>
-          <tbody>
-            <tr>
-              <th>
-                Security Scheme Type:
-              </th><td>
-                apiKey
-              </td>
-            </tr><tr>
-              <th>
-                Cookie parameter name:
-              </th><td>
-                nauthilus_secure_data
               </td>
             </tr>
           </tbody>

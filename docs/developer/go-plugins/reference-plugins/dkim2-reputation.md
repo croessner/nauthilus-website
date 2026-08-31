@@ -72,5 +72,6 @@ The SMTP peer is the current Rspamd connection. It is applied only to the target
 request-wide classification is repeated in output records. Historical hops are never evaluated against the current IP.
 
 Use this provider with the [DKIM2/Rspamd integration contract](../../../guides/dkim2-rspamd-policy.md). That integration
-is currently blocked for production rollout by an adapter response-schema mismatch; the plugin reference does not
-override that gate.
+uses the aligned adapter published in DKIM2 `v0.1.22`. Its neutral Policy harness is passing, but it stubs the live
+`dkim2d` process endpoint; operators must still prove a real verifier `PASS` through their DNS and message-wire path
+before enabling production enforcement.

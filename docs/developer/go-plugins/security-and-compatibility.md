@@ -35,7 +35,8 @@ Resolve the entire operational path:
 3. the resolved artifact remains below a resolved allowed directory;
 4. checksum/signature verification succeeds;
 5. the signer reference and format match the trust store;
-6. only then may `plugin.Open` run.
+6. the artifact carries exactly the host's native build identity (see below);
+7. only then may `plugin.Open` run.
 
 Do not make allowlisted directories writable by the runtime account. A valid signature is stronger than path ownership alone, but neither protects against a compromised private signing key or a malicious trusted build.
 
@@ -56,7 +57,7 @@ Never expose secrets through:
 - discovery metadata;
 - response headers or hook bodies.
 
-Treat `PostActionRequest.PasswordHash` as sensitive password-derived material. It is the host-owned lowercase 64-character SHA-256 digest of the prepared nonce-plus-password bytes, remains hashed in development mode, and is passed independently of the credentials capability. A post-action credential provider also relies on plugin discipline for request scoping; never retain either value for later use.
+Treat `PostActionRequest.PasswordHash` as sensitive password-derived material. It is the host-owned lowercase 64-character SHA-256 digest of the prepared nonce-plus-password bytes and remains hashed in development mode. It is delivered only to modules that request the `password_hash` capability and that the operator allowed; `password_hash` and `credentials` are independent grants. A post-action credential provider also relies on plugin discipline for request scoping; never retain either value for later use.
 
 `Host.Config()` is the complete process-start configuration view and can contain inline configured secrets. Prefer the module subtree and least data access; do not assume the host-wide view is redacted or refreshed by SIGHUP.
 
@@ -94,16 +95,20 @@ a hook, where response headers are filtered by the host. The current hook
 adapter writes the response body without a host-side size limit, so the plugin
 must enforce a strict bound before returning it.
 
-## Hook authorization limitation
+## Hook authorization
 
-The current 3.1 development implementation does not make `HookScopeAdmin` elevate a hook declared with `HookAuthSession`; that path uses the basic-auth/session adapter semantics. Therefore:
+Every administrative hook descriptor, meaning `HookAuthAdmin` or `HookScopeAdmin` with any auth mode including
+`HookAuthSession`, requires a bearer token with the backchannel `nauthilus:admin` scope. Operator-configured
+`required_scopes` can narrow that requirement but never replace it. Nevertheless:
 
-- use `HookAuthAdmin` for administrative hooks;
+- use `HookAuthAdmin` for administrative hooks so the descriptor states the requirement;
 - do not rely on scope alone as authentication;
 - put sensitive hooks behind explicit external routing/auth controls as defense in depth;
 - keep bodies and outputs free of privileged configuration or secret material.
 
-This is a current implementation limitation, not the intended meaning of an administrative scope.
+Early v4 prereleases let a `HookAuthSession` descriptor with `HookScopeAdmin` pass with a Basic/session context and
+let configured `required_scopes` replace the administrative scope. In Nauthilus 4.0 both paths require administrative
+authority.
 
 ## Scheduler limitations
 
@@ -129,10 +134,19 @@ Go plugin compatibility is stricter than source compatibility. The host and arti
 
 The semantic API version remains `nauthilus.plugin.v1`, but a plugin compiled against another Nauthilus tag with the same constant may still fail Go's package-hash checks. Build, test, and distribute artifacts per host release/architecture.
 
+Before `plugin.Open`, the loader additionally requires a coherent native build identity. The server and every plugin
+must embed the same `nauthilus-native-artifact-v1` fingerprint of compiler settings (Go version, target OS and
+architecture, CGO and C/C++ compiler settings, `GOEXPERIMENT`, `GOFLAGS`), build tags, source files, dependency locks, and
+Go-embedded resources. An unmarked, stale, or mixed artifact is rejected with "native artifact does not match the host
+build identity" before any plugin code runs; Go then performs its own package-hash checks. The identity is a build
+coherence check, not an attestation of external compiler binaries, and it does not replace detached signatures or
+configured checksums. See [native artifact identity](./build-test-debug.md#native-artifact-identity).
+
 ## Reload safety
 
 `Reconfigure` is a config callback, not a code reload or a host-provided rollback transaction:
 
+- implement `ReconfigureValidator` and share its decode-and-validate step with `Reconfigure`;
 - decode and validate the complete next config;
 - prepare clients, templates, or database snapshots before swapping;
 - keep old state if this plugin's preparation fails;
@@ -140,7 +154,7 @@ The semantic API version remains `nauthilus.plugin.v1`, but a plugin compiled ag
 - consider in-flight callbacks when reclaiming old state;
 - never change the `.so` underneath a running process and expect SIGHUP to load it.
 
-The host delays its own config-view commit until all invoked reloadable plugins succeed, but it cannot undo an earlier plugin's internal state swap when a later module rejects the same SIGHUP. A non-reloadable plugin's changed config is currently skipped rather than rejected. Design reloads to be conservative and independently safe.
+The host validates every changed module through `ValidateReconfigure` before anything is applied, and calls `Reconfigure` only after the new Policy generation was committed. A failing `Reconfigure` leaves the other modules and the new generation active; the failing module must keep serving its previous configuration, and the host retries the change on the next reload. A changed config of a non-reloadable plugin rejects the reload as restart-bound. Background work that loaded data for the previous configuration must not publish it after a switch. Design reloads to be conservative and independently safe. See [Configuration reload](./lifecycle-and-registration.md#configuration-reload).
 
 Fields that affect artifact identity, capabilities, trust, module identity, or shutdown require restart.
 
@@ -160,6 +174,7 @@ Fields that affect artifact identity, capabilities, trust, module identity, or s
 
 - Pin the exact Nauthilus host tag or commit.
 - Match Go version, `GOEXPERIMENT=runtimesecret`, tags, and module graph.
+- Embed the host's native artifact identity through the fingerprint `-ldflags`.
 - Export the exact `NauthilusPlugin` factory signature.
 - Set metadata API version to `pluginapi.APIVersion`.
 - Test direct behavior and a helper-process `.so` load.

@@ -57,9 +57,643 @@
       "name": "OIDCSessions",
       "x-displayName": "/api/v1/oidc/sessions",
       "description": "Backchannel OIDC session administration endpoints."
+    },
+    {
+      "name": "Policy",
+      "x-displayName": "/api/v1/policy/decisions",
+      "description": "Unary Policy decision evaluation endpoint."
+    },
+    {
+      "name": "Reputation",
+      "x-displayName": "/api/v1/custom/reputation",
+      "description": "Optional authenticated native reputation administration."
     }
   ],
   "paths": {
+    "/api/v1/custom/reputation/allocation": {
+      "post": {
+        "tags": [
+          "Reputation"
+        ],
+        "operationId": "manageReputationAllocation",
+        "summary": "Inspect or fence the current allocation generation.",
+        "description": "Requires backchannel bearer nauthilus:admin. Status reads the primary and all 16 shard fences without mutation. Drain requires audit fields and fences writers before starting the retained maximum event lifetime. Retry uses the identical audit fields and actor; a different in-progress change conflicts. After a process restart, allocation_maintenance must be explicitly enabled with the original key and generation to retain administration without activating writers. Status and retry remain available while writers are unready. Do not rotate before every shard is fenced and observed_at is at least drained_at plus retention. This API never changes keys, generations, retention or learned evidence.",
+        "security": [
+          {
+            "backchannelBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReputationAllocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified current generation, shard fences and optional durable operator receipt.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationAllocationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or duplicate fields, unsupported subject, or query parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid backchannel access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrative authority or suitable authenticated actor missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reputation plugin or custom hook surface unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Selected override revision changed; read current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 4096 bytes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Expected application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Host execution failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Primary state or verified readback unavailable; a mutation outcome may be unknown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Management timeout; inspect current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/custom/reputation/lookup": {
+      "post": {
+        "tags": [
+          "Reputation"
+        ],
+        "operationId": "lookupReputation",
+        "summary": "Inspect one exact reputation subject.",
+        "description": "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.",
+        "security": [
+          {
+            "backchannelBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReputationLookupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sanitized primary-backed state. Mutation success includes the independently verified change receipt.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or duplicate fields, unsupported subject, or query parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid backchannel access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrative authority or suitable authenticated actor missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reputation plugin or custom hook surface unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Selected override revision changed; read current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 4096 bytes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Expected application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Host execution failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Primary state or verified readback unavailable; a mutation outcome may be unknown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Management timeout; inspect current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/custom/reputation/override": {
+      "put": {
+        "tags": [
+          "Reputation"
+        ],
+        "operationId": "putReputationOverride",
+        "summary": "Create or replace one audited operator override.",
+        "description": "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.",
+        "security": [
+          {
+            "backchannelBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReputationOverridePutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sanitized primary-backed state. Mutation success includes the independently verified change receipt.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or duplicate fields, unsupported subject, or query parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid backchannel access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrative authority or suitable authenticated actor missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reputation plugin or custom hook surface unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Selected override revision changed; read current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 4096 bytes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Expected application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Host execution failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Primary state or verified readback unavailable; a mutation outcome may be unknown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Management timeout; inspect current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Reputation"
+        ],
+        "operationId": "deleteReputationOverride",
+        "summary": "Remove one selected operator override revision.",
+        "description": "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.",
+        "security": [
+          {
+            "backchannelBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReputationOverrideDeleteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sanitized primary-backed state. Mutation success includes the independently verified change receipt.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or duplicate fields, unsupported subject, or query parameters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid backchannel access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Administrative authority or suitable authenticated actor missing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Reputation plugin or custom hook surface unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Selected override revision changed; read current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 4096 bytes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Expected application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Host execution failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Primary state or verified readback unavailable; a mutation outcome may be unknown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Management timeout; inspect current state before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReputationManagementError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/policy/decisions": {
+      "post": {
+        "tags": [
+          "Policy"
+        ],
+        "operationId": "evaluatePolicyDecision",
+        "summary": "Evaluate one Policy decision.",
+        "description": "Evaluates exactly one admitted Policy request. Responses are never cacheable and do not expose retry, replay, cache, or outcome-reporting controls.\n",
+        "security": [
+          {
+            "policyBearer": []
+          },
+          {
+            "policyBasic": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/PolicyDecision"
+          },
+          "400": {
+            "$ref": "#/components/responses/PolicyBadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/PolicyUnauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/PolicyForbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/PolicyRequestTooLarge"
+          },
+          "415": {
+            "$ref": "#/components/responses/PolicyUnsupportedMediaType"
+          },
+          "429": {
+            "$ref": "#/components/responses/PolicyRateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/PolicyUnavailable"
+          }
+        }
+      }
+    },
     "/api/v1/openapi.yaml": {
       "get": {
         "tags": [
@@ -1210,238 +1844,6 @@
         }
       }
     },
-    "/api/v1/mfa/totp/setup": {
-      "get": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "setupTOTP",
-        "summary": "Start TOTP registration for the current session account.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "TOTP registration secret and QR code URL.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TOTPSetupResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/mfa/totp/register": {
-      "post": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "registerTOTP",
-        "summary": "Complete TOTP registration for the current session account.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TOTPRegisterRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/StatusMessage"
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/api/v1/mfa/totp": {
-      "delete": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "deleteTOTP",
-        "summary": "Remove TOTP for the current session account.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/StatusMessage"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/mfa/recovery-codes/generate": {
-      "post": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "generateRecoveryCodes",
-        "summary": "Generate recovery codes for the current session account.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Newly generated recovery codes.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecoveryCodesResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/mfa/webauthn/register/begin": {
-      "get": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "beginWebAuthnRegistration",
-        "summary": "Begin WebAuthn credential registration.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "WebAuthn public key credential creation options.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WebAuthnOptions"
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/mfa/webauthn/register/finish": {
-      "post": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "finishWebAuthnRegistration",
-        "summary": "Finish WebAuthn credential registration.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WebAuthnFinishRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/StatusMessage"
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/mfa/webauthn/{credentialID}": {
-      "delete": {
-        "tags": [
-          "MFA"
-        ],
-        "operationId": "deleteWebAuthnCredential",
-        "summary": "Remove a WebAuthn credential for the current session account.",
-        "security": [
-          {
-            "sessionCookie": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "credentialID",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "$ref": "#/components/responses/StatusMessage"
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "500": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
     "/api/v1/oidc/sessions/{user_id}": {
       "get": {
         "tags": [
@@ -1590,6 +1992,17 @@
   },
   "components": {
     "securitySchemes": {
+      "policyBasic": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Dedicated Policy client credentials; never management Basic credentials."
+      },
+      "policyBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Policy-resource Bearer token with nauthilus:policy_evaluate scope."
+      },
       "backchannelBasic": {
         "type": "http",
         "scheme": "basic",
@@ -1600,12 +2013,6 @@
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "Backchannel OIDC bearer token. Some admin endpoints require security or admin scope."
-      },
-      "sessionCookie": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "nauthilus_secure_data",
-        "description": "Encrypted browser session cookie used by MFA management routes."
       }
     },
     "parameters": {
@@ -1949,6 +2356,86 @@
       }
     },
     "responses": {
+      "PolicyDecision": {
+        "description": "Completed Policy evaluation, including an indeterminate effect when safe to construct.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyDecisionResponse"
+            }
+          }
+        }
+      },
+      "PolicyBadRequest": {
+        "description": "Strict JSON or public-field validation failed.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
+      "PolicyForbidden": {
+        "description": "The authenticated Policy caller is not admitted for this request.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
+      "PolicyRequestTooLarge": {
+        "description": "The request or a submitted value exceeded an admitted limit.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
+      "PolicyRateLimited": {
+        "description": "The admitted client exceeded concurrency or rate limits.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
+      "PolicyUnauthorized": {
+        "description": "Policy credentials are missing or invalid.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
+      "PolicyUnsupportedMediaType": {
+        "description": "The Policy endpoint accepts application/json only.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
+      "PolicyUnavailable": {
+        "description": "The Policy service was unavailable before evaluation began.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PolicyError"
+            }
+          }
+        }
+      },
       "AuthHeaderFailure": {
         "description": "Header-mode authentication failure. The response body is JSON null; Auth-Status carries the status message.",
         "headers": {
@@ -2207,16 +2694,6 @@
           }
         }
       },
-      "StatusMessage": {
-        "description": "Operation status message.",
-        "content": {
-          "application/json": {
-            "schema": {
-              "$ref": "#/components/schemas/StatusMessage"
-            }
-          }
-        }
-      },
       "Unauthorized": {
         "description": "Authentication is missing or invalid.",
         "content": {
@@ -2239,6 +2716,1190 @@
       }
     },
     "schemas": {
+      "ReputationAllocationRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "status"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action",
+              "reason",
+              "origin",
+              "audit_id"
+            ],
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "drain"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+              },
+              "origin": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64,
+                "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+              },
+              "audit_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              }
+            }
+          }
+        ]
+      },
+      "ReputationAllocationView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mode",
+          "generation",
+          "next_generation",
+          "fenced_shards",
+          "drained_at",
+          "retention",
+          "observed_at"
+        ],
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "active",
+              "draining"
+            ]
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "next_generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000001
+          },
+          "fenced_shards": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16
+          },
+          "drained_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "retention": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 31536000
+          },
+          "observed_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "audit": {
+            "$ref": "#/components/schemas/ReputationAllocationAudit"
+          }
+        }
+      },
+      "ReputationAllocationAudit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "origin",
+          "audit_id",
+          "creator"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "audit_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "creator": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "ReputationLookupRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "subject"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "network",
+              "asn",
+              "dns_domain",
+              "account",
+              "service"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      },
+      "ReputationOverridePutRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "subject",
+          "reason",
+          "audit_id",
+          "origin",
+          "band",
+          "ttl_seconds"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "network",
+              "asn",
+              "dns_domain",
+              "account",
+              "service"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "audit_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "previous_audit": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "slot": {
+            "type": "string",
+            "enum": [
+              "active",
+              "previous"
+            ],
+            "default": "active"
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "blocked",
+              "trusted",
+              "neutral"
+            ]
+          },
+          "ttl_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 31536000
+          }
+        }
+      },
+      "ReputationOverrideDeleteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "subject",
+          "reason",
+          "audit_id",
+          "origin",
+          "previous_audit"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "network",
+              "asn",
+              "dns_domain",
+              "account",
+              "service"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "audit_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "previous_audit": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "slot": {
+            "type": "string",
+            "enum": [
+              "active",
+              "previous"
+            ],
+            "default": "active"
+          }
+        }
+      },
+      "ReputationAudit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "kind",
+          "operation",
+          "reason",
+          "creator",
+          "audit_id",
+          "previous_audit",
+          "origin",
+          "created_at"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "reputation-operator-audit.v1"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "network",
+              "asn",
+              "dns_domain",
+              "account",
+              "service"
+            ]
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "override_put",
+              "override_delete"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "creator": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "audit_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "previous_audit": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "created_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          }
+        }
+      },
+      "ReputationOverride": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "band",
+          "reason",
+          "creator",
+          "audit_id",
+          "origin",
+          "created_at",
+          "expires_at"
+        ],
+        "properties": {
+          "band": {
+            "type": "string",
+            "enum": [
+              "blocked",
+              "trusted",
+              "neutral"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "creator": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "audit_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "origin": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "created_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "expires_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          }
+        }
+      },
+      "ReputationScores": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "risk_score",
+          "trust_score",
+          "confidence",
+          "samples",
+          "source_diversity",
+          "age_seconds"
+        ],
+        "properties": {
+          "risk_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "trust_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "samples": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 8000000
+          },
+          "source_diversity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8
+          },
+          "age_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "maximum": 100000000000
+          }
+        }
+      },
+      "ReputationProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "band",
+          "override"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "not_found"
+            ]
+          },
+          "band": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "trusted",
+              "positive",
+              "neutral",
+              "suspicious",
+              "blocked"
+            ]
+          },
+          "override": {
+            "type": "string",
+            "enum": [
+              "none",
+              "trusted",
+              "neutral",
+              "blocked"
+            ]
+          },
+          "details": {
+            "$ref": "#/components/schemas/ReputationScores"
+          }
+        }
+      },
+      "ReputationSourceClasses": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "fast": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+            }
+          },
+          "operational": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+            }
+          },
+          "baseline": {
+            "type": "array",
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+            }
+          }
+        }
+      },
+      "ReputationEvidence": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "slot",
+          "state",
+          "source_classes",
+          "observed_at",
+          "updated_at",
+          "risk_at",
+          "trust_at",
+          "authoritative_at"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "network",
+              "asn",
+              "dns_domain",
+              "account",
+              "service"
+            ]
+          },
+          "slot": {
+            "type": "string",
+            "enum": [
+              "active",
+              "previous"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "not_found"
+            ]
+          },
+          "source_classes": {
+            "$ref": "#/components/schemas/ReputationSourceClasses"
+          },
+          "override": {
+            "$ref": "#/components/schemas/ReputationOverride"
+          },
+          "last_change": {
+            "$ref": "#/components/schemas/ReputationAudit"
+          },
+          "observed_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "updated_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "risk_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "trust_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          },
+          "authoritative_at": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100000000000
+          }
+        }
+      },
+      "ReputationView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "kind",
+          "model_id",
+          "model_revision",
+          "config_revision",
+          "profiles",
+          "evidence"
+        ],
+        "properties": {
+          "schema": {
+            "type": "string",
+            "enum": [
+              "reputation-management.v1"
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ip",
+              "network",
+              "asn",
+              "dns_domain",
+              "account",
+              "service"
+            ]
+          },
+          "model_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+          },
+          "model_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "config_revision": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "profiles": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fast",
+              "operational",
+              "baseline"
+            ],
+            "properties": {
+              "fast": {
+                "$ref": "#/components/schemas/ReputationProfile"
+              },
+              "operational": {
+                "$ref": "#/components/schemas/ReputationProfile"
+              },
+              "baseline": {
+                "$ref": "#/components/schemas/ReputationProfile"
+              }
+            }
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": {
+              "$ref": "#/components/schemas/ReputationEvidence"
+            }
+          },
+          "verified_change": {
+            "$ref": "#/components/schemas/ReputationAudit"
+          }
+        }
+      },
+      "ReputationManagementError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        }
+      },
+      "PolicyAdvice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "parameters"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/PolicyResponseValueMap"
+          }
+        }
+      },
+      "PolicyDecisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "target"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "enum": [
+              "1"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolicyTarget"
+          },
+          "subject": {
+            "$ref": "#/components/schemas/PolicyEntity"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/PolicyEntity"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/PolicyEnvironment"
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PolicyValueMap"
+          },
+          "options": {
+            "$ref": "#/components/schemas/PolicyEvaluationOptions"
+          }
+        }
+      },
+      "PolicyDecisionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "decision_id",
+          "effect",
+          "status"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "decision_id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "effect": {
+            "type": "string",
+            "enum": [
+              "permit",
+              "deny",
+              "not_applicable",
+              "indeterminate"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PolicyStatus"
+          },
+          "obligations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyObligation"
+            }
+          },
+          "advice": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyAdvice"
+            }
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/PolicyDiagnostics"
+          }
+        }
+      },
+      "PolicyDiagnostics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "entries"
+        ],
+        "properties": {
+          "entries": {
+            "$ref": "#/components/schemas/PolicyResponseValueMap"
+          }
+        }
+      },
+      "PolicyEntity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PolicyValueMap"
+          }
+        }
+      },
+      "PolicyEnvironment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "service": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "instance": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "protocol": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "attributes": {
+            "$ref": "#/components/schemas/PolicyValueMap"
+          }
+        }
+      },
+      "PolicyError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyValidationDetail"
+            }
+          }
+        }
+      },
+      "PolicyEvaluationOptions": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "include_diagnostics": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PolicyObligation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "parameters"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 512
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/PolicyResponseValueMap"
+          }
+        }
+      },
+      "PolicyStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "retryable"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable result code. effect_outcome_unknown is non-retryable. effect_replay_unsafe is non-retryable because an earlier non-idempotent effect already completed or was accepted before a later failure. effect_outcome_unknown_replay_safe permits retrying the complete Policy request with unchanged admitted idempotency keys and payload. The host never retries an effect within one request."
+          },
+          "message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "Whether the caller may retry; replay-safe unknown outcomes require the same complete request and idempotency keys."
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyValidationDetail"
+            }
+          }
+        }
+      },
+      "PolicyTarget": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "namespace",
+          "action"
+        ],
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "action": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "PolicyValidationDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "reason"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PolicyValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "string"
+            ]
+          },
+          {
+            "required": [
+              "boolean"
+            ]
+          },
+          {
+            "required": [
+              "integer"
+            ]
+          },
+          {
+            "required": [
+              "double"
+            ]
+          },
+          {
+            "required": [
+              "strings"
+            ]
+          },
+          {
+            "required": [
+              "bytes"
+            ]
+          },
+          {
+            "required": [
+              "timestamp"
+            ]
+          },
+          {
+            "required": [
+              "records"
+            ]
+          }
+        ],
+        "properties": {
+          "string": {
+            "type": "string"
+          },
+          "boolean": {
+            "type": "boolean"
+          },
+          "integer": {
+            "type": "string",
+            "pattern": "^-?(0|[1-9][0-9]*)$"
+          },
+          "double": {
+            "type": "number",
+            "format": "double"
+          },
+          "strings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bytes": {
+            "type": "string",
+            "contentEncoding": "base64"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyRecord"
+            }
+          }
+        }
+      },
+      "PolicyRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fields"
+        ],
+        "properties": {
+          "fields": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/PolicyRecordField"
+            }
+          }
+        }
+      },
+      "PolicyRecordField": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/PolicyRecordFieldValue"
+          }
+        }
+      },
+      "PolicyRecordFieldValue": {
+        "type": "object",
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "string"
+            ]
+          },
+          {
+            "required": [
+              "boolean"
+            ]
+          },
+          {
+            "required": [
+              "integer"
+            ]
+          },
+          {
+            "required": [
+              "double"
+            ]
+          },
+          {
+            "required": [
+              "strings"
+            ]
+          },
+          {
+            "required": [
+              "bytes"
+            ]
+          },
+          {
+            "required": [
+              "timestamp"
+            ]
+          }
+        ],
+        "properties": {
+          "string": {
+            "type": "string"
+          },
+          "boolean": {
+            "type": "boolean"
+          },
+          "integer": {
+            "type": "string",
+            "pattern": "^-?(0|[1-9][0-9]*)$"
+          },
+          "double": {
+            "type": "number",
+            "format": "double"
+          },
+          "strings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bytes": {
+            "type": "string",
+            "contentEncoding": "base64"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PolicyResponseValue": {
+        "$ref": "#/components/schemas/PolicyRecordFieldValue"
+      },
+      "PolicyResponseValueMap": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/PolicyResponseValue"
+        }
+      },
+      "PolicyValueMap": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/PolicyValue"
+        }
+      },
       "AccountList": {
         "type": "array",
         "items": {
@@ -2823,20 +4484,6 @@
           }
         }
       },
-      "RecoveryCodesResponse": {
-        "type": "object",
-        "required": [
-          "codes"
-        ],
-        "properties": {
-          "codes": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
       "ResultEnvelope": {
         "type": "object",
         "required": [
@@ -2857,64 +4504,6 @@
           },
           "result": {}
         }
-      },
-      "StatusMessage": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      },
-      "TOTPRegisterRequest": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "code"
-        ],
-        "properties": {
-          "code": {
-            "type": "string"
-          }
-        }
-      },
-      "TOTPSetupResponse": {
-        "type": "object",
-        "required": [
-          "secret",
-          "qr_code_url"
-        ],
-        "properties": {
-          "secret": {
-            "type": "string"
-          },
-          "qr_code_url": {
-            "type": "string"
-          }
-        }
-      },
-      "WebAuthnFinishRequest": {
-        "type": "object",
-        "required": [
-          "name",
-          "credential"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "credential": {
-            "type": "object",
-            "additionalProperties": true
-          }
-        }
-      },
-      "WebAuthnOptions": {
-        "type": "object",
-        "additionalProperties": true
       }
     }
   }

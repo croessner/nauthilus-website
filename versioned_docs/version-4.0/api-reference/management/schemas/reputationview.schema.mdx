@@ -1,0 +1,31 @@
+---
+id: reputationview
+title: "ReputationView"
+description: ""
+sidebar_label: "ReputationView"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"schema":"reputation-management.v1","kind":"ip","model_id":"string","model_revision":"string","config_revision":"string","profiles":{"fast":{"state":"fresh","band":"unknown","override":"none","details":{"risk_score":0,"trust_score":0,"confidence":0,"samples":0,"source_diversity":0,"age_seconds":0}},"operational":{"state":"fresh","band":"unknown","override":"none","details":{"risk_score":0,"trust_score":0,"confidence":0,"samples":0,"source_diversity":0,"age_seconds":0}},"baseline":{"state":"fresh","band":"unknown","override":"none","details":{"risk_score":0,"trust_score":0,"confidence":0,"samples":0,"source_diversity":0,"age_seconds":0}}},"evidence":[{"kind":"ip","slot":"active","state":"fresh","source_classes":{"fast":["string"],"operational":["string"],"baseline":["string"]},"override":{"band":"blocked","reason":"string","creator":"string","audit_id":"string","origin":"string","created_at":0,"expires_at":0},"last_change":{"schema":"reputation-operator-audit.v1","kind":"ip","operation":"override_put","reason":"string","creator":"string","audit_id":"string","previous_audit":"string","origin":"string","created_at":0},"observed_at":0,"updated_at":0,"risk_at":0,"trust_at":0,"authoritative_at":0}],"verified_change":{"schema":"reputation-operator-audit.v1","kind":"ip","operation":"override_put","reason":"string","creator":"string","audit_id":"string","previous_audit":"string","origin":"string","created_at":0}}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"ReputationView"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./reputationview.Schema.json")}
+>
+
+</Schema>

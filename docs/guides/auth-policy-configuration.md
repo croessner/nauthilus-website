@@ -55,6 +55,8 @@ policy:
 
 Provider definitions do not schedule themselves. The domain plan and checkpoint own execution placement and ordering. Use `after` and `skip_if` only with valid plan-local names.
 
+`authn` rules decide with `permit`, `deny`, `tempfail`, or `neutral`; other namespaces accept only `permit` and `deny`. See [rule decisions](../configuration/auth-policy.md#rule-decisions), [numeric operands](../configuration/auth-policy.md#numeric-operands), [record predicates](../configuration/auth-policy.md#record-predicates), and the [host-owned authentication facts](../configuration/auth-policy.md#host-owned-authentication-facts).
+
 ## Activate an exact target
 
 ```yaml

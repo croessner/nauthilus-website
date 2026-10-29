@@ -243,6 +243,10 @@ Unknown fields, duplicate facts, foreign authorities, or invalid values are cont
 effect schema. Its closed results are `succeeded`, `failed`, and `outcome_unknown`; failed and unknown outcomes require
 an error class. Lua cannot select a decision, change plan ordering, authorize a target, mutate a response, request a
 retry, or detach its own work. The host owns synchronous finalization and accepted `host_post_action` scheduling.
+Lua effects are always treated as replay-unsafe: an `outcome_unknown` result that involves a Lua effect is reported as the
+non-retryable `effect_outcome_unknown`, and an otherwise retryable later failure after a completed Lua effect is
+reported as the non-retryable `effect_replay_unsafe`. Only native effects that declare `idempotent` replay safety can produce the retryable
+`effect_outcome_unknown_replay_safe` status.
 
 ```yaml
 policy:

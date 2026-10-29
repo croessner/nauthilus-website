@@ -95,10 +95,10 @@ Consequences:
 
 - Mail disabled at startup: grant only `credentials`.
 - Mail enabled at startup: grant both `credentials` and `mail`.
-- Reload may change mail transport fields and may disable mail.
-- Reload cannot enable mail on an instance that registered with mail disabled, even if `mail` happens to be listed in metadata. `Reconfigure` returns an explicit capability-not-active error.
+- The module `config` reloads on SIGHUP. The plugin validates the candidate before the reload is committed; an invalid value, including an unreadable `mail.template_path`, rejects the whole reload and keeps the running config.
+- Reload may change mail transport fields and may disable mail. Enabling mail again reloads while the capability acquired at registration is still active.
+- Reload cannot enable mail on an instance that registered with mail disabled, because it holds no mail capability. The change is reported as `restart_required` and rejects the reload.
 - Changing `allow_capabilities` is a loader-level change and requires restart.
-- Invalid config or template reload keeps the previous working plugin config.
 
 ## Host services
 
@@ -279,6 +279,7 @@ Plugin logs, metrics, and span attributes omit passwords, accounts, full hashes,
 ## Build and tests
 
 ```shell
+NATIVE_ARTIFACT_LDFLAGS="$(go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo")"
 GOEXPERIMENT=runtimesecret \
 GOCACHE=/tmp/nauthilus-go-cache \
 go test ./contrib/plugins/haveibeenpwnd
@@ -291,6 +292,7 @@ go build \
   -tags="netgo" \
   -trimpath \
   -buildmode=plugin \
+  -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -o build/haveibeenpwnd.so \
   ./contrib/plugins/haveibeenpwnd
 ```

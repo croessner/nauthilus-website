@@ -39,9 +39,9 @@ Every accepted client has these fixed properties:
 | Token endpoint authentication | `none` |
 | Subject type | `public` |
 | ID token signing algorithm | `RS256` |
-| Redirects | Literal IPv4 or IPv6 HTTP loopback only |
-| Access token | Opaque, no longer than 15 minutes |
-| Consent | Interactive and required for every authorization |
+| Redirects | Literal IPv4 or IPv6 HTTP loopback only, with or without a path |
+| Access token | Opaque by default or JWT with `access_token_type: jwt`; no longer than 15 minutes |
+| Consent | Interactive and required for every authorization unless the operator sets `skip_consent: true` |
 
 Dynamic clients are stored separately from static `identity.oidc.clients[]`. Static wildcard and `localhost` redirect
 exceptions never apply to them. Static client IDs may not start with the reserved `dcr_` prefix.
@@ -67,7 +67,7 @@ sequenceDiagram
     N->>R: Resolve client authoritatively and record validated use
     N-->>C: Authorization code through loopback redirect
     C->>N: Exchange code and code_verifier
-    N-->>C: ID token and short-lived opaque access token
+    N-->>C: ID token and short-lived access token
     C->>M: Present access token for the granted mail scopes
 ```
 
@@ -135,9 +135,22 @@ identity:
       allow_refresh_tokens: true
 
       consent_mode: "all_or_nothing"
+      skip_consent: false
+      delayed_response: false
+      require_mfa: []
+      supported_mfa: []
       required_mfa_level: 0
+      access_token_type: "opaque"
       access_token_lifetime: 15m
       refresh_token_lifetime: 720h
+
+      # Optional native-application profile extensions (see below).
+      default_scopes: []
+      implied_scopes: []
+      id_token_claims:
+        mappings: []
+      access_token_claims:
+        mappings: []
 
       # Inject the same secret into every Nauthilus replica.
       source_hmac_key: "${NAUTHILUS_DCR_SOURCE_HMAC_KEY}"
@@ -182,13 +195,103 @@ secret-safe configuration inspection.
 | `optional_scopes` | none | Additional scopes a client may request. No value may duplicate a required scope. |
 | `allow_refresh_tokens` | `false` | Must be true exactly when `offline_access` is present in `optional_scopes`. |
 | `consent_mode` | `all_or_nothing` | Fixed. Dynamic clients cannot reuse remembered consent. |
-| `required_mfa_level` | `0` | Minimum fresh MFA assurance required during browser authorization. Must be valid under the global MFA policy. |
-| `access_token_lifetime` | `15m` | Must be positive and no greater than `15m`. Dynamic access tokens are always opaque. |
+| `skip_consent` | `false` | Waives the consent page for all dynamic clients. `prompt=consent` still forces it. |
+| `delayed_response` | `false` | Delayed login-failure presentation for all dynamic clients, like the per-client option of static clients: a wrong password proceeds to the MFA step for existing users and is reported only at the end. |
+| `require_mfa` | `[]` | MFA methods that must **all** be registered before authorization; not an either/or selection. Must be a subset of `supported_mfa` when that is set. |
+| `supported_mfa` | `[]` | MFA methods dynamic clients may use for challenges and enrollment. Empty permits all available methods. |
+| `required_mfa_level` | `0` | Minimum fresh MFA assurance required during browser authorization. Must be reachable through the methods allowed by `supported_mfa` under the global MFA policy. |
+| `access_token_type` | `opaque` | `opaque` or `jwt`. Other values are rejected. |
+| `access_token_lifetime` | `15m` | Must be positive and no greater than `15m`. Applies to opaque and JWT access tokens. |
 | `refresh_token_lifetime` | `720h` | Used when refresh is enabled; must be positive and no greater than `720h`. |
+| `default_scopes` | `[]` | Scopes registered when a client omits both `scope` and `grant_types`. Each must be in `required_scopes` or `optional_scopes`; the list may not be longer than `limits.scopes`. |
+| `implied_scopes` | `[]` | Scopes added to every authorization of a dynamic client, but only if the client registered them. Each must be in `required_scopes` or `optional_scopes`; `offline_access` cannot be implied. |
+| `id_token_claims.mappings` | `[]` | ID-token claim mappings applied to all dynamic clients, with the same syntax as static clients. |
+| `access_token_claims.mappings` | `[]` | Access-token claim mappings applied to all dynamic clients, with the same syntax as static clients. |
 | `source_hmac_key` | none | Required when enabled and at least 32 bytes. Keep secret and consistent across instances. |
 
 Scope names must be unique, trimmed RFC 6749 scope tokens. A configured DCR scope that the provider does not support
 causes startup validation to fail.
+
+### Native Application Profile Extensions
+
+Some native applications, for example the OpenCloud desktop client, register automatically whenever discovery
+advertises a registration endpoint. They send neither `scope` nor `grant_types` and request their own default scopes at
+authorization time. The following fields let such applications work without weakening the profile:
+
+- **`default_scopes`.** When a registration omits both `scope` and `grant_types`, the profile registers
+  `default_scopes` (plus the required scopes). If they contain `offline_access` and `allow_refresh_tokens` is true, the
+  `refresh_token` grant is registered with it. `default_scopes` must cover every scope the application later requests
+  at authorization time. An explicit request never falls back to the defaults, so a client that names
+  `offline_access` must still name the `refresh_token` grant.
+- **`implied_scopes`.** These scopes are added to every authorization of a dynamic client, but only when the client
+  registered them. Use them for resource-server scopes an application does not know to request. `offline_access`
+  cannot be implied, so refresh capability always stays an explicit registration decision.
+- **`id_token_claims` and `access_token_claims`.** These apply the same claim mappings as static clients to all dynamic
+  clients. Claims stay gated by the scopes granted in the authorization. Resource servers that assign users or roles
+  from token claims need matching mappings.
+- **`access_token_type: jwt`.** Issues JWT access tokens for resource servers that validate tokens locally. With JWT
+  access tokens, the UserInfo endpoint returns the access-token claim set, so claims a resource server reads from
+  UserInfo must also be mapped under `access_token_claims`.
+- **`skip_consent: true`.** Waives the consent page for all dynamic clients, like the per-client option of static
+  clients. Dynamic clients still never inherit a remembered consent decision, and `prompt=consent` still forces the
+  page. Enable it only when every native application that can register is trusted: an application registered on the
+  user's device then obtains tokens without a consent step whenever the browser already holds an authenticated IdP
+  session.
+- **`delayed_response: true`.** Enables the delayed login-failure presentation for all dynamic clients, like the
+  per-client option of static clients: a wrong password proceeds to the MFA step for existing users and is reported
+  only at the end.
+
+### MFA Enrollment for Dynamic Clients
+
+`require_mfa`, `supported_mfa`, and `required_mfa_level` are operator-owned profile settings, not registration request
+metadata. They follow the same model as static clients (see
+[MFA Assurance Policy](../configuration/idp/mfa-assurance.md)):
+
+- `require_mfa` enforces registration of **every** listed method before authorization succeeds.
+- `supported_mfa` limits the methods offered for challenges and enrollment; an empty list permits all methods.
+- `required_mfa_level` sets the minimum strength of the fresh MFA proof.
+
+Method names are `totp`, `webauthn`, and `recovery_codes`. Unknown or duplicate methods, and a `require_mfa` that is not
+a subset of a non-empty `supported_mfa`, fail configuration validation. Both lists apply to existing registrations
+without re-registration.
+
+Enrollment uses the same parent-bound browser flow as static clients. `prompt=none` cannot enroll a missing factor, and
+setting an assurance level alone does not configure enrollment. For TOTP plus recovery-code enrollment, configure:
+
+```yaml
+identity:
+  oidc:
+    dynamic_client_registration:
+      require_mfa: ["totp", "recovery_codes"]
+      required_mfa_level: 2
+```
+
+When no registered method of the user meets the policy, the browser shows an "Authentication method unavailable" page
+(HTTP `409`) that asks the user to contact the administrator, instead of a bare status code.
+
+A profile for such an application might look like this; the scope and claim names are deployment-owned:
+
+```yaml
+identity:
+  oidc:
+    dynamic_client_registration:
+      enabled: true
+      required_scopes: ["openid"]
+      optional_scopes: ["offline_access", "profile", "email", "groups"]
+      allow_refresh_tokens: true
+      default_scopes: ["openid", "offline_access", "profile", "email", "groups"]
+      implied_scopes: ["groups"]
+      access_token_type: "jwt"
+      access_token_claims:
+        mappings:
+          - claim: "groups"
+            from: "groups"
+      source_hmac_key: "${NAUTHILUS_DCR_SOURCE_HMAC_KEY}"
+```
+
+Because `groups` is part of `default_scopes`, every automatically registered client registers it, and
+`implied_scopes` adds it to each authorization even when the application does not request it. For a client that did
+not register `groups`, the implied scope has no effect.
 
 ### Input, Rate, and Quota Limits
 
@@ -291,7 +394,7 @@ operator policy must also allow refresh tokens.
 
 ```json
 {
-  "redirect_uris": ["http://[::1]:49152/oauth/callback"],
+  "redirect_uris": ["http://127.0.0.1:49152/oauth/callback"],
   "client_name": "Example Mail Client",
   "scope": "offline_access mail:imap mail:smtp",
   "grant_types": ["authorization_code", "refresh_token"]
@@ -301,14 +404,31 @@ operator policy must also allow refresh tokens.
 Requesting only one half of the pair, or requesting the pair when `allow_refresh_tokens` is false, returns
 `invalid_client_metadata`.
 
+### Registration Without Scope and Grant Types
+
+When a request contains neither `scope` nor `grant_types` and the profile configures `default_scopes`, Nauthilus
+registers the default scopes. If they include `offline_access` and refresh tokens are allowed, the `refresh_token`
+grant is added automatically:
+
+```json
+{
+  "redirect_uris": ["http://127.0.0.1"],
+  "client_name": "Desktop Client"
+}
+```
+
+With `default_scopes: ["openid", "offline_access", "profile"]` the effective metadata contains
+`"scope": "openid offline_access profile"` and `"grant_types": ["authorization_code", "refresh_token"]`. A request that
+names either `scope` or `grant_types` is evaluated exactly as sent and never falls back to the defaults.
+
 ### Recognized Metadata
 
 | Request member | Rule |
 | --- | --- |
 | `redirect_uris` | Required non-empty array; strict loopback rules apply. |
 | `client_name` | Optional display name without control characters. |
-| `scope` | Optional single-space-delimited subset of the configured allowlist; required scopes are added. |
-| `grant_types` | Defaults to `authorization_code`; may additionally contain `refresh_token`. |
+| `scope` | Optional single-space-delimited subset of the configured allowlist; required scopes are added. When both `scope` and `grant_types` are omitted, `default_scopes` applies. |
+| `grant_types` | Defaults to `authorization_code`; may additionally contain `refresh_token`. When both are omitted and the default scopes contain `offline_access`, `refresh_token` is added. |
 | `response_types` | Defaults to and, when supplied, must be exactly `["code"]`. |
 | `token_endpoint_auth_method` | May be omitted or exactly `none`. |
 | `application_type` | May be omitted or exactly `native`. |
@@ -332,17 +452,24 @@ Accepted redirect hosts are literal loopback addresses only:
 ```text
 http://127.0.0.1:49152/oauth/callback
 http://[::1]:49152/oauth/callback
+http://127.0.0.1
+http://[::1]:49152
 ```
 
-The port is optional during registration, but a supplied port must be numeric and between 1 and 65535. During
-authorization, the port may differ from the registered value; the literal host and complete path must still match.
-IPv4 and IPv6 registrations are distinct.
+The path is optional (RFC 8252 section 7.3). The port is optional during registration, but a supplied port must be
+numeric and between 1 and 65535. During authorization, the port may differ from the registered value; the literal host
+and complete path must still match. IPv4 and IPv6 registrations are distinct.
+
+Prefer `127.0.0.1` for applications that show a consent page. Nauthilus adds `http://127.0.0.1:*` to the CSP
+`form-action` directive so the browser may follow the redirect after the consent form, but CSP cannot express IPv6
+literals, so browsers block that redirect to `http://[::1]:<port>`. See
+[Loopback Redirects and CSP `form-action`](../configuration/idp/oidc.md#loopback-redirects-and-csp-form-action).
 
 The following are rejected:
 
 - `localhost` or any DNS name;
 - HTTPS, claimed web redirects, and private-use URI schemes;
-- missing paths, query strings, fragments, or userinfo;
+- query strings, fragments, or userinfo;
 - wildcard syntax;
 - percent-encoded paths, backslashes, and `.` or `..` path segments;
 - duplicates that differ only by loopback port.
@@ -371,6 +498,9 @@ RFC 7591 errors have this shape:
 Generic HTTP failures return an `error` containing the HTTP status text. Clients should not assume that `429` includes
 a `Retry-After` header.
 
+A rate-limited attempt always returns the same generic `429`. The structured registration audit record names the
+exhausted budget in `reason`: `source_window_limit`, `source_daily_limit`, or `global_window_limit`.
+
 The generated [IdP API reference](../api-reference/idp/register-oidc-dynamic-client.api.mdx) contains the machine-readable
 request, response, and status contract.
 
@@ -395,9 +525,11 @@ GET /oidc/authorize?
   nonce=RANDOM_OIDC_NONCE
 ```
 
-Nauthilus resolves the dynamic client from the Redis primary and re-applies the current operator policy. The browser
-must interact with the IdP and consent on every authorization; remembered consent from a prior authorization is not
-reused for an anonymous dynamic client. `required_mfa_level` is enforced as a minimum fresh assurance level.
+Nauthilus resolves the dynamic client from the Redis primary and re-applies the current operator policy, including the
+current `access_token_type`, claim mappings, `implied_scopes`, `skip_consent`, `delayed_response`, and MFA policy. By default the browser must interact
+with the IdP and consent on every authorization; remembered consent from a prior authorization is never reused for an
+anonymous dynamic client. With `skip_consent: true` the consent page is skipped unless the request carries
+`prompt=consent`. `required_mfa_level` is enforced as a minimum fresh assurance level.
 
 ### Code Exchange
 
@@ -415,11 +547,19 @@ curl --fail-with-body \
   https://auth.example.com/oidc/token
 ```
 
-The returned access token is opaque and uses the DCR-specific lifetime. Resource servers must validate its granted
-scope and should use the normal Nauthilus introspection or deployment-specific authorization integration. Because the
-dynamic client is public, it cannot authenticate to introspection itself; configure a separate confidential resource
-server credential when remote introspection is required. An ID token is an identity assertion and must not be accepted
-as a mail API credential.
+The returned access token uses the DCR-specific lifetime. It is opaque unless the profile sets
+`access_token_type: jwt`. Resource servers must validate its granted scope and should use the normal Nauthilus
+introspection, local JWT validation, or a deployment-specific authorization integration. Because the dynamic client is
+public, it cannot authenticate to introspection itself; configure a separate confidential resource server credential
+when remote introspection is required. List `mail-client-v1` in that client's
+`token_introspection.dynamic_client_profiles` so it may introspect tokens of dynamic clients; see
+[Resource Servers and Resource Indicators](../configuration/idp/oidc.md#resource-servers-and-resource-indicators). An ID token is an identity assertion and must not be accepted as a mail API
+credential.
+
+JWT access tokens of dynamic clients are validated like opaque ones at UserInfo and introspection: the client must
+still be active, the granted scopes must still be allowed, and the lifetime must not exceed the current profile.
+Refresh rotation denylists the previous JWT, so a rotated JWT cannot be reused. A resource server that validates JWTs
+only locally does not see these server-side checks until the token expires.
 
 ### Refresh Rotation
 
@@ -443,14 +583,21 @@ and retrying an older token can revoke the whole family.
 ## Runtime Policy Changes
 
 Stored registrations do not freeze privileges. Nauthilus revalidates them against the current configuration during
-authorization, code exchange, refresh exchange, and opaque-token validation.
+authorization, code exchange, refresh exchange, and access-token validation at UserInfo and introspection.
 
 - Removing optional scopes strips privileges that are no longer allowed; stale authorization state must restart.
 - Adding a new required scope invalidates registrations that never contained it.
 - Disabling refresh support removes `refresh_token` and `offline_access` from the runtime client.
 - Shorter access or refresh lifetimes take precedence over the values stored at registration.
+- Changes to `access_token_type`, `skip_consent`, `delayed_response`, claim mappings, and `implied_scopes` apply to existing dynamic clients
+  at their next authorization or refresh without re-registration. `implied_scopes` never add a scope the client did
+  not register.
 - A higher `required_mfa_level` takes precedence immediately. Lowering the configured value does not weaken the MFA
-  level captured by an existing registration.
+  level captured by an existing registration. JWT access tokens carry no MFA level, so MFA is enforced at authorization
+  and checked again against the stored session at the next refresh.
+- Changes to `require_mfa` and `supported_mfa` apply to existing registrations at their next authorization. A
+  registration whose effective minimum level is no longer reachable through the allowed methods fails closed. MFA
+  policy changes do not revoke tokens that were already issued.
 - Disabling DCR removes the registration endpoint after restart, removes `registration_endpoint` from discovery, and
   makes existing dynamic clients unavailable at runtime.
 - Changing the fixed profile or profile version is rejected by configuration validation.
@@ -480,6 +627,11 @@ Bearer-authenticated management calls require `nauthilus:authenticate` plus `nau
 `nauthilus:admin`. See [OIDC Session Administration](../rest-api.md#oidc-session-administration) and the
 [Admin Client](./admin-client.md#oidc-sessions) guide.
 
+Upgrading from an earlier v4 prerelease removes all existing dynamic client registrations and all dynamic access and refresh
+tokens, because the Redis key layout changed without migration. Native clients register again. See
+[Token State in Redis](../configuration/idp/oidc.md#token-state-in-redis) for the upgrade details and the retired keys
+that need manual cleanup.
+
 There is intentionally no RFC 7592 registration-management credential or client delete endpoint. Client records retire
 through configured lifecycle expiry; disabling the DCR policy makes them unavailable at runtime. Use configured
 lifecycle and user token revocation instead of manipulating internal Redis keys.
@@ -496,7 +648,7 @@ The registration handler exposes bounded-cardinality Prometheus metrics:
 Structured log events include:
 
 - `event=oidc_dynamic_client_registration` for the HTTP registration result, status, duration, profile, and bounded
-  reason;
+  reason, including `source_window_limit`, `source_daily_limit`, or `global_window_limit` for rate-limited attempts;
 - `event=oidc_dynamic_client_security` for validated authorization/code/refresh use, expiry cleanup, and user-wide
   revocation.
 
@@ -537,8 +689,8 @@ Register one disposable native client with a literal loopback redirect and confi
 - no client secret or registration management credential;
 - required scopes added to the effective `scope` string.
 
-Then perform one browser Authorization Code flow with PKCE `S256`, verify the consent prompt appears, exchange the code,
-and validate the opaque access token at the intended mail resource. If refresh is enabled, rotate once. Prove replay
+Then perform one browser Authorization Code flow with PKCE `S256`, verify the consent prompt appears (unless
+`skip_consent` is enabled), exchange the code, and validate the access token at the intended mail resource. If refresh is enabled, rotate once. Prove replay
 revocation only with an isolated disposable user/client because deliberately reusing the old token invalidates the
 active family.
 
@@ -554,7 +706,9 @@ material.
 | Configuration requires RS256 | No automatic rotation and no active RS256 signing key. | Enable automatic rotation or configure an active RS256 key; keep RS256 advertised. |
 | Configuration rejects scopes | Missing `openid`, duplicated lists, unsupported scope, invalid token syntax, or refresh/offline mismatch. | Reconcile required, optional, built-in, and custom scopes. |
 | Discovery has no `registration_endpoint` | DCR is disabled or the new config has not been deployed/restarted. | Validate the effective config and restart all serving replicas consistently. |
-| `invalid_redirect_uri` | Host is not literal loopback, scheme/path is unsafe, or entries collide after port normalization. | Use `http://127.0.0.1/<path>` or `http://[::1]/<path>` with an optional numeric port. |
+| `invalid_redirect_uri` | Host is not literal loopback, scheme/path is unsafe, or entries collide after port normalization. | Use `http://127.0.0.1[/<path>]` or `http://[::1][/<path>]` with an optional numeric port. |
+| Browser blocks the redirect after the consent form | The redirect targets `http://[::1]:<port>`, which CSP `form-action` cannot allow, or a custom `form-action 'none'` is configured. | Let the application use `127.0.0.1`; do not set `form-action 'none'` on the IdP frontend. |
+| Automatically registered application receives tokens without expected scopes or claims | The application registered without `scope`, and `default_scopes` does not cover the scopes it requests later; unregistered scopes are dropped from the authorization. | Add the requested scopes to `optional_scopes` and `default_scopes`, and map the claims under `id_token_claims`/`access_token_claims`. |
 | `invalid_client_metadata` on refresh registration | `refresh_token` and `offline_access` were not requested together or are disabled by policy. | Request the pair and enable it explicitly, or omit both. |
 | Unexpected `429` | Invalid attempts consume rate budget, the source IP is collapsed at a proxy, or active quota is exhausted. | Inspect trusted proxies, counters, cleanup health, and configured limits before raising them. |
 | `503` on registration or client use | Authoritative Redis write state is unavailable. | Restore Redis primary connectivity; do not route security reads to a stale replica. |

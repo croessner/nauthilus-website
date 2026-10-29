@@ -143,7 +143,7 @@ Generic scripts register `_G["policy.facts.collect"]` and, when the provider own
 `_G["policy.effects.execute"]`. Only selected `host_sync` and `host_post_action` obligations execute. Advice and
 `return_only` effects never call Lua. Post-actions require host-supervisor acceptance before response finalization, and
 Lua receives neither the finalization gate nor detached-work authority. The generic contract has no automatic retry,
-replay, idempotency, or deduplication fields. The exact Lua tables and strict typed-value encodings are documented in
+replay, idempotency, or deduplication fields, and every Lua effect is treated as replay-unsafe. The exact Lua tables and strict typed-value encodings are documented in
 `server/lua-plugins.d/policy/README.md`.
 
 ## Generic native provider configuration
@@ -242,6 +242,11 @@ configured output. Each configured target, output shape, execution class, and
 typed effect parameter must match the loaded module's immutable capability
 descriptor.
 
+A native provider entry may set `component` to select the registered component independently of its map key. For
+example, `reputation_assessment` with `module: reputation` and `component: assessment` resolves to
+`dkim2/plugin.reputation.assessment`. Without `component`, the map key is the component name. `component` is valid only
+for `kind: native`, and two entries must not resolve to the same canonical identity.
+
 Registering a native descriptor advertises capability but does not activate it. Candidate-generation preparation
 resolves only configured provider identities against the already loaded module registry, validates their exact
 targets and fact/effect contracts, and freezes the resulting bindings into that generation. An unconfigured
@@ -264,10 +269,15 @@ supervisor synchronously before finalization, then waits for the response gate; 
 cannot mutate the response.
 
 The host makes at most one effect attempt for each Decision and effect ordinal. It does not automatically retry an
-error, timeout, cancellation, panic, or ambiguous dispatch. Ambiguity after an external dispatch is reported as
-`outcome_unknown` and is not retried. A provider may voluntarily implement domain-specific idempotency using its own
-stable domain data, but that behavior is outside the generic contract. No internal attempt identity is exposed or
-usable as a public idempotency key, and configuration adds no retry, replay, deduplication, or idempotency field.
+error, timeout, cancellation, panic, or ambiguous dispatch. Each native effect declares its replay safety in its
+immutable descriptor as `unsafe` or `idempotent`; an idempotent effect names one exact fact that every selected target
+schema must admit as a required caller-owned string of at most 128 bytes, and the provider owns deduplication by that
+key. Lua effects are always `unsafe`. Configuration adds no retry, replay, deduplication, or idempotency field.
+
+Ambiguity after an external dispatch is reported as `effect_outcome_unknown` (not retryable) unless this and every
+earlier attempted effect is idempotent; then the status is `effect_outcome_unknown_replay_safe` (retryable with the
+complete identical request and its original key values). An otherwise retryable later failure after a
+non-idempotent effect already completed or was accepted is reported as `effect_replay_unsafe` (not retryable).
 
 Compatible configuration deactivation is generation-bound: a newly prepared generation omits the provider while an
 older leased generation may finish in-flight work with its frozen binding. Native Go modules remain loaded for the
@@ -285,7 +295,7 @@ The owner paths above do not change the following nested semantic contract.
 | rule `operations` | `actions` | Actions are checked against every importing target. |
 | `require_checks` | `require_providers` | Provider names resolve inside the same domain plan and compatible checkpoint. |
 | rule `name` and `if` | unchanged | The complete condition-tree semantics are retained. |
-| decision, reason, markers, response message, and response language | unchanged | Their field names and behavior are retained. |
+| decision, reason, markers, response message, and response language | unchanged | Their field names and behavior are retained. `authn` rule decisions are `permit`, `deny`, `tempfail`, or `neutral`; generic namespaces accept only `permit` and `deny`. |
 | `skip_remaining_stage_checks` | `skip_remaining_checkpoint_providers` | Control remains local to the containing checkpoint. |
 | effect `id` | exact qualified effect `id` | Obligation and advice identities must resolve in the target effect registry. |
 | effect `args` | typed `parameters` | Parameters are schema-validated instead of remaining opaque. |
@@ -303,7 +313,9 @@ time windows retain `timezone`, `days`, and `intervals`; scheduler guards retain
 bounds; and backend exports retain `name`, `attribute`, `type`, and
 `sensitivity`. The full condition tree retains logical, comparison,
 set-reference, CIDR, regular-expression, existence, containment, and
-time-window operators.
+time-window operators. Record predicates use the composite `records.where`
+form with `field` inside each leaf; see
+[record predicates](../configuration/auth-policy.md#record-predicates).
 
 Request-time Policy localization is generation-owned. Its effective catalog is
 the immutable combination of the built-in system catalog, the startup Lua
@@ -711,6 +723,13 @@ policy:
         include_checks: true
         include_attributes: true
 ```
+
+Generic policy namespaces accept `permit` and `deny` as configured rule
+decisions. The `authn` namespace additionally accepts the operator outcomes
+`tempfail` and `neutral`. Nauthilus retains those authentication meanings while
+mapping them to the Policy runtime's `indeterminate` and `not_applicable`
+effects respectively. Configuration must not use those internal effect names as
+rule decisions.
 
 Before deploying a new configuration, validate exact provider/effect
 resolution, target action and checkpoint compatibility, source fact types,

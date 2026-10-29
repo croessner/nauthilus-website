@@ -134,6 +134,9 @@ encode the error payload as a CBOR map:
 - `mode=no-auth` runs a request without requiring a password.
 - `mode=list-accounts` returns the known account names for the current request context.
 
+With `storage.redis.identity_cache.enabled: true`, successful LDAP results of `mode=no-auth` requests can be served
+from the Redis identity lookup cache. See [Identity Lookup Cache](configuration/server-configuration.md#identity-lookup-cache).
+
 `list-accounts` uses HTTP content negotiation. The server supports these response media types, in server-preferred order:
 
 - `application/cbor`
@@ -234,6 +237,69 @@ The current route-specific Bearer requirements are:
 
 Grant only the route scopes the client needs. The built-in IdP issues suitable machine-to-machine tokens with the
 Client Credentials Grant; do not request `openid` for such clients.
+
+## Backchannel Caller Rejections
+
+The backchannel, meaning the HTTP API under `/api/v1/*` and the [gRPC authority listener](grpc-api.md), is a tunnel: the
+caller carries a payload whose user and client are authenticated, and the subject inside the payload is protected by
+the brute-force buckets. The caller itself is authenticated only by its Basic credentials or OIDC bearer token. Keep the
+backchannel reachable only from trusted networks.
+
+Backchannel callers are never locked out, neither per address nor per identity. Callers behind load balancers or
+sidecars share one address, so a lockout would turn one caller with a stale token into an outage for all of them.
+Instead, every genuine rejection is delayed by a fixed 300 ms and logged at warning level with the transport, client
+IP, and a fixed reason, never with credentials, tokens, or usernames.
+
+| Caller authentication result | HTTP | gRPC | Delayed |
+|---|---|---|---|
+| Missing credentials, wrong Basic credentials, or an unknown, expired, revoked, denylisted, or wrongly signed token | `401` | `UNAUTHENTICATED` | yes |
+| Valid token without the required scope | `403` | `PERMISSION_DENIED` | no |
+| Valid token that is not a backchannel access token | `401` | `UNAUTHENTICATED` | gRPC only |
+| Missing token on a custom hook route | `401` | - | no |
+| Token state or signing keys unreachable, or (gRPC only) the token validator is not configured | `503` with `Retry-After` | `UNAVAILABLE` | no |
+| Caller request canceled or past its deadline while token state is read | `503` | `CANCELED` / `DEADLINE_EXCEEDED` | no |
+
+A token validation that cannot be decided for technical reasons is never reported as invalid credentials. Outcomes are
+counted in `backchannel_caller_auth_total` (see [Metrics](configuration/metrics.md#backchannel-caller-metrics)).
+
+Policy-Basic callers of the Policy API follow the same rule: a wrong password is delayed by 300 ms, nobody is locked
+out, and verification does not use Redis.
+
+### Failure Budget per Client IP
+
+The HTTP API has one bounded exception. With `runtime.servers.http.middlewares.rate` enabled, the per-client-IP rate
+limit (`runtime.servers.http.rate_limit.per_second` and `burst`) is a failure budget on the caller-authenticated
+backchannel routes: `/api/v1/auth/*`, `/api/v1/cache/*`, `/api/v1/bruteforce/*`, the management OpenAPI documents, and
+the other routes behind `auth.backchannel`.
+
+- Requests whose Basic or Bearer caller authentication succeeds never consume the budget, because a few proxy or load
+  balancer addresses usually carry all backchannel traffic. `auth.pipeline.max_concurrent_requests` remains the
+  process-wide bound for these callers.
+- Every failed caller authentication (missing or wrong credentials, a token without the required scope, missing
+  `auth.backchannel` configuration) and every request to `/api/v1/auth/basic` consumes one token of the client
+  address. An undecided token validation (`503`) does not.
+- Within the budget a failure is answered with `401` or `403` after the rejection delay. Once the address has no token
+  left, every request from it, including requests with valid credentials, is answered with `429` immediately and
+  without evaluating credentials, until the budget refills at `per_second`.
+
+Credential guessing is therefore bounded per address to `burst` attempts plus `per_second` attempts per second on
+average. Callers that share an address with a misconfigured or hostile client lose backchannel access while that client
+exhausts the budget. Watch `backchannel_caller_auth_total{outcome="rejected"}` and `429` answers on `/api/v1`, and fix
+failing callers promptly. Routes without backchannel caller authentication, such as the IdP, the frontend, the Policy
+API, custom hooks, and backchannel routes of a developer-mode server without `auth.backchannel`, keep the per-client-IP
+limit for every request. The gRPC authority listener has no such budget.
+
+:::note Behavior change from earlier v4 prereleases
+
+Earlier v4 prereleases blocked a backchannel caller address after repeated authentication failures and answered with HTTP
+`429` or gRPC `RESOURCE_EXHAUSTED`, and the Policy-Basic throttler blocked a username and source address for 5 minutes
+after 5 wrong passwords. Both lockouts are removed. The former `nauthilus:policy:basic:{...}` Redis keys are no longer
+used and expire on their own.
+
+:::
+
+`/oidc/token` and `/oidc/introspect` authenticate OIDC clients, not backchannel callers, and have no per-address brake
+for client-secret guessing. Limit their exposure with network controls and upstream rate limits.
 
 ## OIDC Session Administration
 

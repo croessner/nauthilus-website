@@ -32,7 +32,14 @@ owner remains separately versioned, bounded, and expiring.
 
 Records use revision compare-and-swap, explicit expiry plus Redis PTTL, parent/session binding, and fail-closed orphan
 handling. WebAuthn challenges and other one-shot operations are consumed atomically. Revocation publishes an anchor
-tombstone before bounded child cleanup.
+tombstone before bounded child cleanup. Before a new browser flow is committed, index entries whose child record is
+missing or expired are removed, so expired sibling flows do not block a new login.
+
+Stale browser state is reported separately from storage failures. During login completion and MFA handling, a revision
+conflict, a revoked record, a missing record, or a login completion whose parent flow disappeared answers HTTP
+`409 Conflict`; the user restarts from the protocol or self-service entry point. HTTP `503` is reserved for
+unavailable session storage. Monitor the two statuses separately: a `409` usually means a double submit, a second tab,
+or an expired flow, not an outage.
 
 ## Removed compatibility surfaces
 

@@ -190,6 +190,41 @@ The option remains named `--token` for compatibility, but its value is the non-s
 tokens are not returned by the management API. Use the all-sessions delete operation for complete user-wide access and
 refresh-token revocation, including dynamic-client token families.
 
+### Reputation
+
+The `reputation` commands call the management operations of the bundled reputation plugin below
+`/api/v1/custom/reputation/`. They require a bearer token or OIDC client credentials with `nauthilus:admin`; the client
+refuses to send backchannel Basic credentials for them.
+
+```bash
+# Inspect one exact subject (kinds: ip, network, asn, dns_domain, account, service).
+python3 contrib/client/nauthilus-admin.py reputation lookup ip 192.0.2.8
+python3 contrib/client/nauthilus-admin.py reputation lookup account --subject-file /run/private/account.txt
+
+# Set an audited operator override; --ttl-seconds 0 means no expiry.
+python3 contrib/client/nauthilus-admin.py reputation override put ip 192.0.2.8 \
+  --band blocked --ttl-seconds 3600 --reason incident --origin operator --audit-id ticket-123
+
+# Remove it; --previous-audit must name the current override's audit ID.
+python3 contrib/client/nauthilus-admin.py reputation override delete ip 192.0.2.8 \
+  --previous-audit ticket-123 --reason resolved --origin operator --audit-id ticket-124
+
+# Apply the overrides of a reputation-static-import.v1 artifact; add --continue-on-error to keep going after a failure.
+python3 contrib/client/nauthilus-admin.py reputation override import /run/private/static-import.json
+
+# Inspect or drain the allocation before a manifest-key rotation.
+python3 contrib/client/nauthilus-admin.py reputation allocation status
+python3 contrib/client/nauthilus-admin.py reputation allocation drain \
+  --reason key_rotation --origin operator --audit-id rotation-123
+```
+
+`--band` accepts `blocked`, `trusted`, or `neutral`, and `--ttl-seconds` accepts `0` to `31536000`. `--subject-file`
+keeps the subject out of process arguments and shell history; it must contain 1 to 512 UTF-8 bytes, and one trailing
+newline is removed. Override commands address the active key generation by default; `--slot previous` addresses the
+previous one. The client never retries a mutation: after a transport error or timeout it reports that the outcome may
+be unknown, so inspect the state with `lookup` or `allocation status` before repeating the same change. See
+[Reputation Operations](./reputation-operations.md) for the operational procedures.
+
 ### Authentication Test
 
 Avoid passwords in shell history. Use `--ask-pass` or `--password-file`:

@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["error"],"properties":{"error":{"type":"string","description":"OAuth error code such as invalid_request, invalid_client, invalid_grant, invalid_scope, or invalid_target (RFC 8707) for a rejected resource parameter."},"error_description":{"type":"string"}},"title":"OAuthError"},"schemaType":"response"}

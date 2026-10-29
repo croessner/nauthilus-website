@@ -113,7 +113,7 @@ services:
       retries: 20
 
   nauthilus:
-    image: ghcr.io/croessner/nauthilus:v3.1.0-beta.37
+    image: ghcr.io/croessner/nauthilus:v3.1.0
     depends_on:
       valkey:
         condition: service_healthy

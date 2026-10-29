@@ -33,6 +33,12 @@ When `supported_mfa` is empty, all registered and available methods remain eligi
 `supported_mfa` are configured, every required method must also be supported; invalid combinations are rejected during
 configuration validation.
 
+`require_mfa` enforces registration of **every** listed method; it is not an either/or selection.
+
+Dynamically registered OIDC clients use the same three settings from the operator-owned
+`identity.oidc.dynamic_client_registration` profile. They apply to all dynamic clients, including already registered
+ones. See [MFA Enrollment for Dynamic Clients](../../guides/oidc-dynamic-client-registration.md#mfa-enrollment-for-dynamic-clients).
+
 ## Default Assurance Levels
 
 The built-in mapping is:
@@ -114,10 +120,17 @@ Nauthilus stores the completed MFA method, time, scope, and effective level with
 SAML request it evaluates the target application's effective policy:
 
 1. Determine the registered methods allowed by `supported_mfa`.
-2. If `required_mfa_level` is positive, require a fresh proof at or above that level.
-3. If the proof is missing or too weak, present an eligible MFA challenge.
+2. If `required_mfa_level` is positive, require a fresh proof at or above that level. An existing proof counts only if
+   its method is allowed by `supported_mfa`; `require_mfa` does not restrict which proof is accepted.
+3. If the proof is missing or too weak, present an eligible MFA challenge. The challenge offers only registered methods
+   that are allowed by `supported_mfa` and whose effective level, including local `mfa_policy.levels` overrides,
+   reaches the required level. Weaker factors are hidden.
 4. After assurance succeeds, enforce missing registrations from `require_mfa`.
 5. Issue the OIDC or SAML response only after both gates succeed.
+
+If no registered method of the user satisfies the policy, the browser shows an "Authentication method unavailable" page
+with HTTP `409` that asks the user to contact the administrator. The page exposes no account or flow data; the server
+logs a warning with the reason `no_eligible_mfa_method`.
 
 If `required_mfa_level` is zero or omitted, it imposes no numeric assurance threshold. Compatibility behavior allows a
 fresh MFA-backed browser session to satisfy ordinary SSO even when a previous application named different enrollment
@@ -130,10 +143,14 @@ Suppose application A accepts TOTP at level 2 and application B requires level 3
 see another challenge before entering B. Merely having WebAuthn registered is not enough; the user must complete an
 eligible level-3 method.
 
+TOTP and recovery-code challenges share a per-identity budget of ten attempts in five minutes. See
+[Code verification attempt budget](../../guides/mfa-self-service.md#code-verification-attempt-budget).
+
 ## Delayed First-factor Responses
 
 An OIDC client or SAML service provider may use `delayed_response: true` to avoid revealing the first-factor result until
-after MFA. This setting changes when the password result is disclosed. It does not change `supported_mfa`, enrollment
+after MFA. Dynamically registered OIDC clients inherit the setting from
+`identity.oidc.dynamic_client_registration.delayed_response`. This setting changes when the password result is disclosed. It does not change `supported_mfa`, enrollment
 requirements, the level mapping, or the required assurance level.
 
 ## Validation Checklist

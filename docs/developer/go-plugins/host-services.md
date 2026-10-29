@@ -44,6 +44,7 @@ request data as a scope.
 | `BackendServers()` | `BackendServers` | Immutable monitored backend candidates. |
 | `Redis()` | `Redis` | Host Redis handles, key builder, and named script registry. |
 | `Cache(scope)` | `Cache` | Process-local module cache. |
+| `OpaqueIdentifierTagger()` | `OpaqueIdentifierTagger` | Keyed HMAC tagging with operator-owned keys; returns `ErrOpaqueIdentifierTaggerUnavailable` when unconfigured. |
 | `Helpers()` | `DeterministicHelpers` | Host-configured account/IP helper behavior. |
 | `LDAP()` | `LDAP` | Host-owned queued LDAP searches and modifications. |
 | `Config()` | `ConfigView` | Read-only host-wide configuration view. |
@@ -302,15 +303,58 @@ err := ldap.Modify(ctx, pluginapi.LDAPModifyRequest{
 })
 ```
 
+Set `AssertionFilter` to make a modify conditional. The host sends the filter as a critical RFC 4528 assertion control, so
+the directory applies the change only while the entry still matches, for example an unchanged `entryCSN`. An invalid
+filter fails before the request is sent, and a failed assertion is returned as an error; retry only after re-reading the
+entry.
+
 Search returns copied `LDAPEntry` values and a flattened attribute map. Public facade validation checks search scope or modify operation, but it does not escape or require non-empty pool names, DNs, filters, or attributes. The plugin owns LDAP filter/DN construction and must set a caller deadline; without one, waiting for a queued response can be unbounded.
 
 The host does not merge results into a backend result. The plugin must deliberately return allowed attributes, facts, or decisions. LDAP queue errors can contain sensitive operational details; redact before logging or translating them into status.
+
+## Opaque identifier tagging
+
+`Host.OpaqueIdentifierTagger()` creates stable pseudonymous tags without giving the plugin key material:
+
+```go
+tagger, err := host.OpaqueIdentifierTagger()
+if err != nil {
+    return err // ErrOpaqueIdentifierTaggerUnavailable when the operator configured no keys
+}
+
+tag, err := tagger.Tag(ctx, pluginapi.OpaqueIdentifierInput{
+    Scope: "workflow",
+    Kind:  "account",
+    Value: account,
+})
+if err != nil {
+    return err
+}
+
+stored := tag.String() // hmac-sha256-v1:<version>:<authenticator>
+```
+
+Use `Tag` for new writes and `Candidates` (active first, then previous) to look up state written before a key rotation.
+The scope must be configured by the operator under `plugins.opaque_identifier_tagger`. The exact contract is in
+[Host Services reference](./api-reference/services.md#opaque-identifier-tagging).
 
 ## Configuration views
 
 `Host.Config()` is a host-wide read-only `ConfigView`; it is materialized from the complete process-start configuration and can include inline secrets. It is not refreshed by plugin reconfiguration. `Registrar.Config()` and `InitContext.Config` point to the module-owned subtree. Both view types support path lookup, subviews, strict decode, and `IsZero`.
 
 Prefer module config for plugin behavior. Reading unrelated global configuration creates hidden coupling to host configuration and can make reload ownership ambiguous.
+
+`Host.Config()` also contains two host-generated projections:
+
+| Path | Content |
+| --- | --- |
+| `policy_admission.enabled` | Whether `policy.api` is enabled. |
+| `policy_admission.clients[]` | One entry per Policy client profile: `principal`, exact `targets` (`<namespace>/<action>`), `schemas`, effective `max_concurrency` and `requests_per_second` (resolved with the same limit resolver as the Policy transport), and `diagnostics`. |
+| `policy_admission.targets[]` | One entry per configured Policy target: `target`, `schema`, `mode`, and `no_match`. |
+| `host_context.module_name` | On a module-bound host, always the actual configured module instance name; configuration cannot override it. |
+
+The admission projection exposes no authentication material or Policy source. Use it only for startup cross-checks;
+runtime authority still comes from the host-authenticated request views.
 
 ## Supervised work
 

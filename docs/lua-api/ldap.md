@@ -225,6 +225,7 @@ local result, err = nauthilus_ldap.ldap_modify(modify_params)
 | `trusted` | boolean | no | Permits omitting `allowed_base_dn`. Defaults to `false`. |
 | `operation` | string | yes | `add`, `delete`, or `replace`. |
 | `attributes` | table | yes | Map of attribute name to a single string value for this operation. |
+| `assertion_filter` | string | no | LDAP filter sent as a critical RFC 4528 assertion control. The modify is applied only if the entry still matches it. |
 
 The entry DN must be equal to or below `allowed_base_dn`. Prefer a narrow subtree such as an organizational unit rather
 than the directory root.
@@ -256,6 +257,57 @@ end
 ```
 
 Use separate calls for separate modify operations or values.
+
+## `nauthilus_ldap.ldap_modify_assert`
+
+Performs a conditional LDAP modify. It accepts the same table as `ldap_modify` but requires a non-empty
+`assertion_filter`, so an accidental unconditional write is impossible.
+
+### Syntax
+
+```lua
+local result, err = nauthilus_ldap.ldap_modify_assert(modify_params)
+```
+
+### Behavior
+
+- The filter is compiled and attached as a critical LDAP assertion control (OID `1.3.6.1.1.12`). The directory server
+  applies the modification atomically only while the entry matches the filter; the server must support RFC 4528.
+- A missing or empty `assertion_filter` raises the Lua error `assertion_filter is required`.
+- An invalid filter or a failed assertion is returned as `nil, err`, like any other LDAP worker error. Re-read the entry
+  before deciding whether to retry.
+- `ldap_modify` accepts the same optional `assertion_filter` field; use `ldap_modify_assert` when the precondition is
+  mandatory.
+
+### Example
+
+Update a mail protocol setting only if nobody changed the entry since it was read:
+
+```lua
+local nauthilus_ldap = require("nauthilus_ldap")
+
+local result, err = nauthilus_ldap.ldap_modify_assert({
+  pool_name = "default",
+  session = request.session,
+  dn = "uid=bob,ou=people,dc=example,dc=com",
+  allowed_base_dn = "ou=people,dc=example,dc=com",
+  operation = "replace",
+  attributes = {
+    mailProtocols = "imap"
+  },
+  assertion_filter = "(entryCSN=" .. previous_entry_csn .. ")"
+})
+
+if err ~= nil then
+  -- The entry changed concurrently, the filter was invalid, or the directory rejected the modify.
+  return nil, err
+end
+```
+
+Escape any value that you insert into `assertion_filter`, exactly as for search filters.
+
+The `--test-lua` mock of `nauthilus_ldap` provides `ldap_modify` but not `ldap_modify_assert`; test the conditional path
+against a real directory.
 
 ::::warning
 LDAP modify requests are blocking and mutate directory state. Keep `allowed_base_dn` narrow and never enable trusted mode

@@ -89,6 +89,13 @@ runtime:
         backend_refs:
           enabled: false
 
+        keep_alive:
+          max_connection_age: 5m
+          max_connection_age_grace: 60s
+          max_connection_idle: 0s
+          min_ping_interval: 10s
+          permit_without_stream: true
+
         tls:
           enabled: false
           cert: ""
@@ -187,6 +194,7 @@ observability:
     level: "info"
     add_source: false
     debug_modules: []
+    notice_ignore_fields: []
 
   profiles:
     pprof:
@@ -238,6 +246,10 @@ storage:
     idle_pool_size: 32
     positive_cache_ttl: 1h
     negative_cache_ttl: 2h
+
+    identity_cache:
+      enabled: false
+      ttl: 1m
 
     primary:
       address: "127.0.0.1:6379"
@@ -499,6 +511,14 @@ auth:
           haproxy_v2: false
 
 policy:
+  runtime:
+    post_actions:
+      workers: 8
+      queue_capacity: 256
+    authn:
+      max_concurrency: 0
+      requests_per_second: 0
+
   namespaces:
     authn:
       domain_plans:
@@ -606,9 +626,17 @@ identity:
       optional_scopes: []
       allow_refresh_tokens: false
       consent_mode: "all_or_nothing"
+      skip_consent: false
       required_mfa_level: 0
+      access_token_type: "opaque"
       access_token_lifetime: 15m
       refresh_token_lifetime: 720h
+      default_scopes: []
+      implied_scopes: []
+      id_token_claims:
+        mappings: []
+      access_token_claims:
+        mappings: []
       source_hmac_key: ""
 
       limits:
@@ -676,8 +704,16 @@ The values under `identity.mfa_policy.levels` are the built-in assurance default
 providers can add `require_mfa`, `supported_mfa`, `required_mfa_level`, and local `mfa_policy.levels` overrides. See
 [MFA Assurance Policy](idp/mfa-assurance.md).
 
+`identity.oidc.clients` is empty in the reference example. Client-level keys such as `allow_backchannel_introspection`
+are documented in [OIDC](idp/oidc.md#token-introspection-authorization). The dynamic registration keys
+`default_scopes`, `implied_scopes`, `access_token_type`, `skip_consent`, and the claim mappings are explained in
+[Operating OIDC Dynamic Client Registration](../guides/oidc-dynamic-client-registration.md#native-application-profile-extensions).
+The gRPC `keep_alive` values are the built-in defaults; see
+[Connection Ageing and Keepalive](server-configuration.md#connection-ageing-and-keepalive).
+
 Only direct peers listed in `runtime.servers.http.trusted_proxies` may supply forwarding headers or configured client-IP
-and client-port headers. When request decompression middleware is enabled, the expanded gzip, Brotli, or Zstandard body
+and client-port headers. When a trusted peer sends `X-Forwarded-For`, every header line is evaluated and `X-Real-IP` is
+ignored; see [Trusted Proxies and Client IP Resolution](server-configuration.md#trusted-proxies-and-client-ip-resolution). When request decompression middleware is enabled, the expanded gzip, Brotli, or Zstandard body
 is capped at 1 MiB before handler parsing.
 
 ## Split Edge/Authority Profiles

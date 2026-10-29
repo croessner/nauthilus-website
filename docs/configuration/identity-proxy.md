@@ -60,6 +60,8 @@ runtime:
 
 Non-loopback authority listeners must use TLS. Split deployments should use mTLS so the authority can bind backend references to the edge client identity.
 
+When several authority replicas sit behind one service address, the listener's `keep_alive` defaults age every edge connection after about five minutes, so edges spread over replicas that started later. See [Connection Ageing and Keepalive](server-configuration.md#connection-ageing-and-keepalive).
+
 `backend_refs.enabled` is deliberately `false` by default. A split authority must enable it explicitly so that Nauthilus registers `IdentityBackendService` and issues the opaque references needed by identity, MFA, and WebAuthn continuation calls. The authority must also have Redis available; otherwise listener startup fails. A listener used only for direct `AuthService` calls can leave backend references disabled.
 
 :::warning Split deployment upgrade
@@ -123,6 +125,15 @@ identity:
 ```
 
 Opaque caller tokens are stored and validated by the authority using authority Redis.
+
+:::note Upgrading the authority from earlier v4 prereleases
+
+The authority's Redis layout for OIDC token state changed without migration, so every caller token issued before the
+upgrade is rejected afterwards. Edges replace a rejected cached token on their own (see
+[Rejected Caller Tokens](#rejected-caller-tokens)), so the edge token cache needs no manual flush. See
+[Token State in Redis](idp/oidc.md#token-state-in-redis).
+
+:::
 
 The `private_key_jwt` assertion used for caller-token acquisition uses the token endpoint URL as its `aud` value. If an operator, proxy, or service introspects those opaque tokens through `/oidc/introspect`, the introspection request uses a separate client assertion whose `aud` value is the introspection endpoint URL. The authority advertises both introspection client-auth methods and signing algorithms in OIDC discovery.
 
@@ -262,6 +273,27 @@ The current recommended caller-auth mode is OIDC bearer tokens from the authorit
 | `token_cache.refresh_lock_ttl` | no | `10s` | Distributed refresh-lock TTL for multi-edge deployments. |
 
 The token cache belongs to edge Redis, not authority Redis.
+
+#### Rejected Caller Tokens
+
+The authority can reject a cached caller token before it expires, for example after an upgrade that raised the
+revocation-epoch floor, a signing-key rotation, a client revocation, or an audience change. The edge recovers on its
+own:
+
+1. On an `UNAUTHENTICATED` answer to a bearer token, the edge deletes the cached token from edge Redis only if the cache
+   still holds exactly that token (compare-and-delete), so a token another edge replica cached in the meantime is kept.
+2. It fetches a replacement through the regular refresh path with its distributed refresh lock and retries the RPC
+   once. A second rejection is returned unchanged. Edges that lose the refresh lock wait, bounded by `refresh_lock_ttl`
+   and the RPC deadline, for the token of the lock holder.
+3. A guard window keeps a permanently rejected edge from fetching a token per RPC: a rejected token fetched less than
+   `token_cache.refresh_lock_ttl` (default `10s`) ago is kept, no new token is fetched, and the RPC returns the original
+   `UNAUTHENTICATED`. The edge warns about it at most once per window.
+
+A manual flush of the edge token cache is therefore not needed after events that invalidate caller tokens. Static token
+files (`static_token_file`) are never replaced or retried, and their rejection is logged at debug level only.
+
+See [Authority Error Handling](database-backends/remote.md#authority-error-handling) for how the remote backend treats
+the other authority answers.
 
 ### Remote Backend
 

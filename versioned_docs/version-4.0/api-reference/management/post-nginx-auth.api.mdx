@@ -1,0 +1,67 @@
+---
+id: post-nginx-auth
+title: "Authenticate an NGINX auth_http request."
+description: "POST form mirrors the GET form for deployments that submit NGINX auth checks with POST while still carrying credentials and metadata in request headers."
+sidebar_label: "Authenticate an NGINX auth_http request."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "post api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Authenticate an NGINX auth_http request."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/api/v1/auth/nginx"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+POST form mirrors the GET form for deployments that submit NGINX auth checks with POST while still carrying credentials and metadata in request headers.
+
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./post-nginx-auth.ParamsDetails.json")}
+>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./post-nginx-auth.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./post-nginx-auth.StatusCodes.json")}
+>
+
+</StatusCodes>

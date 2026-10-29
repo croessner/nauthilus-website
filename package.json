@@ -17,25 +17,25 @@
     "openapi:check": "node scripts/check-openapi-generated.mjs"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.10.1",
-    "@docusaurus/preset-classic": "^3.10.1",
-    "@docusaurus/theme-mermaid": "^3.10.1",
-    "@easyops-cn/docusaurus-search-local": "^0.46.0",
-    "@mdx-js/react": "^3.0.0",
+    "@docusaurus/core": "^3.10.2",
+    "@docusaurus/preset-classic": "^3.10.2",
+    "@docusaurus/theme-mermaid": "^3.10.2",
+    "@easyops-cn/docusaurus-search-local": "^0.55.3",
+    "@mdx-js/react": "^3.1.1",
     "clsx": "^2.0.0",
-    "docusaurus-plugin-openapi-docs": "^5.0.2",
-    "docusaurus-theme-openapi-docs": "^5.0.2",
-    "panzoom": "^9.4.3",
+    "docusaurus-plugin-openapi-docs": "^5.2.0",
+    "docusaurus-theme-openapi-docs": "^5.2.0",
+    "panzoom": "^9.4.4",
     "prism-react-renderer": "^2.3.0",
     "punycode": "^2.3.1",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^3.10.1",
-    "@docusaurus/types": "^3.10.1",
-    "baseline-browser-mapping": "^2.9.13",
-    "js-yaml": "^4.1.1"
+    "@docusaurus/module-type-aliases": "^3.10.2",
+    "@docusaurus/types": "^3.10.2",
+    "baseline-browser-mapping": "^2.11.28",
+    "js-yaml": "^4.3.2"
   },
   "browserslist": {
     "production": [

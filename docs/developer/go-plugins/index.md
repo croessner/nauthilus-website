@@ -73,7 +73,7 @@ The important boundary is directional: Nauthilus passes immutable or read-only A
 
 ## API version versus binary compatibility
 
-`pluginapi.APIVersion` identifies the semantic public contract as `nauthilus.plugin.v1`. It does not make arbitrary Go shared objects ABI-compatible. Go's plugin loader also requires the host and plugin to agree on the Go toolchain, build experiment, build tags, package sources, and shared dependency graph. Treat a plugin artifact as release-specific and rebuild it for the exact Nauthilus build you deploy.
+`pluginapi.APIVersion` identifies the semantic public contract as `nauthilus.plugin.v1`. It does not make arbitrary Go shared objects ABI-compatible. Go's plugin loader also requires the host and plugin to agree on the Go toolchain, build experiment, build tags, package sources, and shared dependency graph. Treat a plugin artifact as release-specific and rebuild it for the exact Nauthilus build you deploy. In addition, Nauthilus rejects any artifact whose embedded native build identity differs from the host's; see [native artifact identity](./build-test-debug.md#native-artifact-identity).
 
 ## Operator and example documentation
 

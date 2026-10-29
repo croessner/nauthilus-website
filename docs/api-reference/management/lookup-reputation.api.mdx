@@ -1,0 +1,64 @@
+---
+id: lookup-reputation
+title: "Inspect one exact reputation subject."
+description: "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history."
+sidebar_label: "Inspect one exact reputation subject."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "post api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Inspect one exact reputation subject."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/api/v1/custom/reputation/lookup"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./lookup-reputation.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./lookup-reputation.StatusCodes.json")}
+>
+
+</StatusCodes>

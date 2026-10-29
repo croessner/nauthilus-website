@@ -9,20 +9,20 @@ import { createRequire } from 'module';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Determine the latest product release including patch (e.g. 3.1.0).
+// Determine the latest product release including patch (e.g. 4.0.0).
 const require = createRequire(import.meta.url);
 const latestProductVersion =
   process.env.NAUTHILUS_LATEST_VERSION ||
   (() => {
     try {
       // optional JSON file maintained by CI
-      // { "version": "3.1.0" }
+      // { "version": "4.0.0" }
       return require('./latest-version.json').version;
     } catch (_) {
       return undefined;
     }
   })() ||
-  '3.1.0';
+  '4.0.0';
 
 // The docs dropdown should display major.minor only.
 const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');
@@ -114,7 +114,7 @@ function createOpenAPICategory(label, items) {
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Nauthilus',
-  tagline: 'Authentication and authorization server',
+  tagline: 'Central policy engine for authentication and authorization',
   favicon: 'img/favicon.ico',
   onBrokenAnchors: "ignore",
 
@@ -153,15 +153,19 @@ const config = {
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
           // `lastVersion` must reference an existing docs snapshot id from `versions.json`.
-          // The latest snapshot on disk is `3.1`; the navbar badge reflects the full product release `3.1.0`.
-          lastVersion: '3.1',
+          // The latest snapshot on disk is `4.0`; the navbar badge reflects the full product release `4.0.0`.
+          lastVersion: '4.0',
           versions: {
             current: {
               label: 'Next',
               banner: 'unreleased',
             },
-            '3.1': {
+            '4.0': {
               label: latestDocsVersionLabel,
+              banner: 'none',
+            },
+            '3.1': {
+              label: '3.1',
               banner: 'none',
             },
             '3.0': {
@@ -218,15 +222,13 @@ const config = {
         requestTimeout: 60000,
       },
       metadata: [
-        { name: 'keywords', content: 'authentication, authorization' },
+        { name: 'keywords', content: 'policy engine, policy decision point, authentication, authorization, brute-force protection, OIDC, SAML2, MFA, IMAP, SMTP, Dovecot, Postfix, LDAP' },
         { name: 'twitter:card', content: 'summary_large_image' },
-        { property: 'og:title', content: 'Nauthilus - Authentication & Authorization Server' },
-        { property: 'og:description', content: 'Nauthilus provides a powerful authentication and authorization server for modern applications.' },
-        { property: 'og:image', content: 'https://nauthilus.org/img/logo_nauthilus.png' },
+        { property: 'og:title', content: 'Nauthilus - Central policy engine for authentication and authorization' },
+        { property: 'og:description', content: 'One consistent decision for mail, web SSO, APIs and identity flows. Facts in, decision out: open source, observable, safe to change live.' },
         { property: 'og:url', content: 'https://nauthilus.org' },
-        { name: 'twitter:title', content: 'Nauthilus - Authentication & Authorization Server' },
-        { name: 'twitter:description', content: 'Nauthilus provides a powerful authentication and authorization server for modern applications.' },
-        { name: 'twitter:image', content: 'https://nauthilus.org/img/logo_nauthilus.png' },
+        { name: 'twitter:title', content: 'Nauthilus - Central policy engine for authentication and authorization' },
+        { name: 'twitter:description', content: 'One consistent decision for mail, web SSO, APIs and identity flows. Facts in, decision out: open source, observable, safe to change live.' },
       ],
       headTags: [
         // Declare a <link> preconnect tag
@@ -253,8 +255,8 @@ const config = {
         },
       ],
 
-      // Replace with your project's social card
-      image: 'img/docusaurus-social-card.jpg',
+      // Social card (og:image / twitter:image), taken from the promo video.
+      image: 'img/nauthilus-social-card.jpg',
       navbar: {
         title: 'Nauthilus',
         logo: {

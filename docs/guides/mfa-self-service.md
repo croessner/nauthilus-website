@@ -35,6 +35,9 @@ sequenceDiagram
   B-->>N: Identity and backend reference
   N->>S: Rotate browser session; consume login flow
   N-->>U: 303 /mfa/register/home/de
+  N-->>U: 302 /login/mfa?flow=opaque-ticket when a factor is enrolled
+  U->>N: Complete TOTP, WebAuthn, or recovery-code challenge
+  N-->>U: Portal home
   U->>N: Enroll or manage a factor
   N->>S: Require self-service-scoped fresh MFA for sensitive mutations
   N-->>U: Portal result or MFA step-up
@@ -45,6 +48,13 @@ lifetime. A successful primary login rotates the browser envelope, publishes the
 backend reference server-side, consumes the one-shot login flow, and redirects to the protected portal. The browser
 cookie is an authenticated opaque reference; it does not contain identity, factors, credentials, continuation targets,
 or ceremony state.
+
+A password alone does not open the portal for a user who already has a factor. When the authenticated session has no
+fresh self-service assurance (scope `self-service`, level 1 or higher) and the selected backend reports at least one
+enrolled TOTP, WebAuthn, or recovery-code factor, the portal home starts a step-up and redirects to
+`/login/mfa?flow=opaque-ticket`. The challenge offers every enrolled method. After a successful challenge the user
+returns to the portal home. Users without any enrolled factor reach the portal directly after the password login so
+they can enroll their first factor. If factor availability cannot be read from the backend, the portal answers `503`.
 
 ## Available operations
 
@@ -93,6 +103,19 @@ The stored operation contains only bounded server-owned data needed to finish th
 rename binds the credential reference and new device name to the step-up record and uses
 `/mfa/self-service/continue` after assurance. A user-controlled return URL is never accepted.
 
+## Code verification attempt budget
+
+TOTP and recovery-code verification share one Redis-backed budget of ten admitted attempts per stable identity in a
+fixed five-minute window. Each attempt is reserved atomically before the code is checked, including attempts that
+succeed. Switching IP addresses, methods, or browser challenges does not reset the budget.
+
+- An exhausted budget returns HTTP `429` without invoking the verifier.
+- If the budget storage is unavailable, Nauthilus returns HTTP `503` without invoking the verifier.
+
+The identity authority enforces the same budget before its direct TOTP and recovery-code operations. In split
+deployments the edge and the authority each keep their own identity-bound reservation; when both resolve to the same
+Redis key, one verification consumes both reservations. WebAuthn assertions do not use this budget.
+
 ## Retry behavior
 
 Retry semantics depend on the operation:
@@ -105,6 +128,9 @@ Retry semantics depend on the operation:
   attempt. The browser must use the newly issued CSRF token.
 - WebAuthn assertions and attestations are single-use. A missing, expired, kind-mismatched, or binding-mismatched
   ceremony fails closed. Restart with the matching begin route; never replay the rejected browser payload.
+- Optional WebAuthn registration from the portal is bound to the authenticated self-service session. Deleting or
+  renaming a device refreshes the cached device list, and a stale concurrent update of the same credential is rejected
+  instead of overwriting newer state.
 - A completed step-up ticket is single-use. Replaying it, changing its operation, or presenting it from another session
   fails closed.
 - A backend mutation uses a server-generated operation identity. If the outcome is uncertain, reconcile the selected

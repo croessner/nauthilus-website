@@ -78,6 +78,10 @@ rejects malformed signature parameter combinations and unsupported algorithms, i
 SAML SLO validates message type, signature, protocol fields, destination, time bounds, participant correlation, and
 request replay state before local session cleanup. `identity.saml.slo` controls front-channel and back-channel fanout.
 
+The SLO endpoint applies its per-client rate limit and body-size limit before it parses the message. A `RelayState`
+longer than 80 bytes (the SAML binding limit), an encoded `SAMLRequest` or `SAMLResponse` larger than 512 KiB, and
+missing, duplicated, or mixed SLO parameters are rejected with HTTP `400` before any session state is touched.
+
 Back-channel SLO delivery does not follow HTTP redirects. Configure every `slo_back_channel_url` as the final HTTPS
 endpoint. A `3xx` response is a failed delivery and may fall back to front-channel fanout when that channel is enabled.
 

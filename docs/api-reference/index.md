@@ -11,8 +11,8 @@ This section is generated from the OpenAPI contracts maintained in the Nauthilus
 
 | Reference | Contract | Operations | Schemas | Raw Spec |
 | --- | --- | ---: | ---: | --- |
-| [Management API](./management/nauthilus-management-api) | Nauthilus Management API | 21 | 46 | [YAML](/openapi/management.yaml) · [JSON](/openapi/management.json) |
-| [IdP API](./idp/nauthilus-idp-api) | Nauthilus IdP API | 33 | 14 | [YAML](/openapi/idp.yaml) · [JSON](/openapi/idp.json) |
+| [Management API](./management/nauthilus-management-api) | Nauthilus Management API | 25 | 60 | [YAML](/openapi/management.yaml) · [JSON](/openapi/management.json) |
+| [IdP API](./idp/nauthilus-idp-api) | Nauthilus IdP API | 33 | 15 | [YAML](/openapi/idp.yaml) · [JSON](/openapi/idp.json) |
 
 ## Workflow
 

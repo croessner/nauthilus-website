@@ -7,7 +7,9 @@ sidebar_position: 2
 
 # GeoIP and ASN Plugin
 
-The bundled `geoip` plugin registers one target-aware generic `DecisionFactProvider`. It requires a local primary GeoIP database and can add ASN organization, routing-prefix, registry allocation, and network-privacy evidence from optional sources. Top-level Policy binds its canonical ID `authn/plugin.geoip.environment` and qualifies its outputs under `plugin.geoip.*`. The plugin does not register an authentication-shaped `EnvironmentSource` or a second request-time adapter.
+The bundled `geoip` plugin registers configuration-compiled generic `DecisionFactProvider` components. Each entry in the required `decision_bindings` list selects exact Policy targets and one admitted IP input, so the same local lookup serves authentication, DKIM2 current-peer checks, reputation observations, or any other namespace. No binding is implicit. The plugin requires a local primary GeoIP database and can add ASN organization, routing-prefix, registry allocation, and network-privacy evidence from optional sources.
+
+The authentication example binds the component `environment` for `authn/authenticate` and `authn/lookup_identity`, which Policy uses as `authn/plugin.geoip.environment`. Scalar bindings qualify their outputs under `plugin.geoip.*`; record bindings emit one correlated record collection. The plugin does not register an authentication-shaped `EnvironmentSource`.
 
 The container artifact is:
 
@@ -23,9 +25,9 @@ The container artifact is:
 | Product version | `0.1.0` |
 | Interfaces | `Plugin`, `RuntimePlugin`, `ReloadablePlugin` |
 | Registered lifecycle component | `InitTask` named `database` |
-| Registered request component | `DecisionFactProvider` named `geoip.environment` |
-| Canonical Policy provider | `authn/plugin.geoip.environment` |
-| Source timeout | current `lookup_timeout`, default `50ms` |
+| Registered request components | One `DecisionFactProvider` per `decision_bindings` entry, named by its `component` |
+| Canonical Policy provider | `<namespace>/plugin.geoip.<component>`, for example `authn/plugin.geoip.environment` |
+| Source timeout | descriptor timeout `MaximumDecisionFactProviderTimeout` (10m); each lookup sequence is bounded by `lookup_timeout`, default `50ms` |
 | Abort policy | `none` |
 | Sensitive capabilities | none |
 | Local debug modules | none; use the automatic `plugin.<module>` selector |
@@ -47,13 +49,63 @@ Configuration is decoded strictly. Unknown keys, wrong types, relative database 
 | `refresh_interval` | duration string | disabled (`0`) | Non-negative interval for periodically reopening the local primary and optional ASN databases. Empty or `0s` disables this worker. |
 | `lookup_timeout` | duration string | `50ms` | Must be positive. Bounds each request-time primary and ASN lookup sequence. |
 
+### `decision_bindings`
+
+`decision_bindings` is required and holds 1-32 immutable bindings. Each binding registers one fact provider.
+
+| Field | Validation and meaning |
+| --- | --- |
+| `component` | Provider name, unique within the module. Policy refers to it as `<namespace>/plugin.geoip.<component>`. |
+| `targets` | 1-32 exact `namespace/action` selectors sharing one namespace. A target can belong to only one binding. |
+| `input.fact` | Admitted fact that carries the IP address (scalar) or the record list (record binding). |
+| `input.category` | Category of that fact, for example `environment` or `resource`. |
+| `output_schema` | `geoip.facts.v1` for a scalar binding, `geoip.records.v1` for a record binding. |
+| `output_fact` | Record bindings only: the single output name, qualified as `plugin.geoip.<output_fact>`. Must be empty for scalar bindings. |
+| `input.records.ip_field` | Record bindings only: string field that contains the IP. |
+| `input.records.match` | Optional exact string predicates (at most 8) that select rows, for example `{kind: ip}`. |
+| `input.records.correlation_fields` | Optional string fields (at most 8) copied into each output record. They cannot collide with GeoIP output names. |
+
+Examples:
+
+```yaml
+decision_bindings:
+  # Authentication: scalar facts under plugin.geoip.*
+  - component: environment
+    targets: [authn/authenticate, authn/lookup_identity]
+    input: {fact: nauthilus.request.client.ip, category: environment}
+    output_schema: geoip.facts.v1
+  # Reputation observations: one record per admitted IP subject
+  - component: observation
+    targets: [reputation/observe]
+    input:
+      fact: resource.reputation.subjects
+      category: resource
+      records:
+        ip_field: value
+        match: {kind: ip}
+        correlation_fields: [role]
+    output_schema: geoip.records.v1
+    output_fact: observations
+```
+
+Changing `decision_bindings` requires a restart; a reload that changes them is rejected and keeps the previous state. At activation, the host checks that every required input field is visible to the exact provider and has a compatible type.
+
+### `freshness`
+
+| Field | Type | Default | Validation and meaning |
+| --- | --- | --- | --- |
+| `freshness.max_age` | duration string | `1080h` (45 days) | Source age after which a match becomes `stale`. |
+| `freshness.max_stale_age` | duration string | `2160h` (90 days) | Absolute maximum usable age. At least `max_age` and at most one year. |
+
+Source age comes from the data, not from the reload time. JSON databases use the file's modification time. MaxMind databases use the earlier of the modification time and the embedded build time. Routing and registry snapshots use their own load times, and the oldest contributing source governs the result. Reloading unchanged data does not reset its age.
+
 ### `asn_lookup`
 
 This optional worker downloads routing prefix-to-AS snapshots and builds an in-memory IPv4/IPv6 longest-prefix trie.
 
 | Field | Type | Default | Validation and meaning |
 | --- | --- | --- | --- |
-| `asn_lookup.enabled` | boolean | `false` | Enables immediate and periodic routing snapshot fetches. |
+| `asn_lookup.enabled` | boolean | `false` | Enables immediate and periodic routing snapshot fetches, with bounded retries after failures. |
 | `asn_lookup.refresh_interval` | duration string | `720h` | Non-negative. Empty and explicit `0s` both select `720h`; disable with `enabled: false`. |
 | `asn_lookup.timeout` | duration string | `30s` | Must be positive; applied independently to each configured source fetch. |
 | `asn_lookup.source_urls` | list of strings | CAIDA IPv4 and IPv6 creation logs when enabled | Every entry must be a nonempty HTTP(S) URL, even when the worker is disabled. |
@@ -90,13 +142,14 @@ This optional subsystem classifies addresses from immutable in-memory snapshots.
 | `privacy_intelligence.lookup_timeout` | duration string | `10ms` | Must be positive and no greater than the parent `lookup_timeout`. |
 | `privacy_intelligence.max_snapshot_entries` | integer | `1000000` | Positive per-source input and expanded-entry bound. |
 | `privacy_intelligence.max_download_bytes` | integer | `33554432` | Positive bound for one remote response, local source, or persistent-cache read. |
-| `privacy_intelligence.public_log_fields` | boolean | `false` | Enables the bounded privacy fields described under [Runtime exchange and public logs](#runtime-exchange-and-public-logs). |
 | `privacy_intelligence.refresh.cache_dir` | string | empty | Optional absolute directory for derived remote cache paths. |
 | `privacy_intelligence.refresh.max_concurrent_downloads` | integer | `2` | Shared download limit; must be from `1` through `8`. |
 | `privacy_intelligence.refresh.startup_jitter` | duration string | `30s` | Non-negative delay available before a background refresh when a cache or optional source permits deferral. |
 | `privacy_intelligence.refresh.default_refresh_interval` | duration string | `6h` | Positive default for non-Tor sources. |
 | `privacy_intelligence.refresh.default_min_refresh_interval` | duration string | `1h` | Positive lower bound for non-Tor source refresh. |
 | `privacy_intelligence.refresh.default_max_refresh_backoff` | duration string | `24h` | Positive failure-backoff ceiling. |
+
+The former environment-only `privacy_intelligence.public_log_fields` key is rejected; request logging is host-owned.
 
 Each `sources` entry has this common contract:
 
@@ -203,11 +256,13 @@ sequenceDiagram
 - A missing, unreadable, empty, malformed, or unsupported primary database makes the init task fail. A required module therefore prevents runtime readiness.
 - Privacy initialization validates local sources, restores and revalidates configured caches, and performs an immediate remote fetch when necessary. A required privacy source without a valid cache or successful initial fetch makes initialization or reload fail; an unavailable optional source does not.
 - `refresh_interval` waits for its first tick before reopening local databases. A failed refresh logs an error and keeps the previous readers.
-- ASN routing and registry workers fetch immediately and then on their configured interval. A failed multi-source refresh keeps the previous snapshot.
+- ASN routing and registry workers fetch immediately and then on their configured interval. A failed multi-source refresh keeps the last completely validated snapshot and retries after 30-60 seconds, doubling the delay up to 15 minutes with jitter across replicas. A shorter `refresh_interval` also caps the retry delay. A successful refresh resets the backoff and resumes the regular interval. Until a first snapshot succeeds, that source adds no ASN enrichment; the primary database remains usable.
 - Each remote privacy source has a supervised worker. Refreshes are coalesced per source and share the configured download semaphore. A candidate is parsed and validated completely before the combined immutable lookup index is rebuilt and atomically published.
 - Privacy refresh failures log only the validated source ID, retain the last-known-good snapshot, and advance a bounded exponential backoff. `Retry-After`, `Cache-Control: max-age`, `Expires`, validators, and configured jitter can raise the next-attempt time.
 - Sources are fetched sequentially. With five RIR feeds and a `30s` per-source timeout, one failed pass can take substantially longer than 30 seconds.
-- `Reconfigure` decodes the new config and opens all referenced local databases before swapping state. A failure keeps the previous config and readers.
+- A SIGHUP reload applies every config change except `decision_bindings`, which is rejected as restart-bound. Before the reload is committed, the plugin only decodes and validates the candidate (`ValidateReconfigure`). After the commit, `Reconfigure` loads the databases and privacy sources. If that load fails, the plugin keeps its previous databases and settings, the reload is reported as `failed` for the module, and the next reload retries it.
+- The refresh workers restart with the new settings and are stopped through their own cancellation. A periodic refresh that loaded data for replaced or stopped settings discards its result instead of publishing it.
+- Database files are read and checked for concurrent replacement; a file that changes while it is being read is rejected.
 - A changed privacy config is also loaded before publication; an unchanged privacy engine is reused. A successful reconfigure restarts optional workers. Routing state is reset and may be temporarily absent until the new immediate fetch succeeds; existing registry data is retained while registry refresh remains enabled.
 - `Stop` cancels workers and closes active MaxMind readers.
 
@@ -230,11 +285,16 @@ The privacy downloader uses the host HTTP facade. The older routing and registry
 
 ## Fact contract
 
-All outputs are declared by the generic provider as environment facts for the exact `authn/authenticate` and `authn/lookup_identity` targets.
+A scalar binding (`geoip.facts.v1`) declares the following environment facts for its configured targets. A record binding (`geoip.records.v1`) emits the same fields, without the `plugin.geoip.` prefix, inside one record per selected input row, plus its correlation fields.
 
 | Fact | Type | Emission |
 | --- | --- | --- |
-| `plugin.geoip.matched` | boolean | Always: `true` for a primary match, otherwise `false`. |
+| `plugin.geoip.lookup_state` | string | Always: `fresh`, `stale`, `not_found`, or `unavailable`. |
+| `plugin.geoip.ip` | string | Always: the exact canonical input address. |
+| `plugin.geoip.data_stale` | boolean | Always: whether the source is older than `freshness.max_age`. |
+| `plugin.geoip.data_age_seconds` | integer | When the source timestamp is known. |
+| `plugin.geoip.network` | string | For a usable match: the matching database prefix. |
+| `plugin.geoip.matched` | boolean | Unless `unavailable`: `true` for a primary match, otherwise `false`. |
 | `plugin.geoip.country_iso` | string | When nonempty. |
 | `plugin.geoip.country_name` | string | When nonempty. |
 | `plugin.geoip.city_name` | string | When nonempty. |
@@ -261,7 +321,14 @@ All outputs are declared by the generic provider as environment facts for the ex
 | `plugin.geoip.is_hosting_network` | boolean | Explicit true or false in `evaluated` or `stale` state. |
 | `plugin.geoip.is_shared_egress` | boolean | Explicit true or false in `evaluated` or `stale` state. |
 
-An invalid client IP is treated as a nonmatching result rather than a plugin error. When privacy intelligence is enabled, it also emits `privacy_lookup_state: invalid_ip` and omits classification booleans. A database lookup or privacy deadline error is returned to the host.
+Lookup states:
+
+- `fresh`: a match from sufficiently recent data.
+- `stale`: a match whose source is older than `max_age` but within `max_stale_age`.
+- `not_found`: a valid database miss; the source age is still reported.
+- `unavailable`: the data is older than `max_stale_age` or undated. Location, ASN, network, and `matched` are withheld, so there is no fabricated negative match, and expired records do not feed derived hosting classifications. Privacy evidence keeps its own independent state.
+
+A missing, wrongly typed, or unparsable input address, including a zoned IPv6 address, returns the `invalid_input` error class without facts. IPv4-mapped IPv6 input is unmapped before lookup. Database and privacy failures are returned to the host as a fixed, redacted error; cancellation and deadline errors keep their identity. Raw database errors, which can contain queried addresses or private paths, never reach logs, spans, or the Policy collector.
 
 Privacy state is deliberately tri-state rather than a simple boolean:
 
@@ -271,9 +338,21 @@ Privacy state is deliberately tri-state rather than a simple boolean:
 
 The plugin does not deny a request merely because data is stale or unavailable. For fail-closed enforcement, make a source `required` to reject startup without any valid initial snapshot and write policy that requires `privacy_lookup_state: evaluated` and `privacy_data_stale: false` before trusting negative classifications.
 
+## Record bindings
+
+A record binding reads a record-list fact, selects rows whose string fields match every `match` predicate, and looks up the IP in `ip_field`. At most eight input records are accepted; a larger list is `invalid_input`. Caller-supplied network or ASN rows do not match an IP selector such as `{kind: ip}`, so callers cannot inject geographic claims. Configured `correlation_fields` are copied into each output record so consumers can join the result back to the source row; a missing correlation field is `invalid_input`.
+
+The [reputation plugin](./reputation.md#asn-derivation-from-geoip) uses such a binding to derive ASN subjects for observations. Its example fragment `server/docs/examples/reputation_geoip_observation.yml` declares the output schema, including provider visibility for the reputation consumers.
+
 ## Generic provider boundary
 
-The provider accepts only the admitted `input.auth.client_ip` fact. It receives no credential, raw transport, response, or scheduling authority. Its result contains the declared `plugin.geoip.*` facts and a safe error class only; request logging and Policy diagnostics remain host-owned.
+Each provider accepts only its configured input fact and category for its exact targets. The input identity is configuration, not lookup code: the authentication example selects the host-normalized `nauthilus.request.client.ip`, while a DKIM2 current-peer binding selects `environment.rspamd.smtp_client_ip` for `dkim2/accept-message-instance`. The provider receives no credential, raw transport, response, or scheduling authority. Its result contains the declared facts and a safe error class only; request logging and Policy diagnostics remain host-owned.
+
+### Client address input for authentication
+
+`nauthilus.request.client.ip` carries the caller-supplied client address when one was sent (labelled untrusted unless it matches the transport peer) and otherwise the transport peer that scheduler guards also see, for example the gRPC peer of a backchannel identity lookup without `client_ip`. The caller-asserted `input.auth.client_ip` is only present when the transport adapter received a client address: HTTP falls back to the connection peer, gRPC does not. Binding `input.auth.client_ip` lets the loopback exemption guard and GeoIP disagree about the same request, and a gRPC call without `client_ip` from a non-exempt peer then fails the required input. Bind `nauthilus.request.client.ip` for `authn/authenticate` and `authn/lookup_identity`.
+
+A request without any parseable client address, for example over a Unix socket, has no input fact. The provider reports `invalid_input`, and the configured provider `failure` mode applies, so a required GeoIP provider fails closed. A plan that treats such requests as not applicable skips the provider explicitly with a scheduler guard such as `{attribute: nauthilus.request.client.ip.present, is: false}` in `skip_if`.
 
 There is no registered `plugin.exchange.geoip` execution path and no runtime alias for the removed `plugin.environment.geoip.*` fact family. Analytics consumers project the already collected `plugin.geoip.*` facts into their typed views instead of invoking a second GeoIP adapter.
 
@@ -288,6 +367,7 @@ The plugin names below are `pluginapi.MetricDefinition.Name` values, not the fin
 | `geoip_database_records` | `nauthilus_plugin_geoip_geoip_database_records` | `plugin_scope="geoip"`, `state=loaded` | Combined primary and optional ASN database record indicator. |
 | `geoip_privacy_source_refresh_total` | `nauthilus_plugin_geoip_geoip_privacy_source_refresh_total` | `plugin_scope="geoip"`, `source=<configured ID>`, `result=success|error` | Background privacy refresh attempts. |
 | `geoip_privacy_snapshot_entries` | `nauthilus_plugin_geoip_geoip_privacy_snapshot_entries` | `plugin_scope="geoip"` | Total entries in currently published privacy snapshots. |
+| `freshness_total` | `nauthilus_plugin_geoip_freshness_total` | `plugin_scope="geoip"`, `state=fresh|stale|not_found|unavailable` | Lookup results by data freshness. It carries no IP, ASN, country, or path. |
 
 For example, a matched-lookup series is selected as:
 
@@ -323,6 +403,7 @@ observability:
 From the exact Nauthilus host checkout:
 
 ```shell
+NATIVE_ARTIFACT_LDFLAGS="$(go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo")"
 GOEXPERIMENT=runtimesecret \
 GOCACHE=/tmp/nauthilus-go-cache \
 go test ./contrib/plugins/geoip
@@ -335,6 +416,7 @@ go build \
   -tags="netgo" \
   -trimpath \
   -buildmode=plugin \
+  -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -o build/geoip.so \
   ./contrib/plugins/geoip
 ```
@@ -361,6 +443,14 @@ plugins:
       signer: nauthilus-plugin-build-key-2026
       optional: false
       config:
+        decision_bindings:
+          - component: environment
+            targets: [authn/authenticate, authn/lookup_identity]
+            input: {fact: nauthilus.request.client.ip, category: environment}
+            output_schema: geoip.facts.v1
+        freshness:
+          max_age: 1080h
+          max_stale_age: 2160h
         database_path: /var/lib/GeoIP/GeoLite2-City.mmdb
         database_format: mmdb
         asn_database_path: /var/lib/GeoIP/GeoLite2-ASN.mmdb
@@ -380,7 +470,6 @@ plugins:
           lookup_timeout: 10ms
           max_snapshot_entries: 1000000
           max_download_bytes: 33554432
-          public_log_fields: true
           refresh:
             cache_dir: /var/lib/nauthilus/privacy/cache
             max_concurrent_downloads: 2
@@ -440,6 +529,11 @@ policy:
             - action: authenticate
             - action: lookup_identity
           produced_facts:
+            - plugin.geoip.lookup_state
+            - plugin.geoip.data_age_seconds
+            - plugin.geoip.data_stale
+            - plugin.geoip.ip
+            - plugin.geoip.network
             - plugin.geoip.matched
             - plugin.geoip.country_iso
             - plugin.geoip.country_name
@@ -512,6 +606,8 @@ policy:
                 all:
                   - attribute: plugin.geoip.matched
                     is: true
+                  - attribute: plugin.geoip.lookup_state
+                    eq: fresh
                   - attribute: plugin.geoip.country_iso
                     not_in: "@string.allowed_country_iso"
                   - attribute: plugin.geoip.asn_registry
@@ -537,7 +633,7 @@ policy:
       default_policy: authn/standard_auth
 ```
 
-The specific policy grammar must match the active Nauthilus config generation. The stable contracts supplied by this plugin are the source name and registered fact IDs.
+The specific policy grammar must match the active Nauthilus config generation. The stable contracts supplied by this plugin are the configured component names and registered fact IDs. Decide explicitly how rules treat `stale` and `unavailable` lookups; the example only denies on fresh data.
 
 ## Security, privacy, and current limits
 
@@ -551,5 +647,6 @@ The specific policy grammar must match the active Nauthilus config generation. T
 - A negative privacy result is meaningful only in `evaluated` or `stale` state. Do not convert unavailable states into false policy claims, and decide explicitly whether stale data should fail open or fail closed.
 - Generic prefix feeds are accepted only as classifications explicitly assigned by the operator; the plugin does not assess whether a list is accurate, complete, or legally usable.
 - The primary local database remains mandatory even when routing lookup or privacy intelligence is enabled.
+- Keep database files current. Once data exceeds `freshness.max_stale_age`, every lookup is `unavailable` and geographic rules stop matching.
 - The checked-in `geoip-test.mmdb` is intentionally not a real MaxMind database; it tests path/format handling only.
 - MaxMind data has its own licensing and update requirements and is not bundled by this plugin source directory.

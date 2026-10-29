@@ -317,6 +317,12 @@ const sidebar: SidebarsConfig = {
         },
         {
           type: "doc",
+          id: "api-reference/idp/schemas/resourceindicators",
+          label: "ResourceIndicators",
+          className: "schema",
+        },
+        {
+          type: "doc",
           id: "api-reference/idp/schemas/tokenresponse",
           label: "TokenResponse",
           className: "schema",

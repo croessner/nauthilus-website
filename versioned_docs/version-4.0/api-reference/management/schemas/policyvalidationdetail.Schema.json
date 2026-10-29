@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["field","reason"],"properties":{"field":{"type":"string"},"reason":{"type":"string"}},"title":"PolicyValidationDetail"},"schemaType":"response"}

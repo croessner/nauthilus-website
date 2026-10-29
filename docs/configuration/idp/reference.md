@@ -89,6 +89,24 @@ Use `identity.frontend.assets` for template and language-resource paths.
 
 ## OIDC and SAML
 
+Selected OIDC keys that are easy to miss:
+
+| Path | Default | Meaning |
+| --- | --- | --- |
+| `identity.oidc.clients[].allow_backchannel_introspection` | `false` | Lets a static confidential client introspect other clients' `nauthilus:backchannel` service tokens. See [Token Introspection Authorization](oidc.md#token-introspection-authorization). |
+| `identity.oidc.clients[].token_introspection.resources` | `[]` | RFC 8707 resource indicators owned by a static confidential resource-server client. See [Resource Servers and Resource Indicators](oidc.md#resource-servers-and-resource-indicators). |
+| `identity.oidc.clients[].token_introspection.clients` | `[]` | Static clients whose plain user access tokens the resource server may introspect and which may request its resources. |
+| `identity.oidc.clients[].token_introspection.dynamic_client_profiles` | `[]` | Dynamic client registration profiles (`mail-client-v1`) treated like `clients`. |
+| `identity.oidc.dynamic_client_registration.access_token_type` | `opaque` | `opaque` or `jwt` access tokens for dynamic clients. |
+| `identity.oidc.dynamic_client_registration.skip_consent` | `false` | Waives the consent page for all dynamic clients; `prompt=consent` still forces it. |
+| `identity.oidc.dynamic_client_registration.delayed_response` | `false` | Delayed login-failure presentation for all dynamic clients, like the per-client option of static clients. |
+| `identity.oidc.dynamic_client_registration.require_mfa` | `[]` | MFA methods every dynamic client user must have registered before authorization. |
+| `identity.oidc.dynamic_client_registration.supported_mfa` | `[]` | MFA methods usable by dynamic clients; empty permits all. |
+| `identity.oidc.dynamic_client_registration.default_scopes` | `[]` | Scopes registered when a client omits both `scope` and `grant_types`. |
+| `identity.oidc.dynamic_client_registration.implied_scopes` | `[]` | Registered scopes added to every authorization of a dynamic client. |
+| `identity.oidc.dynamic_client_registration.id_token_claims.mappings` | `[]` | ID-token claim mappings applied to all dynamic clients. |
+| `identity.oidc.dynamic_client_registration.access_token_claims.mappings` | `[]` | Access-token claim mappings applied to all dynamic clients. |
+
 See:
 
 - [MFA Assurance Policy](mfa-assurance.md)

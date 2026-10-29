@@ -18,22 +18,59 @@ Current Nauthilus container builds compile the server and bundled plugins from o
 - vendored dependencies;
 - `netgo` plus any selected release build tags;
 - `-trimpath`;
-- the same `github.com/croessner/nauthilus/v4` package sources.
+- the same `github.com/croessner/nauthilus/v4` package sources;
+- one shared native artifact identity passed through `-ldflags`.
 
 A corresponding plugin build is:
 
 ```shell
-GOEXPERIMENT=runtimesecret \
+export GOEXPERIMENT=runtimesecret
+NATIVE_ARTIFACT_LDFLAGS="$(cd /path/to/nauthilus && \
+  go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo ${BUILD_TAGS}")"
+
 go build \
   -mod=vendor \
   -tags="netgo ${BUILD_TAGS}" \
   -trimpath \
+  -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -buildmode=plugin \
   -o build/customer.so \
   .
 ```
 
 An external plugin can use module mode instead of vendoring, but its selected versions still have to match the host. Record the host tag or commit, Go version, build tags, and artifact hash in your release metadata.
+
+## Native artifact identity
+
+Nauthilus rejects any native artifact that does not carry the host's exact build identity. The identity is produced by
+`scripts/native_artifact_fingerprint` in the Nauthilus source tree. It hashes the Go toolchain settings (`GOVERSION`,
+`GOOS`, `GOARCH`, `CGO_ENABLED`, `GOEXPERIMENT`, `GOFLAGS`, `GOAMD64`, `GOARM64`, CGO flags, `CC`, `CXX`), the sorted
+build tags, every tracked or untracked non-ignored Go, C/C++, assembly, and `.syso` source file, `go.mod`, `go.sum`,
+`vendor/modules.txt`, and the resources embedded by the server, the bundled plugins, and the sample plugin. The tool prints one `-ldflags` value:
+
+```text
+-X github.com/croessner/nauthilus/v4/pluginapi/v1.nativeArtifactIdentity=nauthilus-native-artifact-v1:<sha256>:end-native-artifact
+```
+
+The repository `Makefile`, the `geoip` and `dkim2-intelligence` plugin Makefiles under `contrib/plugins`, and the
+container builds (which build all five bundled plugins) already pass this value.
+For your own build:
+
+1. Build the server and every plugin from one unchanged Nauthilus source snapshot, with the same toolchain, target
+   environment, and tags. Set the target `GOOS`/`GOARCH` and CGO environment before running the fingerprint tool.
+2. Pass the same `-ldflags` value to the server build and to each plugin build.
+3. Sign the plugins and record checksums only after the build.
+4. Publish server, plugins, signatures, and configuration as one immutable bundle and restart the process to activate it.
+   Keep the previous complete bundle for rollback; never mix old plugin files into a new image.
+
+The loader compares every identity string embedded in the `.so` with the host identity before `plugin.Open`. A missing
+(unmarked), different, or mixed identity fails with "native artifact does not match the host build identity"; Go's own
+package-hash check follows afterwards. Setting `Metadata().Build.ArtifactIdentity` to
+`pluginapi.NativeArtifactIdentity()` records the identity in discovery output but is diagnostic only.
+
+In a Nauthilus checkout, `sh scripts/check-native-artifact-bundle.sh` builds a disposable probe plus the sample and
+bundled plugin fixtures, and proves that a stale and an unmarked artifact are rejected. It publishes nothing and starts no
+plugin services.
 
 ## Why API version is not enough
 
@@ -213,6 +250,19 @@ plugin_call_duration_seconds{module,component,extension_point,method,result}
 ```
 
 Use these to distinguish registration/startup failures from request-time plugin failures before enabling plugin-specific debug output.
+
+## Interactive debugging with Delve
+
+When logs and assertions are not enough, Delve (`dlv`) can inspect state, call stacks, goroutines, and breakpoints. Start
+from a focused test or a sanitized local server configuration, and keep the Go experiment that the build requires:
+
+```shell
+GOEXPERIMENT=runtimesecret dlv test ./server/package -- -test.run TestName -test.count=1
+GOEXPERIMENT=runtimesecret dlv debug ./server -- -config /path/to/local.yml
+```
+
+Do not attach a debugger to production processes without explicit operator approval. Keep the reproducer as a
+regression test; a debugger session supplements but does not replace it.
 
 ## Reference test assets
 

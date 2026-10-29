@@ -30,6 +30,7 @@ Examples:
 | `runtime.servers.grpc.authority.address` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_ADDRESS` |
 | `runtime.servers.grpc.authority.backend_refs.enabled` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_BACKEND_REFS_ENABLED` |
 | `runtime.servers.grpc.authority.tls.min_tls_version` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_TLS_MIN_TLS_VERSION` |
+| `runtime.servers.grpc.authority.keep_alive.max_connection_age` | `NAUTHILUS_RUNTIME_SERVERS_GRPC_AUTHORITY_KEEP_ALIVE_MAX_CONNECTION_AGE` |
 | `runtime.clients.grpc.nauthilus_authorities.primary.address` | `NAUTHILUS_RUNTIME_CLIENTS_GRPC_NAUTHILUS_AUTHORITIES_PRIMARY_ADDRESS` |
 | `runtime.clients.grpc.nauthilus_authorities.primary.caller_auth.oidc_bearer.client_id` | `NAUTHILUS_RUNTIME_CLIENTS_GRPC_NAUTHILUS_AUTHORITIES_PRIMARY_CALLER_AUTH_OIDC_BEARER_CLIENT_ID` |
 | `runtime.timeouts.lua_script` | `NAUTHILUS_RUNTIME_TIMEOUTS_LUA_SCRIPT` |
@@ -112,11 +113,49 @@ These top-level keys are loader mechanics, not runtime roots:
 
 They are processed before the final runtime configuration is built. Include paths and patch paths are loader controls and are not environment-template strings; final values produced by included files and patch payloads are expanded.
 
+## File Artifacts and Symbolic Links
+
+Files referenced by the configuration, such as TLS certificates and keys, LDAP and Lua files, IdP keys and
+certificates, frontend `*.html` templates, Lua package modules, and plugin artifacts, are captured as a validated
+snapshot at startup and reload. Such a file must be a regular file. A symbolic link is accepted only in the Kubernetes
+projected-volume layout used by ConfigMap and Secret mounts: the file is a relative link to `..data/<same name>`, and
+its resolved target stays inside the mount directory. Directory entries whose names start with `..` are skipped when
+Lua package directories are scanned, so the hidden timestamped directories of a projected volume are not loaded twice.
+
+Every other symbolic link is rejected. The frontend asset directories (`css`, `js`, `img`, and `fonts` next to the
+templates) must not contain symbolic links at all, so do not serve them from a projected volume. See
+[Kubernetes ConfigMap and Secret Mounts](../installation/docker.md#kubernetes-configmap-and-secret-mounts).
+
 ## Native Plugin Configuration
 
 `plugins` is a normal top-level Config v2 section, not a loader-only root. Its shared fields configure artifact verification and module instances. The contents of each `plugins.modules[].config` mapping are deliberately opaque to the Nauthilus schema because the selected plugin owns their types and defaults.
 
 Opaque plugin config is not traversed by the normal config-dump schema and is omitted from plugin discovery output. Validate it by loading the corresponding module: the public plugin `ConfigView.Decode` path is strict and rejects unknown keys or incompatible types during registration/reload.
+
+`plugins.modules[].allow_capabilities` accepts `credentials`, `mail`, and `password_hash`; other values fail validation.
+
+`plugins.opaque_identifier_tagger` configures the host-owned keys that plugins use to derive opaque identifiers. It
+declares 1 to 32 unique `scopes`, each with an `active` key and an optional `previous` key for rotation:
+
+```yaml
+plugins:
+  opaque_identifier_tagger:
+    scopes:
+      - scope: "reputation_subject"
+        active:
+          version: "v2"
+          secret_ref:
+            file: "/etc/nauthilus/secrets/reputation-subject-v2.key"
+        previous:
+          version: "v1"
+          secret_ref:
+            file: "/etc/nauthilus/secrets/reputation-subject-v1.key"
+```
+
+`secret_ref.file` must be an absolute, clean path to a file that contains exactly 32 key bytes. `previous` must use a
+different `version` and a different file than `active`. The key files are part of the validated file-artifact snapshot
+described above, so they may be mounted from a Kubernetes Secret. The scope names a plugin expects are documented by
+that plugin.
 
 Prefer YAML/includes or a mounted plugin-owned secret file for module config. Environment-variable derivation is well suited to fixed canonical scalar paths, but not to arbitrary keys inside a module list's opaque mapping. See [Native Go Plugins](native-go-plugins.md).
 
@@ -133,6 +172,10 @@ Behavior:
 - exit code `0`: configuration is valid
 - exit code `1`: configuration is invalid
 
+Validation also reports warnings that keep a configuration loadable, for example a `cache` entry before a native
+backend plugin that has not opted into the positive password cache (see
+[Native Go Plugins](native-go-plugins.md#positive-password-cache-for-backend-modules)).
+
 Validation errors are reported with canonical config-v2 paths. Unknown keys are not translated from Go field names anymore; the message points directly to the documented YAML surface.
 
 ## Dump Modes
@@ -146,6 +189,19 @@ nauthilus -d
 ```
 
 This prints the canonical default configuration as sorted `path = value` lines.
+
+The output is a dump of the built-in defaults, not a loadable profile. Secrets such as `storage.redis.password_nonce`
+and `storage.redis.encryption_secret` print empty, and LDAP pool sizes such as `auth_pool_size` and
+`lookup_pool_size` print as `0`; set them before the output can be used as a configuration. Runtime defaults that the
+schema does not carry are included, for example `storage.redis.identity_cache.ttl = 1m`,
+`policy.runtime.post_actions.workers`, `policy.runtime.post_actions.queue_capacity`,
+`policy.runtime.authn.max_concurrency`, and `policy.runtime.authn.requests_per_second` (see
+[Identity Lookup Cache](server-configuration.md#identity-lookup-cache) and
+[Runtime capacity](auth-policy.md#runtime-capacity)).
+
+The dump prints the `storage.redis.sentinels` block with empty values. Such an all-empty block is treated as "Sentinel
+not configured" when it is loaded; once any Sentinel field is set, `master` and at least one entry in `addresses` are
+required.
 
 ### Print Non-Defaults
 

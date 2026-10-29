@@ -83,6 +83,7 @@ func (p *Plugin) Metadata() pluginapi.Metadata {
             pluginapi.CapabilityCredentials,
         },
         Build: pluginapi.BuildInfo{
+            ArtifactIdentity: pluginapi.NativeArtifactIdentity(),
             GoVersion: "go1.27.x",
             GitCommit: "replace-at-build-time",
             BuildTime: "replace-at-build-time",
@@ -218,17 +219,52 @@ The worker must still honor its context and own its internal retry, backoff, and
 
 ## Configuration reload
 
-Implement `ReloadablePlugin` only if the module can validate and publish a new `plugins.modules[].config` subtree safely:
+Implement `ReloadablePlugin` only if the module can validate and publish a new `plugins.modules[].config` subtree safely.
+Without it, any change of the module `config` is rejected as restart-bound and the module keeps its configuration until
+the process restarts.
+
+A SIGHUP reload runs in two phases around the Policy generation swap:
+
+1. **Validate.** For every module whose `config` changed, Nauthilus calls
+   `pluginapi.ReconfigureValidator.ValidateReconfigure` when the plugin implements it. The call must only decode and
+   validate: no state changes, no workers, no network or file side effects beyond reading what validation needs. Any
+   error rejects the whole reload and no module is reconfigured. Wrap `pluginapi.ErrRestartRequired` to report a key
+   that only a restart can apply, for example a feature that needs a capability acquired in `Register`.
+2. **Apply.** After the new Policy generation is committed, Nauthilus calls `Reconfigure` with the new module
+   `ConfigView` for each changed module in declaration order. Unchanged modules are not called.
 
 ```go
-var _ pluginapi.ReloadablePlugin = (*Plugin)(nil)
+var (
+    _ pluginapi.ReloadablePlugin     = (*Plugin)(nil)
+    _ pluginapi.ReconfigureValidator = (*Plugin)(nil)
+)
 
-func (p *Plugin) Reconfigure(ctx context.Context, view pluginapi.ConfigView) error {
+// ValidateReconfigure checks a candidate without touching the running plugin.
+func (p *Plugin) ValidateReconfigure(_ context.Context, view pluginapi.ConfigView) error {
+    _, err := p.decodeReconfigureConfig(view)
+
+    return err
+}
+
+// decodeReconfigureConfig is shared by ValidateReconfigure and Reconfigure.
+func (p *Plugin) decodeReconfigureConfig(view pluginapi.ConfigView) (Config, error) {
     var next Config
     if err := view.Decode(&next); err != nil {
-        return err
+        return Config{}, err
     }
     if err := next.Validate(); err != nil {
+        return Config{}, err
+    }
+    if next.Feature.Enabled && !p.featureCapabilityActive {
+        return Config{}, fmt.Errorf("feature.enabled: %w", pluginapi.ErrRestartRequired)
+    }
+
+    return next, nil
+}
+
+func (p *Plugin) Reconfigure(ctx context.Context, view pluginapi.ConfigView) error {
+    next, err := p.decodeReconfigureConfig(view)
+    if err != nil {
         return err
     }
 
@@ -242,11 +278,26 @@ func (p *Plugin) Reconfigure(ctx context.Context, view pluginapi.ConfigView) err
 }
 ```
 
-Prepare the replacement before publishing it. The host commits its new config views only after every invoked reloadable module succeeds, but it cannot roll back internal state that an earlier plugin already published before a later plugin failed. Each implementation must delay its own state swap until validation and preparation succeed; a multi-module reload is not currently atomic across plugin instances.
+`Reconfigure` must be all or nothing. Decode and validate first, build the new state off to the side, then publish it
+atomically and restart only the workers whose settings changed. If `Reconfigure` returns an error, the plugin must still
+serve its previous configuration; Nauthilus keeps the previous config view for the module, reports the reload as
+`failed`, and retries the change on the next reload. The new Policy generation and the other modules stay active.
+Background work that loaded data for the previous configuration must not publish it after `Reconfigure` switched to the
+new one.
 
-A changed config subtree for a plugin that does not implement `ReloadablePlugin` is currently skipped rather than rejected. `Host.Config()` also remains the process-start host snapshot; only the module `ConfigView` passed to `Reconfigure` is current.
+`Host.Config()` is the process-start host snapshot and does not change on reload; read module settings from the
+`ConfigView` passed to `Register` and `Reconfigure`.
 
-Only the opaque module `config` subtree is reloadable through this interface. Module additions/removals and changes to identity, path, checksum, signature, signer, optionality, stop timeout, capability allowlist, trust, allowed directories, or verification policy require a process restart.
+Each reload is logged per module (`plugin_module`, `plugin_reload_result`) and counted in
+`plugin_reconfigure_total{module,result}` with `reloaded`, `unchanged`, `restart_required`, `rejected` (the plugin
+refused the candidate), `failed` (`Reconfigure` failed after commit), or `aborted` (the change was valid but the reload
+was rejected elsewhere). Neither log nor metric contains config values or error text, so keep plugin errors free of
+configured values as well.
+
+Only the opaque module `config` subtree is reloadable through this interface. Module additions/removals and changes to
+identity, path, checksum, signature, signer, optionality, stop timeout, capability allowlist, hook authorization,
+compatibility allowlists, `positive_password_cache`, trust, allowed directories, or verification policy require a process
+restart.
 
 ## Shutdown
 

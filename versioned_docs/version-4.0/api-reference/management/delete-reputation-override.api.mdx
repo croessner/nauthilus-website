@@ -1,0 +1,64 @@
+---
+id: delete-reputation-override
+title: "Remove one selected operator override revision."
+description: "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history."
+sidebar_label: "Remove one selected operator override revision."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "delete api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Remove one selected operator override revision."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/api/v1/custom/reputation/override"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./delete-reputation-override.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./delete-reputation-override.StatusCodes.json")}
+>
+
+</StatusCodes>

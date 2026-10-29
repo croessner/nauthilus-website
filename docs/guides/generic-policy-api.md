@@ -20,7 +20,7 @@ are facts inside that request; the endpoint is not a batch API. It has no result
 idempotency endpoint, or outcome-reporting API.
 
 The authoritative wire contract is the Nauthilus v4 OpenAPI document. The generated website API pages may temporarily
-lag that source during the alpha release process; use this guide together with the exact OpenAPI artifact shipped by the
+lag that source; use this guide together with the exact OpenAPI artifact shipped by the
 Nauthilus build you deploy.
 
 ## Enable the protected route
@@ -108,7 +108,9 @@ curl --fail-with-body \
 ### Policy Basic
 
 Policy Basic is enabled only by an admitted Policy client profile. It never falls back to management Basic. Use it only
-over the protected HTTPS boundary and keep the password in the caller's secret store.
+over the protected HTTPS boundary and keep the password in the caller's secret store. A wrong Policy-Basic password is answered after a fixed
+300 ms delay and logged at warning level without credentials. Callers are never locked out, and verification uses only
+the active generation's credentials, so it does not depend on Redis.
 
 ```bash
 curl --fail-with-body \
@@ -185,8 +187,10 @@ be finite. A record list is ordered and non-recursive:
 ```
 
 The configured target schema owns type, provenance, sensitivity, required fields, closed vocabularies, and tighter
-scalar/list/record bounds. Caller-owned facts cannot impersonate provider-owned facts. Empty, missing, malformed, and
-schema-incompatible collections never become a vacuous permit.
+scalar/list/record bounds. Caller-owned facts cannot impersonate provider-owned facts. Malformed and
+schema-incompatible collections are rejected. In record predicates, a missing collection makes every quantifier false
+and a present empty collection makes `any` false but `all`/`none` true, so permit-sensitive schemas declare
+`min_records: 1`; see [record predicates](../configuration/auth-policy.md#record-predicates).
 
 ## Response contract
 
@@ -208,7 +212,10 @@ A completed evaluation returns HTTP `200`, including a safely constructed `indet
 ```
 
 The response object always includes `request_id`, `decision_id`, `effect`, and `status`. `status` always includes
-`code`, `message`, and `retryable`, with optional bounded validation `details`. The effect vocabulary is:
+`code`, `message`, and `retryable`, with optional bounded validation `details`. `status.code` is one of `permit`,
+`policy_denied`, `not_applicable`, `no_applicable_rule`, `no_match_deny`, `evaluation_failed`, `provider_unavailable`,
+`effect_outcome_unknown`, `effect_outcome_unknown_replay_safe`, `effect_replay_unsafe`, or
+`effect_acceptance_rejected`. The effect vocabulary is:
 
 | Effect | Caller interpretation |
 | --- | --- |
@@ -250,10 +257,19 @@ Provider or evaluation failures can produce a retryable or non-retryable `indete
 prevents a successful decision response. Post-action acceptance failure prevents finalization, while an accepted
 post-action that later fails cannot change the already returned decision.
 
-The host attempts each selected effect ordinal at most once. It provides no automatic retry, replay, deduplication, or
-outcome query. If a response or audit reports `outcome_unknown`, an external dispatch may already have happened.
-Reconcile the destination using the Decision ID and the provider-owned domain identity before submitting another
-operation.
+The host attempts each selected effect ordinal at most once. It provides no automatic retry, deduplication, or outcome
+query. Retry guidance depends on the replay safety each native effect declares in its descriptor (`unsafe` or
+`idempotent` with an exact caller-owned key fact); Lua effects are always `unsafe`:
+
+| `status.code` | `retryable` | Meaning and caller action |
+| --- | --- | --- |
+| `effect_outcome_unknown` | `false` | An unsafe external dispatch may have happened. Reconcile the destination using the Decision ID and the provider-owned domain identity before another domain action; never assume absence. |
+| `effect_outcome_unknown_replay_safe` | `true` | The outcome is unknown, but every attempted effect declared idempotence. Retry the complete identical request with the same payload and the original idempotency key values. |
+| `effect_replay_unsafe` | `false` | A non-idempotent effect already completed or was accepted before a later failure. Reconcile the partial execution; do not repeat the request. |
+| `effect_acceptance_rejected` | `true` | A mandatory post-action was not accepted before finalization. Repair supervisor capacity or shutdown state. |
+
+An idempotent effect requires its key fact as a required caller-owned string of at most 128 bytes in every selected
+target schema. A request without a non-empty key value is rejected before the provider runs.
 
 ## gRPC `Evaluate`
 

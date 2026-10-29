@@ -60,6 +60,36 @@ type Backend interface {
 
 `Name` must be a unique valid local component name. `VerifyPassword` returns the complete [backend result](./results.md#backendresult). `ListAccounts` implements account-provider operations. Both run synchronously, are panic-protected, and must honor cancellation. The host invokes only registered backends.
 
+### `PositivePasswordCacheBackend`
+
+```go
+type PositivePasswordCacheBackend interface {
+    PositivePasswordCacheable() bool
+}
+```
+
+Optional opt-in for the host's Redis positive password cache. The host uses it only when the operator also sets `plugins.modules[].positive_password_cache: true`; registration rejects that setting if any backend of the module lacks the declaration or returns `false`. Backends without the declaration keep their current behavior.
+
+The declaration is a semantic promise the host cannot prove for trusted in-process code: successful results depend only on credentials and identity, stay valid for `storage.redis.positive_cache_ttl`, and skipping `VerifyPassword` and its side effects on a cache hit is acceptable. Do not opt in for one-time credentials, request- or IP-dependent verification, or mandatory per-login database writes; put repeatable per-request work into subject sources or post-actions instead.
+
+The cache stores an immutable JSON snapshot of the original `BackendResult` before subject processing, including `Account`, `AccountField`, attributes, identity field names, groups and group DNs, `BackendServer`, status, and facts. It is restored through the live backend adapter, so the qualified backend name `module.component` and the backend reference are reconstructed identically. Only successful found-user results that survive an exact JSON encode/decode round trip are stored: facts with integer types, `float32`, typed containers, or other values whose Go type changes in JSON make the whole result uncacheable, and such requests continue through normal authentication without a cache write. Strings, booleans, finite `float64` values, and JSON-native containers round-trip.
+
+The payload is versioned and bound to the submitted username, protocol, and OIDC client ID. A cache hit enters the normal password pipeline as frozen host credential evidence; subject patches cannot raise a failed credential into a permit or a cache write. Subject sources, Policy evaluation, and post-actions still run on every request, and their changes are not part of the snapshot. Wrong passwords miss the cache; no negative entries are stored. The process-local positive backend cache is separate and already serves plugin results.
+
+### `PositivePasswordCacheScopeBackend`
+
+```go
+type PositivePasswordCacheScopeBackend interface {
+    PositivePasswordCacheScope(RequestSnapshot) (scope string, cacheable bool)
+}
+```
+
+Implement this as well when a backend resolves short usernames with an additional identity input, such as a tenant or domain header. Return the effective domain, or a deterministic discriminator that contains every additional input that can change the result, and `false` when the request cannot be cached safely; `false` bypasses both the Redis and the in-memory positive cache for that request. The method must be pure: no I/O, no side effects, no secrets in the scope. The host calls it behind the plugin panic boundary, and a panic bypasses the cache.
+
+The canonical account remains the Redis key; the envelope additionally binds username, protocol, OIDC client, and plugin scope, and a different scope requires a fresh backend lookup before any cached identity is applied. The same scope check guards the in-memory cache, and scope-aware plugins without the joint operator/plugin opt-in bypass the in-memory cache too. Derive the scope with the same resolver `VerifyPassword` uses, including fallbacks and fully qualified username precedence. The account-mapping index is not scoped: alternating domains for one short username can cause extra misses but never authorize the wrong canonical account. A scope does not make time-dependent decisions cacheable.
+
+Operator configuration and invalidation are described in [Positive password cache for backend modules](../../../configuration/native-go-plugins.md#positive-password-cache-for-backend-modules).
+
 ## TOTP
 
 ### Request and result structs

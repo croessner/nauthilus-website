@@ -225,7 +225,7 @@ Reads `FieldHashInfo` from the `KeyHaveIBeenPwned` map and converts it through `
 func (s Snapshot) GeoIPReputation() map[string]any
 ```
 
-Returns non-empty runtime `KeyGeoIPReputation` first. If absent/empty, returns a copy of policy-fact fields indexed under namespace `geoip_reputation`.
+Returns only an explicitly supplied runtime `KeyGeoIPReputation` map for historical analytics. There is no policy-fact fallback: facts indexed under namespace `geoip_reputation` are ignored. An absent value returns `nil`.
 
 ### `Snapshot.DecisionSources`
 
@@ -246,8 +246,9 @@ Returns deterministic, first-seen, exact-string-deduplicated source names in thi
    - `blocklist.matched` -> `blocklist`;
    - `geoip.rejected` -> `geoip_policyd`;
    - `failed_login_hotspot.triggered`;
-   - `account_protection.active`;
-   - suspicious `geoip_reputation.decision`.
+   - `account_protection.active`.
+
+A `geoip_reputation` policy fact no longer implies a decision source; only the explicit runtime exchange map above does.
 
 Feature markers add their feature name only when `triggered` is truthy. Dedupe preserves the first occurrence and is case-sensitive. Blank source names are skipped.
 

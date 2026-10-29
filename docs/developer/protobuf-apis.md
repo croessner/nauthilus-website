@@ -37,7 +37,14 @@ semantics match the REST contract. See [Generic Policy API](../guides/generic-po
 
 ## Go Toolchain and Native Plugins
 
-The `v4.0.0-alpha.1` source and release build use Go 1.27 with `GOEXPERIMENT=runtimesecret`. Native Go `.so` plugins are
+The Nauthilus `v4.0.0` source and release build use exactly Go 1.27.1 with `GOEXPERIMENT=runtimesecret`. Native Go `.so` plugins are
 not protected by protobuf wire compatibility: rebuild them from the exact Nauthilus commit with the same Go version,
 module graph, experiment, build tags, CGO mode, operating system, and architecture. The public `pluginapi/v1` contract
 does not make mismatched Go binaries load-compatible.
+
+## Code Generation Toolchain
+
+The checked-in `*.pb.go` files are generated with `protoc` 36.1, `protoc-gen-go` 1.36.11, and `protoc-gen-go-grpc`
+1.5.1. The versions are pinned in `scripts/protobuf-toolchain.env`; the generation scripts refuse to run with other
+generator versions, and CI checks that regenerating produces the committed files (`make generate-grpc-proto-check`). Use the same versions when you regenerate the public contracts, so version headers and
+generated output stay stable.

@@ -18,8 +18,8 @@ type HookScope string
 | Constant | Value | Token scope mapping |
 | --- | --- | --- |
 | `HookScopePublic` | `"public"` | No bearer scope required. |
-| `HookScopeInternal` | `"internal"` | Nauthilus `authenticate` scope. |
-| `HookScopeAdmin` | `"admin"` | Nauthilus `admin` scope. |
+| `HookScopeInternal` | `"internal"` | Nauthilus `nauthilus:authenticate` scope. |
+| `HookScopeAdmin` | `"admin"` | Nauthilus `nauthilus:admin` scope. |
 
 Scope is evaluated together with `HookAuth` when the operator has not configured
 an exact `required_scopes` override. It is not sufficient on its own.
@@ -34,7 +34,7 @@ type HookAuth string
 | --- | --- | --- |
 | `HookAuthNone` | `"none"` | No hook-specific authentication. Allowed only with public scope. |
 | `HookAuthToken` | `"token"` | Valid bearer token plus the scope mapped from `HookScope`, unless exact operator scopes replace that mapping. |
-| `HookAuthSession` | `"session"` | Current production adapter requires the validated Basic/session marker. It does not evaluate `HookScope`. |
+| `HookAuthSession` | `"session"` | Requires the validated Basic/session marker for public and internal scope. Combined with `HookScopeAdmin`, it requires an administrative bearer token instead. |
 | `HookAuthAdmin` | `"admin"` | Always requires an administrative bearer token, regardless of scope. |
 
 ### Coarse authorization matrix
@@ -43,12 +43,14 @@ This matrix applies when the effective descriptor has no `RequiredScopes`:
 
 | `Auth` | `public` scope | `internal` scope | `admin` scope |
 | --- | --- | --- | --- |
-| `none` | Allowed anonymously | Rejected with 403 before plugin call | Rejected with 403 before plugin call |
-| `token` | Bearer token, no required scope | Bearer token with `authenticate` scope | Bearer token with `admin` scope |
+| `none` | Allowed anonymously | Rejected with 403 before plugin call | Admin bearer required |
+| `token` | Bearer token, no required scope | Bearer token with `nauthilus:authenticate` scope | Bearer token with `nauthilus:admin` scope |
 | `admin` | Admin bearer required | Admin bearer required | Admin bearer required |
-| `session` | Validated Basic/session marker | Same marker; scope ignored | Same marker; **not** an admin check |
+| `session` | Validated Basic/session marker | Same marker | Admin bearer required |
 
-Do not use `HookAuthSession` with `HookScopeAdmin` to protect administrative operations in the current implementation. Use `HookAuthAdmin`.
+Any administrative descriptor, meaning `HookAuthAdmin` or `HookScopeAdmin` with any auth mode, requires a bearer token
+with the `nauthilus:admin` scope before any other check. A Basic/session context never satisfies it. Prefer
+`HookAuthAdmin` for administrative hooks so that the descriptor states the requirement explicitly.
 
 ### Exact operator-owned scopes
 
@@ -66,9 +68,13 @@ plugins:
             - nauthilus:custom:health
 ```
 
-The list has **any-of** semantics: a valid bearer token containing either scope
-is accepted. Exact scopes take precedence over the descriptor's coarse
-`Scope`/`Auth` mapping at request time. Authorization still happens before body
+The list has **any-of** semantics: for a non-administrative hook, a valid
+bearer token containing either scope is accepted, and exact scopes take
+precedence over the descriptor's coarse `Scope`/`Auth` mapping at request time.
+For an administrative descriptor (`HookScopeAdmin` or `HookAuthAdmin`) the list
+can only narrow access: the caller must hold `nauthilus:admin` **and**, when
+configured, at least one listed scope. Configured scopes never replace the
+administrative requirement. Authorization still happens before body
 reading, request construction, and plugin invocation.
 
 This override is deliberately host-owned:

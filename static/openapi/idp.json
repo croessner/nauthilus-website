@@ -320,6 +320,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/Resource"
           }
         ],
         "responses": {
@@ -330,7 +333,14 @@
             "$ref": "#/components/responses/Redirect"
           },
           "400": {
-            "$ref": "#/components/responses/Error"
+            "description": "Invalid authorization request, answered as a plain-text message (for example \"Invalid resource\" for a resource indicator that is malformed, unregistered, or not requestable by a static client). Dynamic clients receive such errors, including invalid_target, as a redirect to their validated redirect URI instead.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -505,7 +515,16 @@
                   },
                   "scope": {
                     "type": "string"
+                  },
+                  "resource": {
+                    "$ref": "#/components/schemas/ResourceIndicators"
                   }
+                }
+              },
+              "encoding": {
+                "resource": {
+                  "style": "form",
+                  "explode": true
                 }
               }
             }
@@ -1118,6 +1137,17 @@
       }
     },
     "parameters": {
+      "Resource": {
+        "name": "resource",
+        "in": "query",
+        "required": false,
+        "description": "RFC 8707 resource indicator. The parameter may repeat; every value must be an absolute URI without fragment that a resource server registered through token_introspection.resources and whose allowlist names the requesting client. Otherwise the request fails with invalid_target.",
+        "style": "form",
+        "explode": true,
+        "schema": {
+          "$ref": "#/components/schemas/ResourceIndicators"
+        }
+      },
       "ClientID": {
         "name": "client_id",
         "in": "query",
@@ -1257,6 +1287,24 @@
         "properties": {
           "active": {
             "type": "boolean"
+          },
+          "aud": {
+            "description": "Token audience. A user access token without resource indicators carries the client id as a string; with resource indicators it carries an array of the client id and the resources.",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "azp": {
+            "type": "string",
+            "description": "Client a user access token was issued to. Service tokens carry client_id instead."
           }
         },
         "additionalProperties": true
@@ -1295,7 +1343,8 @@
         ],
         "properties": {
           "error": {
-            "type": "string"
+            "type": "string",
+            "description": "OAuth error code such as invalid_request, invalid_client, invalid_grant, invalid_scope, or invalid_target (RFC 8707) for a rejected resource parameter."
           },
           "error_description": {
             "type": "string"
@@ -1587,7 +1636,18 @@
           "client_assertion": {
             "type": "string",
             "description": "JWT client assertion for private_key_jwt token endpoint authentication."
+          },
+          "resource": {
+            "$ref": "#/components/schemas/ResourceIndicators"
           }
+        }
+      },
+      "ResourceIndicators": {
+        "type": "array",
+        "description": "RFC 8707 resource indicators (absolute URIs without fragment). At the token endpoint they may only narrow the access token to a subset of the granted resources; client_credentials rejects them with invalid_target.",
+        "items": {
+          "type": "string",
+          "format": "uri"
         }
       },
       "TokenResponse": {

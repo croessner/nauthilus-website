@@ -314,10 +314,11 @@ type LDAPSearchResult struct {
 }
 
 type LDAPModifyRequest struct {
-    Attributes map[string][]string
-    PoolName   string
-    DN         string
-    Operation  LDAPModifyOperation
+    AssertionFilter string
+    Attributes      map[string][]string
+    PoolName        string
+    DN              string
+    Operation       LDAPModifyOperation
 }
 
 type LDAPEntry struct {
@@ -335,6 +336,7 @@ type LDAPEntry struct {
 | `LDAPSearchRequest.Scope` | Required supported scope above. |
 | `LDAPSearchResult.Attributes` | Host-flattened attribute map from the LDAP reply. |
 | `LDAPSearchResult.Entries` | Per-entry result values. |
+| `LDAPModifyRequest.AssertionFilter` | Optional LDAP filter sent as a critical RFC 4528 assertion control (OID `1.3.6.1.1.12`). The server applies the modification only when the entry still matches the filter, which gives a compare-and-swap precondition. An invalid filter fails the request before it is sent; an unmatched assertion returns the directory's error. Empty sends an unconditional modify. |
 | `LDAPModifyRequest.Attributes` | Copied attribute/value mutations. |
 | `LDAPModifyRequest.PoolName` | Host LDAP pool selector. |
 | `LDAPModifyRequest.DN` | Target DN. The facade does not validate syntax. |
@@ -354,6 +356,46 @@ type LDAP interface {
 ```
 
 Both methods clone mutable request containers before queueing and honor caller cancellation while waiting for a reply. Queue/LDAP errors can contain sensitive server text; classify/redact them.
+
+## Opaque identifier tagging
+
+`Host.OpaqueIdentifierTagger()` returns a keyed, host-owned tagging service. Plugins never receive key bytes and must not
+place tagging keys in their module `config`.
+
+```go
+type OpaqueIdentifierInput struct{ Scope, Kind, Value string }
+
+type OpaqueIdentifierTagger interface {
+    Tag(context.Context, OpaqueIdentifierInput) (OpaqueIdentifierTag, error)
+    TagVersion(context.Context, OpaqueIdentifierInput, string) (OpaqueIdentifierTag, error)
+    Candidates(context.Context, OpaqueIdentifierInput) ([]OpaqueIdentifierTag, error)
+}
+
+func (t OpaqueIdentifierTag) Version() string
+func (t OpaqueIdentifierTag) String() string
+```
+
+| Rule | Contract |
+| --- | --- |
+| `Scope`, `Kind` | Canonical lowercase ASCII labels of at most 64 bytes (`MaximumOpaqueIdentifierLabelLength`): `a-z`, `0-9`, and, after the first byte, `_`, `-`, `.`. The scope must exactly match an operator-configured scope. |
+| `Value` | Non-empty valid UTF-8 of at most 65536 bytes (`MaximumOpaqueIdentifierValueLength`). The tagger does not normalize it. |
+| `Tag` | Tags with the scope's active key. |
+| `TagVersion` | Tags with one explicit key version (at most 32 bytes). Unknown versions fail; there is no fallback. |
+| `Candidates` | Returns the active tag and, when configured, the previous-key tag, in that order. |
+| Output | `hmac-sha256-v1:<version>:<unpadded-base64url-authenticator>`. |
+
+Tags use HMAC-SHA-256 with 32-byte host keys. The authenticated frame is `nauthilus.opaque_identifier.v1`, a NUL byte, and
+then version, scope, kind, and value, each prefixed by its four-byte big-endian length. Scope, kind, and value are
+therefore separate cryptographic domains. The tagger stores, scores, and interprets nothing; rotation behavior of stored
+state belongs to the consuming plugin.
+
+| Error | Returned when |
+| --- | --- |
+| `ErrOpaqueIdentifierTaggerUnavailable` | The operator configured no `plugins.opaque_identifier_tagger`. |
+| `ErrOpaqueIdentifierInput` | Scope, kind, value, or version text is malformed. Errors never include the value. |
+| `ErrOpaqueIdentifierVersion` | The scope is not configured or the requested key version is unavailable. |
+
+Operators configure the keys in [Native Go Plugins](../../../configuration/native-go-plugins.md#opaque-identifier-keys).
 
 ## Metrics
 

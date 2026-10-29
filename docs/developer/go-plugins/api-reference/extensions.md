@@ -132,6 +132,13 @@ type SubjectRequest struct {
 
 `BackendResult` is a value copy of the current backend outcome. It is not mutable host state. `Credentials` remains capability-gated.
 
+`BackendResult.Facts` carries the completed public Lua and native plugin provider output collected earlier in the same
+admitted Decision Service session, for example GeoIP facts from an environment provider. Only facts whose source is `lua`
+or `plugin` are projected; caller, token, transport, and host-only facts are excluded. Before a provider is scheduled
+again, its declared output is removed from the carried evidence, so a skipped or failed refresh never reuses an earlier
+value. Consume this projection instead of assuming that an environment provider wrote a runtime map as a side effect.
+The backend selection is retained across every selected subject provider of the checkpoint.
+
 ### `SubjectResult`
 
 ```go
@@ -179,14 +186,26 @@ The lifecycle, deadline, error, and panic rules match `EnvironmentSource`.
 
 ```go
 type ObligationRequest struct {
-    Snapshot RequestSnapshot
-    Runtime  RuntimeContext
-    Args     ArgsView
-    Facts    []PolicyFact
+    // unexported host-assigned execution identity
+    BackendOutcome BackendOutcomeView
+    Snapshot       RequestSnapshot
+    Runtime        RuntimeContext
+    Credentials    CredentialProvider
+    Args           ArgsView
+    Facts          []PolicyFact
 }
+
+func (r ObligationRequest) ExecutionIdentity() ExecutionIdentityView
 ```
 
+`Credentials` exposes the submitted request password under the same `credentials` capability that gates environment sources, subject sources, backends, and post-actions; there is no obligation-specific capability. The host projects the password only when the module called `RequireCapability(CapabilityCredentials)` in `Register` and the operator listed `credentials` in `allow_capabilities`. On host-built requests the field is always a non-nil provider; without the grant `Password(ctx)` returns `nil, false` and the provider holds no password material. With the grant the password is request-scoped: it becomes unavailable when the request context ends, so read it synchronously inside `Execute` and never retain the `Secret`. A grant issued to one module is never visible to another.
+
+A typical use is a pre-auth obligation that runs on a brute-force or RBL deny and checks whether the submitted password is the account's known-good password before choosing a response. `RequestSnapshot.Account` is best effort in `pre_auth`: with brute-force protection enabled it is commonly empty, so key such lookups by `RequestSnapshot.Username` and treat `Account` only as a hint.
+
+The host renders its credential provider and secret values as a fixed redaction marker in `fmt`, `slog`, and plugin log fields, and JSON encoding yields no secret bytes. Never put password bytes, derived hashes, or comparison inputs into log fields, facts, runtime deltas, status text, span attributes, or errors.
+
 `Args` is the configured effect-argument subtree; `Facts` are the facts available to the final decision/effect. Both are read-only views/copies.
+`BackendOutcome` and `ExecutionIdentity()` are described below under [Host-captured request views](#host-captured-request-views).
 
 ### `ObligationResult`
 
@@ -223,19 +242,26 @@ type ObligationTarget interface {
 
 `Name` is a valid unique local component name. `Execute` runs synchronously in the request path; it must honor cancellation and its operational bounds. Errors/panics fail the effect rather than being converted to a normal result.
 
+An obligation target may additionally implement [`CallbackAdmission`](#callback-admission-limits) to declare
+host-enforced rate and concurrency bounds.
+
 ## Post-actions
 
 ### `PostActionRequest`
 
 ```go
 type PostActionRequest struct {
-    Snapshot     RequestSnapshot
-    Runtime      RuntimeContext
-    Credentials  CredentialProvider
-    PasswordHash string
-    Args         ArgsView
-    Facts        []PolicyFact
+    // unexported host-assigned execution identity
+    BackendOutcome BackendOutcomeView
+    Snapshot       RequestSnapshot
+    Runtime        RuntimeContext
+    Credentials    CredentialProvider
+    PasswordHash   string
+    Args           ArgsView
+    Facts          []PolicyFact
 }
+
+func (r PostActionRequest) ExecutionIdentity() ExecutionIdentityView
 ```
 
 | Field | Meaning and security note |
@@ -243,7 +269,8 @@ type PostActionRequest struct {
 | `Snapshot` | Final request snapshot available to the enqueue decision. |
 | `Runtime` | Read-only runtime values. |
 | `Credentials` | Capability-gated provider. Use only synchronously inside `Enqueue`; never retain or pass to detached work. |
-| `PasswordHash` | Host-generated password-derived value, delivered to all post-action targets regardless of credentials capability. It is the lowercase 64-character SHA-256 digest of `nonce || NUL || password` in every runtime mode. Treat it as sensitive, never log/trace/store/expose it, and validate the full digest before deriving any shortened integration-specific representation. |
+| `BackendOutcome` | Immutable host-captured credential evidence; see [Host-captured request views](#host-captured-request-views). |
+| `PasswordHash` | Host-generated password-derived value. It is set only when a password was present **and** the module requested and the operator allowed the `password_hash` capability; otherwise it is empty. `credentials` does not imply it, and `password_hash` grants no raw credential access. It is the lowercase 64-character SHA-256 digest of `nonce || NUL || password` in every runtime mode. Treat it as sensitive, never log/trace/store/expose it, and validate the full digest before deriving any shortened integration-specific representation. |
 | `Args` | Read-only post-action arguments. |
 | `Facts` | Facts available at the post-decision stage. |
 
@@ -283,3 +310,71 @@ type PostActionTarget interface {
 ```
 
 `Name` follows component-name validation. `Enqueue` is called after decision processing to accept or skip follow-up work. Keep it bounded; use `Host.Go` or a plugin-owned lifecycle-managed queue for detached processing, and copy only non-secret values. Errors and panics are classified plugin failures.
+
+## Callback admission limits
+
+```go
+type CallbackAdmissionLimits struct {
+    RequestsPerSecond int
+    MaxConcurrency    int
+}
+
+type CallbackAdmission interface {
+    AdmissionLimits() (requestsPerSecond, maxConcurrency int)
+}
+
+type BoundedPostActionTarget interface {
+    PostActionTarget
+    AdmissionLimits() (requestsPerSecond, maxConcurrency int)
+}
+
+type PostActionAdmissionLimits = CallbackAdmissionLimits
+```
+
+An `ObligationTarget` or `PostActionTarget` that also implements `AdmissionLimits()` declares optional host-enforced
+bounds. The registrar reads them once during registration and freezes them; `RequestsPerSecond` must be 1 to 10000 and
+`MaxConcurrency` 1 to 1024, otherwise registration fails. The host enforces the limits before invoking the callback with
+a token bucket whose burst equals the per-second rate plus a concurrency ceiling. Limits apply per registered component
+within one runtime generation. Exhaustion returns a temporary callback failure without invoking plugin code; for a
+detached post-action it cannot rewrite an already finalized authentication response. `PostActionAdmissionLimits`
+remains a source-compatible alias.
+
+## Host-captured request views
+
+### `ExecutionIdentityView`
+
+```go
+func (v ExecutionIdentityView) Module() string
+func (v ExecutionIdentityView) Component() string
+func (v ExecutionIdentityView) ExtensionPoint() string
+func (v ExecutionIdentityView) Operation() string
+func (v ExecutionIdentityView) Target() DecisionTargetSelector
+```
+
+`ObligationRequest`, `PostActionRequest`, and `DecisionEffectRequest` expose an immutable `ExecutionIdentity()` with the
+configured module instance, registered component, callback extension point, selected operation, and exact target. The
+host derives it from the captured registry generation; facts, arguments, and returned plugin values never supply it, and
+authentication adapters overwrite any identity in an incoming internal request. The constructors
+(`NewExecutionIdentityView`, `NewObligationRequest`, `NewPostActionRequest`) serve host adapters and tests; building a
+local value grants no registration or execution authority.
+
+### `BackendOutcomeView`
+
+```go
+const (
+    BackendOutcomeAuthenticated  BackendOutcomeStatus = "authenticated"
+    BackendOutcomeBadCredentials BackendOutcomeStatus = "bad_credentials"
+)
+
+func (v BackendOutcomeView) Observed() bool
+func (v BackendOutcomeView) EventID() string
+func (v BackendOutcomeView) Account() string
+func (v BackendOutcomeView) Status() BackendOutcomeStatus
+func (v BackendOutcomeView) ObservedAt() time.Time
+```
+
+`ObligationRequest.BackendOutcome` and `PostActionRequest.BackendOutcome` carry independent credential evidence captured
+by the host before subject patches and the final Policy decision: a stable host event ID (at most 128 bytes), the
+backend-normalized account, the UTC capture time, and the closed status. Later runtime flags cannot rewrite it. The zero
+value (`Observed() == false`) means no independent backend result was observed; lookup-only requests never create it.
+Do not interpret missing evidence as bad credentials.

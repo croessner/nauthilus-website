@@ -149,17 +149,25 @@ Policy facts and runtime values are deliberately separate. Facts are validated d
 
 ## Build the shared object
 
-Use the same experiment, tags, and path-shaping flags as the host build:
+Use the same experiment, tags, path-shaping flags, and native artifact identity as the host build. The identity comes
+from the fingerprint tool in the exact Nauthilus source checkout that built the server:
 
 ```shell
-GOEXPERIMENT=runtimesecret \
+export GOEXPERIMENT=runtimesecret
+NATIVE_ARTIFACT_LDFLAGS="$(cd /path/to/nauthilus && \
+  go run -mod=vendor ./scripts/native_artifact_fingerprint -tags=netgo)"
+
 go build \
   -tags=netgo \
   -trimpath \
+  -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -buildmode=plugin \
   -o build/customer-risk.so \
   .
 ```
+
+Without these `-ldflags`, the loader rejects the artifact before `plugin.Open`. See
+[native artifact identity](./build-test-debug.md#native-artifact-identity).
 
 If the host is built with additional build tags, the plugin build must use the same set. If your release process vendors modules, vendor the plugin's dependency graph and add `-mod=vendor` to match that process.
 

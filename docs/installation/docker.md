@@ -86,6 +86,40 @@ volumes:
 
 This keeps the runtime image immutable while the configuration stays version-controlled.
 
+## Kubernetes ConfigMap and Secret Mounts
+
+Kubernetes projects ConfigMap and Secret volumes as symbolic links: each visible file points to `..data/<name>`, and
+`..data` points to a hidden timestamped directory in the same mount. Nauthilus accepts exactly this layout for files
+that the configuration references, for example TLS material, IdP signing keys, Lua scripts and package modules, and
+frontend templates:
+
+```yaml
+volumes:
+  - name: nauthilus-tls
+    secret:
+      secretName: nauthilus-tls
+containers:
+  - name: nauthilus
+    volumeMounts:
+      - name: nauthilus-tls
+        mountPath: /etc/nauthilus/tls
+        readOnly: true
+```
+
+```yaml
+runtime:
+  servers:
+    http:
+      tls:
+        enabled: true
+        cert: "/etc/nauthilus/tls/tls.crt"
+        key: "/etc/nauthilus/tls/tls.key"
+```
+
+Other symbolic links, links that point outside the mount directory, and absolute link targets are still rejected. The
+frontend asset directories (`css`, `js`, `img`, `fonts`) must not contain symbolic links; keep them in the image or in a
+plain volume. See [File Artifacts and Symbolic Links](../configuration/reference.md#file-artifacts-and-symbolic-links).
+
 ## Environment Variables
 
 Environment variables follow the canonical v2 path mapping.
@@ -148,7 +182,7 @@ docker run --rm -v "$PWD/nauthilus.yml:/etc/nauthilus/nauthilus.yml:ro" \
 
 ## Bundled Native Go Plugins
 
-Current stable and debug images build `geoip.so`, `clickhouse.so`, and `haveibeenpwnd.so` from the same source tree and Go toolchain as the server. The artifacts are installed below:
+Current stable and debug images build `geoip.so`, `clickhouse.so`, `haveibeenpwnd.so`, `reputation.so`, and `dkim2-intelligence.so` from the same source tree and Go toolchain as the server. The stable image also ships `/usr/app/reputation-worker`; the debug image leaves it out on purpose. The artifacts are installed below:
 
 ```text
 /usr/local/lib/nauthilus/plugins/

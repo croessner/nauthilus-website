@@ -12,6 +12,15 @@ Nauthilus has basic support for some Prometheus metrics.
 local nauthilus_prometheus = require("nauthilus_prometheus")
 ```
 
+## Registration semantics
+
+Each `create_*_vec` call registers its collector with the process-wide Prometheus registry. Creating a metric whose
+name was already created by any Lua script in this process is a no-op. If a collector with the same name was
+registered by other Go code, for example by a native plugin, Nauthilus reuses it when it is the same metric type
+and its complete descriptor (name, help text, and label names) is identical. A collector with the same name but a
+different type or descriptor raises the Lua error `register Prometheus metric "<name>": ...` instead of panicking. Keep the
+help text and labels of a metric name identical in every script that creates it.
+
 ## Gauge vector
 
 You must create a gauge vector first before using it. This should be done in an init script.

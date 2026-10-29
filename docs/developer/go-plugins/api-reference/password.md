@@ -139,7 +139,7 @@ Converts plaintext to bytes and delegates. It is a convenience API; the plaintex
 func CompareHashBytes(hashPassword string, plainPassword []byte) (bool, error)
 ```
 
-Hashes whose prefix begins with an opening brace followed by `SSHA` use the salted-SHA parser/generator above. Other hashes are decoded and verified through the package's `github.com/simia-tech/crypt` dependency using the settings embedded in the stored hash. Unsupported/malformed formats or dependency errors are returned. It compares the full recomputed encoded hash with the stored hash using `subtle.ConstantTimeCompare`.
+Hashes whose prefix begins with an opening brace followed by `SSHA` use the salted-SHA parser/generator above. bcrypt hashes in the common variants `$2a$`, `$2b$`, and PHP's `$2y$` are verified in constant time through `golang.org/x/crypto/bcrypt`; like PHP `password_verify`, only the first 72 bytes of a longer password are evaluated, so accounts whose password was hashed elsewhere keep working. A wrong password is a clean mismatch (`false, nil`) and a malformed bcrypt hash is an error. Other hashes, such as `$1$`, `$5$`, `$6$`, and `$apr1$`, are decoded and verified through the package's `github.com/simia-tech/crypt` dependency using the settings embedded in the stored hash. Unsupported/malformed formats or dependency errors are returned. It compares the full recomputed encoded hash with the stored hash using `subtle.ConstantTimeCompare`.
 
 The function does not clear caller-owned plaintext bytes. The caller owns their lifetime.
 

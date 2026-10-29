@@ -27,6 +27,12 @@ runtime:
         address: "127.0.0.1:9444"
         backend_refs:
           enabled: false
+        keep_alive:
+          max_connection_age: 5m
+          max_connection_age_grace: 60s
+          max_connection_idle: 0s
+          min_ping_interval: 10s
+          permit_without_stream: true
         tls:
           enabled: false
           cert: ""
@@ -41,6 +47,20 @@ The default address is loopback-only. Plaintext gRPC is only accepted on loopbac
 Enabling the listener always registers `nauthilus.auth.v1.AuthService`. Backend references are opt-in and default to disabled. Set `runtime.servers.grpc.authority.backend_refs.enabled: true` only when this listener must also serve `nauthilus.identity.v1.IdentityBackendService`, as required by a split edge/authority deployment. Enabling backend references requires Redis; startup fails if no Redis-backed or injected backend-reference store is available.
 
 `min_tls_version` accepts `TLS1.2` and `TLS1.3`; unset values default to `TLS1.2`. The gRPC listener always advertises HTTP/2 through ALPN and does not expose configurable cipher suites.
+
+The listener sends an HTTP/2 GOAWAY after `keep_alive.max_connection_age` (default `5m`, with +/-10% jitter) and closes
+the connection forcibly after `max_connection_age_grace` (default `60s`). Clients finish in-flight RPCs, reconnect, and
+re-resolve the target, so connection-level load balancers such as a Kubernetes `ClusterIP` service can spread clients
+over all replicas. Clients may send keepalive pings every `min_ping_interval` (default `10s`), also without active RPCs;
+clients that ping more often are disconnected with `too_many_pings`. For an even per-RPC distribution, resolve all
+replicas (for example a headless service with a `dns:///` target) and use the `round_robin` load-balancing policy. See
+[Connection Ageing and Keepalive](configuration/server-configuration.md#connection-ageing-and-keepalive).
+
+With `runtime.servers.http.middlewares.limit` enabled, the HTTP API and the gRPC listener draw on one shared concurrency
+budget of `auth.pipeline.max_concurrent_requests`. A call beyond the budget is answered with `RESOURCE_EXHAUSTED`
+(`Too many concurrent requests`) before tracing, logging, and caller authentication run, so it costs almost nothing.
+Clients should back off and retry. See
+[Concurrency Limit](configuration/server-configuration.md#concurrency-limit).
 
 Timeouts are shared with HTTP authentication:
 
@@ -79,6 +99,11 @@ authorization: Bearer <access-token>
 ```
 
 Caller-auth failures are transport errors such as `Unauthenticated` or `PermissionDenied`. User authentication failures are domain decisions inside successful RPC responses.
+
+Callers are never locked out. A rejected caller receives `UNAUTHENTICATED` after a fixed 300 ms delay. Unlike the HTTP
+API, the gRPC listener has no per-client-IP failure budget. When the token
+state or signing keys cannot be read, the listener answers `UNAVAILABLE` instead of a rejection, so clients should retry
+that status. See [Backchannel Caller Rejections](rest-api.md#backchannel-caller-rejections).
 
 Policy-localized status messages use gRPC metadata. A client can send language preference metadata:
 
@@ -285,6 +310,20 @@ message OperationStatus {
 ```
 
 Transport errors mean the RPC itself could not be accepted or completed. `OperationStatus` describes an accepted authority operation and is safe to expose to logs or user-facing error mapping when appropriate.
+
+`AuthService` and the Policy `PolicyDecisionService` share one mapping for failures of the decision service. Public
+status messages never contain wrapped diagnostic details.
+
+| Failure category | gRPC status |
+| --- | --- |
+| Disabled decision route | `UNIMPLEMENTED` |
+| Decision caller credentials rejected | `UNAUTHENTICATED` |
+| Request-size, fact-count, concurrency, or rate limit exceeded | `RESOURCE_EXHAUSTED` |
+| Other admission rejection (caller or invocation not permitted) | `PERMISSION_DENIED` |
+| Caller authentication temporarily unavailable, runtime generation unavailable, or missing service dependency | `UNAVAILABLE` |
+
+Earlier releases answered admission limits on `AuthService` with `INTERNAL`. Only the classified limits map to
+`RESOURCE_EXHAUSTED`; treat other statuses as their own category rather than as capacity exhaustion.
 
 ## Authority Scope Matrix
 

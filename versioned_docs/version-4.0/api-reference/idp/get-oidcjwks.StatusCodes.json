@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"JSON Web Key Set.","content":{"application/json":{"schema":{"type":"object","required":["keys"],"properties":{"keys":{"type":"array","items":{"type":"object","additionalProperties":true}}},"title":"JWKS"}}}}}}

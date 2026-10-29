@@ -32,9 +32,10 @@ Capabilities are cooperative, host-controlled permissions requested during regis
 | Constant | Value | Current behavior |
 | --- | --- | --- |
 | `CapabilityCredentials` | `"credentials"` | Required before a module receives a usable request `CredentialProvider`; the operator must also allow it. |
+| `CapabilityPasswordHash` | `"password_hash"` | Required before a detached post-action receives `PostActionRequest.PasswordHash`. It grants no raw credential access, and `credentials` does not imply it. The operator must also allow it. |
 | `CapabilityMail` | `"mail"` | Declares mail intent. The current `Host.Mail` facade does **not** independently enforce that it was requested, so artifact trust and operator review remain essential. |
 
-`Metadata.Capabilities` is discovery metadata only. It does not grant a capability. Call `Registrar.RequireCapability`. If an operator omits `allow_capabilities`, the current loader treats credentials and mail as sensitive and denies them by default; unknown capability strings can be self-requested but have no defined host effect.
+`Metadata.Capabilities` is discovery metadata only. It does not grant a capability. Call `Registrar.RequireCapability`. If an operator omits `allow_capabilities`, the current loader treats `credentials`, `password_hash`, and `mail` as sensitive and denies them by default; unknown capability strings can be self-requested but have no defined host effect.
 
 ## `Feature`
 
@@ -48,21 +49,35 @@ type Feature string
 
 ```go
 type BuildInfo struct {
-    BuildTags []string
-    GoVersion string
-    GitCommit string
-    BuildTime string
+    ArtifactIdentity string
+    BuildTags        []string
+    GoVersion        string
+    GitCommit        string
+    BuildTime        string
 }
 ```
 
 | Field | Meaning and validation |
 | --- | --- |
+| `ArtifactIdentity` | Diagnostic native build identity. Set it to `pluginapi.NativeArtifactIdentity()`. It records the coherent host/plugin build set; it is not an ABI stability promise and does not replace the loader preflight. |
 | `BuildTags` | Diagnostic build tags. No public semantic validation; preserve stable, non-secret values. |
 | `GoVersion` | Diagnostic Go toolchain string. It does not make the artifact ABI-compatible. |
 | `GitCommit` | Diagnostic source revision. Not used for trust verification. |
 | `BuildTime` | Diagnostic build timestamp string; no required format. |
 
 All fields are public surface and discovery only.
+
+## `NativeArtifactIdentity`
+
+```go
+func NativeArtifactIdentity() string
+```
+
+Returns the identity that the coherent native build workflow embedded through `-ldflags`
+(`nauthilus-native-artifact-v1:<sha256>:end-native-artifact`). An unmarked build returns an empty string. The loader
+compares every identity embedded in a plugin artifact with the host identity before `plugin.Open`; an empty, stale, or
+mixed identity fails with "native artifact does not match the host build identity". See
+[Build, test, and debug](../build-test-debug.md#native-artifact-identity).
 
 ## `Metadata`
 
@@ -145,7 +160,19 @@ type ReloadablePlugin interface {
 }
 ```
 
-This optional interface receives the new module configuration on config-only reload. Prepare replacement state before publishing it. Current host orchestration is not globally transactional: earlier plugins may mutate their own state before a later plugin rejects the reload, and there is no rollback callback. A configured change for a plugin that does not implement `ReloadablePlugin` is currently accepted but ignored. `Host.Config()` is not replaced during reconfigure; retain the new argument if later code needs the updated module view.
+This optional interface receives the new module configuration on config-only reload. The host calls `Reconfigure` only for a module whose plugin-owned config changed, only after every changed module validated its candidate, and only after the new Policy generation was committed. `Reconfigure` must be all or nothing: on error the plugin keeps serving its previous configuration, the host keeps the previous config view for the module, reports the reload as failed, and retries the change on the next reload. A config change of a plugin that does not implement `ReloadablePlugin` is rejected as restart-bound. `Host.Config()` is not replaced during reconfigure; retain the new argument if later code needs the updated module view.
+
+## `ReconfigureValidator` and `ErrRestartRequired`
+
+```go
+type ReconfigureValidator interface {
+    ValidateReconfigure(context.Context, ConfigView) error
+}
+
+var ErrRestartRequired = errors.New("plugin configuration change requires a restart")
+```
+
+Reloadable plugins can implement `ReconfigureValidator` to check a candidate config before any module is reconfigured. `ValidateReconfigure` decodes and validates only; it must not change plugin state, start work, or reach external systems. Any error rejects the whole reload. An error that wraps `ErrRestartRequired` marks the change as restart-bound instead of invalid, and the host reports the module as `restart_required`. Share the decode-and-validate function with `Reconfigure`. See [Configuration reload](../lifecycle-and-registration.md#configuration-reload).
 
 ## `ConfigView`
 
@@ -227,6 +254,7 @@ type Host interface {
     ServiceContext() context.Context
     Logger(scope string) Logger
     Tracer(scope string) Tracer
+    CompatibilityTracer(scope string) (Tracer, error)
     Metrics(scope string) Metrics
     HTTP(scope string) HTTPClient
     Mail(scope string) Mailer
@@ -234,6 +262,7 @@ type Host interface {
     BackendServers() BackendServers
     Redis() Redis
     Cache(scope string) (Cache, error)
+    OpaqueIdentifierTagger() (OpaqueIdentifierTagger, error)
     Helpers() DeterministicHelpers
     LDAP() LDAP
     Config() ConfigView
@@ -251,6 +280,10 @@ ignore the scope. Current services also do not all add the configured module
 automatically, while Redis scripts are process-global. Supply a stable, bounded,
 low-cardinality namespace and avoid cross-module collisions in scopes, metric
 names, cache keys, target names, and Redis script names.
+
+`OpaqueIdentifierTagger()` is a required part of the version 4 `Host` contract. When the operator has not configured
+`plugins.opaque_identifier_tagger`, it returns `ErrOpaqueIdentifierTaggerUnavailable`; there is no unkeyed fallback. See
+[Opaque identifier tagging](./services.md#opaque-identifier-tagging).
 
 `Redis()` and `LDAP()` can return `nil` when the corresponding host service is unavailable. Check before use. `Go` starts supervised work: it preserves context values but detaches caller cancellation, binds the work to host lifetime, recovers panics, logs returned errors in classified/redacted form, and waits for the worker during shutdown. `name` must be a stable low-cardinality identifier; do not pass request or user data.
 

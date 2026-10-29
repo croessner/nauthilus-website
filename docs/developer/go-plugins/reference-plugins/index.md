@@ -1,28 +1,29 @@
 ---
 title: Bundled Reference Plugins
 description: Source-level reference for the native Go plugins bundled with Nauthilus
-keywords: [Go plugins, GeoIP, ClickHouse, Have I Been Pwned, DKIM2, reference plugins]
+keywords: [Go plugins, GeoIP, ClickHouse, Have I Been Pwned, reputation, DKIM2, DKIM2 intelligence, reference plugins]
 sidebar_position: 1
 ---
 
 # Bundled Reference Plugins
 
-Nauthilus ships three native Go plugin artifacts in its stable and debug container images and keeps the DKIM2
-reputation provider as a source-level reference that operators build separately. They demonstrate different
+Nauthilus ships the native Go plugin artifacts `geoip`, `clickhouse`, `haveibeenpwnd`, `reputation`, and
+`dkim2-intelligence` in its stable and debug container images below `/usr/local/lib/nauthilus/plugins`. They demonstrate different
 `pluginapi/v1` extension points:
 
 | Plugin | Extension point | Qualified component with the standard module name | Primary purpose |
 | --- | --- | --- | --- |
-| [GeoIP/ASN](./geoip.md) | Generic native Decision Fact Provider | `authn/plugin.geoip.environment` | Add local GeoIP and ASN evidence before authentication policy runs. |
+| [GeoIP/ASN](./geoip.md) | Generic native Decision Fact Providers, one per configured `decision_bindings` entry | `authn/plugin.geoip.environment` in the authentication example | Add local GeoIP, ASN, and freshness evidence for any configured Policy target. |
 | [ClickHouse](./clickhouse.md) | `PostActionTarget` | `authn/plugin.clickhouse.post_action` | Write batched authentication analytics as ClickHouse JSONEachRow data. |
 | [Have I Been Pwned](./haveibeenpwnd.md) | `PostActionTarget` | `authn/plugin.haveibeenpwnd.post_action` | Check an authenticated request password through the HIBP k-anonymity API and optionally send mail. |
-| [DKIM2 Reputation](./dkim2-reputation.md) | Generic native `DecisionFactProvider` | `dkim2/plugin.dkim2_reputation.assessment` | Source-only reference: validate and assess an admitted DKIM2 verifier projection without selecting the decision. |
+| [Reputation](./reputation.md) | Generic native `DecisionFactProvider`s, a `DecisionEffectProvider`, an `ObligationTarget`, and admin hooks | `authn/plugin.reputation.<component>`, `authn/plugin.reputation.learn_outcome`, `reputation/plugin.reputation.observation_context` | Admit independent evidence, store decaying reputation in primary Redis, publish assessment records, and administer audited overrides. Includes the `reputation-worker` Kafka consumer. |
+| [DKIM2 Intelligence](./dkim2-intelligence.md) | Generic native `DecisionFactProvider` | `dkim2/plugin.dkim2_intelligence.assessment` | Correlate an admitted DKIM2 verifier projection with reputation, current-peer GeoIP/ASN, and operator identity contracts without selecting the decision. Replaces the `dkim2-reputation` plugin of early v4 prereleases. |
 
-The three bundled artifacts:
+The bundled artifacts:
 
 - are trusted in-process Go plugins, not sandboxed services;
 - export `NauthilusPlugin() (pluginapi.Plugin, error)`;
-- implement `Plugin`, `RuntimePlugin`, and `ReloadablePlugin`;
+- implement `Plugin` and `RuntimePlugin`, and all except `reputation` also implement `ReloadablePlugin`;
 - are built from `package main` below `contrib/plugins`;
 - currently report plugin product version `0.1.0` and `pluginapi.APIVersion`;
 - use strict plugin-owned configuration decoding, so unknown keys and type mismatches reject registration or reload;
@@ -44,19 +45,22 @@ The bundled container artifacts are built in the same source tree as the Nauthil
 ```shell
 mkdir -p build
 
-CGO_ENABLED=1 \
-GOEXPERIMENT=runtimesecret \
+export CGO_ENABLED=1 GOEXPERIMENT=runtimesecret
+NATIVE_ARTIFACT_LDFLAGS="$(go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo")"
+
 go build \
   -mod=vendor \
   -tags="netgo" \
   -trimpath \
+  -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -buildmode=plugin \
   -o build/<plugin>.so \
   ./contrib/plugins/<plugin>
 ```
 
-Replace `<plugin>` with `geoip`, `clickhouse`, or `haveibeenpwnd`. Build the source-only DKIM2 reference from its own
-directory as documented on its page. If the host uses additional build tags, add the exact same tags. Build from the
+Replace `<plugin>` with `geoip`, `clickhouse`, `haveibeenpwnd`, `reputation`, or `dkim2-intelligence`. The host loader
+rejects artifacts that do not carry its exact native artifact identity, so the container build and the
+`geoip` and `dkim2-intelligence` Makefiles pass `-ldflags "$(go run -mod=vendor ./scripts/native_artifact_fingerprint)"`. If the host uses additional build tags, add the exact same tags. Build from the
 exact Nauthilus tag or commit used for the host; `pluginapi.APIVersion` compatibility alone does not guarantee that
 Go's plugin loader will accept the artifact.
 
@@ -68,10 +72,11 @@ When using the Nauthilus container image, prefer its bundled `.so` and matching 
 
 ## Results do not all mean the same thing
 
-The plugins demonstrate three distinct data paths:
+The plugins demonstrate several distinct data paths:
 
-- GeoIP contributes generic Policy facts under `plugin.geoip.*` and no runtime exchange delta.
-- DKIM2 Reputation contributes an ordered assessed-chain Policy fact and no decision, SMTP action, or runtime exchange delta.
+- GeoIP contributes generic Policy facts under `plugin.geoip.*` (or one correlated record collection per record binding) and no runtime exchange delta.
+- Reputation contributes assessment records under `plugin.reputation.*` and writes learned evidence only through Policy-selected obligations; it emits no decision and no runtime exchange delta.
+- DKIM2 Intelligence contributes a correlated assessed chain, one SMTP-peer record, and a structural completeness flag under `plugin.dkim2_intelligence.*`, and no decision, SMTP action, or runtime exchange delta.
 - HIBP returns a plan-local `PostActionEnqueueResult.RuntimeDelta` under `plugin.exchange.haveibeenpwnd` for later post-action steps.
 - ClickHouse consumes request snapshots, policy facts, and `plugin.exchange.*` data, but emits no policy facts and no runtime delta of its own.
 
@@ -81,9 +86,10 @@ Policy facts are validated decision evidence. Runtime exchange values are JSON-c
 
 The pages describe the plugin implementation as it exists now, including known inconsistencies:
 
-- GeoIP has one generic provider authority; there is no authentication-shaped environment source or runtime exchange alias.
+- GeoIP registers only the providers listed in `decision_bindings`; there is no implicit binding, authentication-shaped environment source, or runtime exchange alias.
+- Reputation is not reloadable: every configuration change requires a restart of all servers and workers that share its Redis prefix.
 - The checked-in ClickHouse schema and Kubernetes initialization assets do not currently cover every field emitted by the native plugin. They must be aligned before being treated as a validated deployment.
-- ClickHouse has threshold-based flushing only; there is no timer flush or shutdown flush.
+- ClickHouse buffers rows per process in memory (bounded by `max_buffer_rows`); there is no durable spool, so rows still buffered when a process ends are lost.
 - HIBP mail uses `Host.Mail("mail")`, runs only after a fresh positive HTTP lookup, and does not retry after a mail gate has been claimed and rendering or sending fails.
 
 These are implementation limits, not recommended extension patterns.

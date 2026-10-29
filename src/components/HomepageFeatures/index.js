@@ -1,112 +1,81 @@
 import clsx from 'clsx';
+import Link from '@docusaurus/Link';
 import Heading from '@theme/Heading';
 import styles from './styles.module.css';
 
 const FeatureList = [
   {
-    title: 'Native Identity Provider',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Built for hostile traffic',
+    to: '/docs/brute-force-protection',
     description: (
       <>
-        Nauthilus now includes a native IdP as a core feature: OIDC (Authorization Code + Device Code + Client Credentials) and SAML2 with integrated login, consent, session management, and MFA (TOTP/WebAuthn).
+        Brute-force protection, realtime blocklists, reputation and password-leak checks feed the decision as facts,
+        so attacks are stopped consistently on every protocol instead of service by service.
       </>
     ),
   },
   {
-    title: 'Multi-Protocol Authentication',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+    title: 'Policies you can trust',
+    to: '/docs/configuration/auth-policy',
     description: (
       <>
-        Supports multiple protocols including HTTP/Nginx, Dovecot, and various mail protocols (IMAP, POP3, SMTP). Also covers web SSO use cases through the native OIDC/SAML2 IdP.
+        Declarative rules per checkpoint, explicit allow, deny and tempfail outcomes, and obligations such as step-up
+        MFA. Observe mode shows what a rule would do before it is allowed to enforce.
       </>
     ),
   },
   {
-    title: 'Flexible Authentication Backends',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Identity and MFA built in',
+    to: '/docs/configuration/idp/mfa-assurance',
     description: (
       <>
-        Choose from multiple backends including LDAP (OpenLDAP/Active Directory), Lua for custom logic, and Redis for high-performance caching. Easily extend with your own authentication providers.
+        A native OIDC and SAML 2.0 identity provider with consent, dynamic client registration, TOTP, WebAuthn and
+        recovery codes, all governed by the same policy engine.
       </>
     ),
   },
   {
-    title: 'Advanced Security Features',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Facts from your infrastructure',
+    to: '/docs/configuration/database-backends',
     description: (
       <>
-        Comprehensive security with configurable brute force protection, realtime blackhole lists (RBL), network security controls, and domain validation to keep your authentication system secure.
+        LDAP and Active Directory, Lua and remote backends supply identities and attributes. Redis-backed caches for
+        positive password checks and identity lookups keep the directory load low.
       </>
     ),
   },
   {
-    title: 'Single Sign-On (SSO)',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Extend it your way',
+    to: '/docs/configuration/native-go-plugins',
     description: (
       <>
-        First-party SSO with the built-in IdP provides native endpoints for OIDC, SAML2, logout flows, and MFA-aware browser journeys.
+        Native Go plugins and an extensive Lua API add your own facts, checks and actions without forking the server.
+        Plugin configuration reloads on SIGHUP.
       </>
     ),
   },
   {
-    title: 'Powerful Lua Scripting',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+    title: 'Observable and ready to scale',
+    to: '/docs/configuration/metrics',
     description: (
       <>
-        Extensive Lua API for customization at every stage of the authentication process. Create filters, integrate with third-party services, implement custom logic, and extend functionality with ease.
+        Prometheus metrics, OpenTelemetry tracing and Grafana dashboards show every decision. Redis, Sentinel and
+        Cluster support plus Docker and Kubernetes images make it run anywhere.
       </>
-    ),
-  },
-  {
-    title: 'High Performance & Reliability',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
-    description: (
-      <>
-        Optimized for performance with Redis integration, connection pooling, efficient caching, and support for modern protocols like HTTP/2 and HTTP/3. Designed for high-availability deployments.
-      </>
-    ),
-  },
-  {
-    title: 'Comprehensive Monitoring',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-    description: (
-      <>
-        Built-in Prometheus metrics, Grafana dashboard templates, and backend server monitoring. Get detailed insights into your authentication system's performance and health.
-      </>
-    ),
-  },
-  {
-    title: 'Enterprise-Ready',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-    description: (
-        <>
-          Docker and Kubernetes support, flexible configuration options, and commercial support available. For enterprise inquiries, contact us at: <a href="mailto:support@nauthilus.com">support@nauthilus.com</a>.
-        </>
     ),
   },
 ];
 
-function Feature({Svg, title, description}) {
+function Feature({title, to, description}) {
   return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
-      </div>
-    </div>
-  );
-}
-
-function FeatureNoSvg({title, description}) {
-  return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
-      </div>
+    <div className={clsx('col col--4', styles.col)}>
+      <Link to={to} className={styles.card}>
+        <Heading as="h3" className={styles.title}>
+          {title}
+        </Heading>
+        <p className={styles.text}>{description}</p>
+        <span className={styles.more}>Learn more →</span>
+      </Link>
     </div>
   );
 }
@@ -115,13 +84,15 @@ export default function HomepageFeatures() {
   return (
     <section className={styles.features}>
       <div className="container">
-        <div className="text--center margin-bottom--lg">
-          <Heading as="h2">Key Features</Heading>
-          <p>Discover what makes Nauthilus the ideal authentication and authorization solution</p>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>Why Nauthilus</p>
+          <Heading as="h2" className={styles.heading}>
+            Observable. Safe to change live. <span className={styles.accent}>Open source.</span>
+          </Heading>
         </div>
         <div className="row">
-          {FeatureList.map((props, idx) => (
-            <FeatureNoSvg key={idx} {...props} />
+          {FeatureList.map((props) => (
+            <Feature key={props.title} {...props} />
           ))}
         </div>
       </div>

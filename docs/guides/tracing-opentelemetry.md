@@ -57,6 +57,7 @@ observability:
 
 - current tracing settings are no longer documented below `server.insights.tracing`
 - Redis tracing is controlled by `observability.tracing.enable_redis`
+- Redis spans record the command name but never the command arguments (no `db.statement` attribute), so passwords, tokens, and keys do not reach the tracing backend
 - Lua scripts can create child spans through the Lua OpenTelemetry module when tracing is enabled
 
 ## Native Go Plugins

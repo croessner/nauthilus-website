@@ -20,9 +20,15 @@ The brute force protection system works as follows:
 3. Blocked IP addresses are stored in Redis with information about which brute force rule triggered the block.
 4. User accounts that have been affected by brute force attempts are also tracked in Redis.
 
-## Adaptive Toleration (v1.7.7)
+Only authentication decisions are counted. A backend that could not decide, for example because LDAP timed out or the
+authority was unavailable, produces a temporary failure that never increments the buckets. A user who repeats the same
+wrong password is counted once; every distinct wrong password is counted from its first occurrence. See
+[Repeating Wrong Passwords](configuration/brute-force.md#repeating-wrong-passwords) and
+[Backend Failures and Temporary Failures](configuration/auth-pipeline.md#backend-failures-and-temporary-failures).
 
-Starting with version 1.7.7, Nauthilus introduces an adaptive toleration mechanism that dynamically adjusts the tolerance threshold for failed authentication attempts based on the volume of successful authentications.
+## Adaptive Toleration
+
+Nauthilus provides an adaptive toleration mechanism that dynamically adjusts the tolerance threshold for failed authentication attempts based on the volume of successful authentications.
 
 ### How Adaptive Toleration Works
 
@@ -41,26 +47,33 @@ This approach is particularly beneficial for:
 Adaptive toleration can be enabled globally in the configuration file:
 
 ```yaml
-brute_force:
-  adaptive_toleration: true
-  min_tolerate_percent: 10  # Default: 10%
-  max_tolerate_percent: 50  # Default: 50%
-  scale_factor: 1.0         # Default: 1.0
+auth:
+  controls:
+    brute_force:
+      adaptive_toleration: true
+      min_tolerate_percent: 10  # Default: 10%
+      max_tolerate_percent: 50  # Default: 50%
+      scale_factor: 1.0         # Default: 1.0
 ```
 
 You can also configure adaptive toleration for specific IP addresses or networks:
 
 ```yaml
-brute_force:
-  custom_tolerations:
-    - ip_address: "192.168.1.0/24"
-      tolerate_percent: 20
-      tolerate_ttl: 24h
-      adaptive_toleration: true
-      min_tolerate_percent: 15
-      max_tolerate_percent: 60
-      scale_factor: 1.5
+auth:
+  controls:
+    brute_force:
+      custom_tolerations:
+        - ip_address: "192.168.1.0/24"
+          tolerate_percent: 20
+          tolerate_ttl: 24h
+          adaptive_toleration: true
+          min_tolerate_percent: 15
+          max_tolerate_percent: 60
+          scale_factor: 1.5
 ```
+
+Toleration decisions are reported by `bruteforce_toleration_decisions_total{mode}` and `bruteforce_toleration_percent`;
+see [Metrics](configuration/metrics.md#brute-force-metrics).
 
 ## Freeing Users from Brute Force Protection
 
@@ -76,7 +89,7 @@ To free a user by account, you can use the `/api/v1/cache/flush` endpoint. This 
 #### Example
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"user": "username@example.com"}' http://nauthilus-server/api/v1/cache/flush
+curl -X DELETE -H "Content-Type: application/json" -d '{"user": "username@example.com"}' http://nauthilus-server/api/v1/cache/flush
 ```
 
 This will:
@@ -100,7 +113,7 @@ This will:
       "nauthilus:bf:3600:32:5:4:192.168.1.0/32",
       "nauthilus:pw_hist_ips:username@example.com",
       "nauthilus:affected_accounts",
-      "nauthilus:ucp:__default__:username@example.com"
+      "nauthilus:UCP:__default__:username@example.com"
     ],
     "status": "4 keys flushed"
   }
@@ -114,7 +127,7 @@ To free a user by IP address, you can use the `/api/v1/bruteforce/flush` endpoin
 #### Example 1: Flush all rules for an IP address
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"ip_address": "192.168.1.100", "rule_name": "*"}' http://nauthilus-server/api/v1/bruteforce/flush
+curl -X DELETE -H "Content-Type: application/json" -d '{"ip_address": "192.168.1.100", "rule_name": "*"}' http://nauthilus-server/api/v1/bruteforce/flush
 ```
 
 This will remove all brute force rules for the specified IP address.
@@ -122,7 +135,7 @@ This will remove all brute force rules for the specified IP address.
 #### Example 2: Flush a specific rule for an IP address
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"ip_address": "192.168.1.100", "rule_name": "default"}' http://nauthilus-server/api/v1/bruteforce/flush
+curl -X DELETE -H "Content-Type: application/json" -d '{"ip_address": "192.168.1.100", "rule_name": "default"}' http://nauthilus-server/api/v1/bruteforce/flush
 ```
 
 This will remove only the "default" brute force rule for the specified IP address.
@@ -130,7 +143,7 @@ This will remove only the "default" brute force rule for the specified IP addres
 #### Example 3: Flush a rule with specific protocol and OIDC Client ID
 
 ```bash
-curl -X POST -H "Content-Type: application/json" -d '{"ip_address": "192.168.1.100", "rule_name": "default", "protocol": "http", "oidc_cid": "client123"}' http://nauthilus-server/api/v1/bruteforce/flush
+curl -X DELETE -H "Content-Type: application/json" -d '{"ip_address": "192.168.1.100", "rule_name": "default", "protocol": "http", "oidc_cid": "client123"}' http://nauthilus-server/api/v1/bruteforce/flush
 ```
 
 This will remove the "default" brute force rule for the specified IP address, but only for the "http" protocol and "client123" OIDC Client ID.
@@ -183,7 +196,14 @@ The `/api/v1/cache/flush` endpoint is particularly useful for freeing users from
 1. Removes all brute force rules for all IP addresses associated with the user
 2. Removes the user's password history
 3. Removes the user from the affected accounts list
-4. Removes the user from the cache
+4. Removes the user's positive password cache entries (UCP) of all configured cache namespaces, including native
+   backend plugin namespaces
+5. Invalidates the LDAP identity lookup cache (UCI)
+
+Identity cache invalidation rotates a shared generation, so a user flush makes **all** identity cache entries under the
+Redis prefix cold, not only those of the flushed user. If that rotation fails, the endpoint answers `503` with
+`Identity cache invalidation failed`, and the asynchronous variant `/api/v1/cache/flush/async` reports the job as
+failed. See [Identity Lookup Cache](configuration/server-configuration.md#identity-lookup-cache).
 
 This makes it a comprehensive solution for freeing a user from brute force protection, as it removes all traces of the user's failed login attempts.
 
@@ -208,7 +228,7 @@ This makes it a comprehensive solution for freeing a user from brute force prote
       "nauthilus:bf:3600:32:5:4:192.168.1.0/32",
       "nauthilus:pw_hist_ips:username@example.com",
       "nauthilus:affected_accounts",
-      "nauthilus:ucp:__default__:username@example.com"
+      "nauthilus:UCP:__default__:username@example.com"
     ],
     "status": "4 keys flushed"
   }

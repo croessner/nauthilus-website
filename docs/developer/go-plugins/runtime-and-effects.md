@@ -71,6 +71,8 @@ err := secret.WithBytes(func(value []byte) error {
 
 Do not retain the slice, convert it to a long-lived string, attach it to an error, or pass it to a detached worker. Clear any plugin-owned copy immediately after use.
 
+One `credentials` grant covers every credential-bearing request type of the module: backends, environment and subject sources, synchronous obligations (`ObligationRequest.Credentials`), and post-actions. Components of a module without the grant receive a provider that reports the password as unavailable. `password.CompareHash` verifies salted SHA, the common crypt formats, and bcrypt (`$2a$`, `$2b$`, `$2y$`); see the [password package](./api-reference/password.md#comparehashbytes).
+
 ## Runtime context
 
 `RuntimeContext` is a read-only view:
@@ -213,7 +215,7 @@ A `SubjectSource` runs after backend evaluation and receives a copied `BackendRe
 - a bounded HTTP response mutation;
 - `Rejected`.
 
-The input backend result is deliberately not a reversible serialization of all internal core state. In particular, reverse subject readback does not reconstruct prior backend `Status` and `Facts`. Identity field metadata and groups can be read, but `BackendResultPatch` cannot replace identity metadata, groups, status, facts, or MFA values.
+The input backend result is deliberately not a reversible serialization of all internal core state. Reverse subject readback does not reconstruct the prior backend `Status`. `BackendResult.Facts` is instead a projection of completed public Lua and native plugin provider output from earlier checkpoints of the same Decision Service session, for example GeoIP facts; caller, token, transport, and host-only facts are excluded, and a provider's previous output is dropped before it is scheduled again. Identity field metadata and groups can be read, but `BackendResultPatch` cannot replace identity metadata, groups, status, facts, or MFA values.
 
 Parallel sibling sources receive independent copies. Mutating an input map does not mutate the retained result or another sibling's request.
 
@@ -247,9 +249,11 @@ An `ObligationTarget` executes on the request path after policy selection. It re
 
 Its `ObligationResult` may report application state, temporary failure, status/logs/facts, runtime changes, and response headers. Keep it deterministic, quick, and bounded. Result facts must be registered for the `auth_decision` stage. `StatusMessage.Temporary` is not the obligation tempfail switch; use `ObligationResult.Temporary`.
 
+The request also exposes `ExecutionIdentity()` and the host-captured `BackendOutcome` credential evidence. Because an obligation runs before the response, a synchronous obligation is the right place for work whose failure must turn into a Policy tempfail. See [host-captured request views](./api-reference/extensions.md#host-captured-request-views).
+
 ## Detached post-actions
 
-A `PostActionTarget` accepts or skips work after policy selection. It receives effect args and facts, an optional credential provider, and the host-generated canonical password hash when a password existed.
+A `PostActionTarget` accepts or skips work after policy selection. It receives effect args and facts, an optional credential provider, the host-captured `BackendOutcome`, its `ExecutionIdentity()`, and, only with the `password_hash` capability, the host-generated canonical password hash when a password existed.
 
 Native and Lua post-actions are executed as one detached plan in final-obligation order. Of the current `PostActionEnqueueResult` fields, only `RuntimeDelta` is applied by the host; `Status`, `Logs`, `QueuedID`, `Enqueued`, and `Temporary` are currently ignored. A returned error or an invalid delta aborts the remaining mixed plan.
 
@@ -262,7 +266,11 @@ The delta is visible only to later steps in that plan. It does not change:
 
 Use `Host.Go` for supervised background work and return promptly after acceptance. Post-action results do not add new facts to the completed decision.
 
-`PostActionRequest.PasswordHash` contains the host-owned lowercase 64-character SHA-256 digest of `nonce + NUL + password`. Development mode does not change this representation. Treat it as sensitive password-derived material, regardless of capability grants, and never log or persist it. The bundled ClickHouse integrations validate the full digest and export only its first eight characters to their established analytics schema.
+`PostActionRequest.PasswordHash` contains the host-owned lowercase 64-character SHA-256 digest of `nonce + NUL + password`, but only when the module requested and the operator allowed the `password_hash` capability. Without that grant the field is empty; `credentials` does not imply it. Development mode does not change this representation. Treat it as sensitive password-derived material and never log or persist it. The bundled ClickHouse integrations validate the full digest and export only its first eight characters to their established analytics schema, and therefore require `allow_capabilities: [password_hash]`.
+
+### Callback admission limits
+
+Obligation and post-action targets may implement `AdmissionLimits() (requestsPerSecond, maxConcurrency int)`. The registrar freezes the values once (1 to 10000 requests per second, 1 to 1024 concurrent callbacks; invalid values reject registration), and the host enforces them per registered component and runtime generation before invoking plugin code. The rate limiter is a token bucket with burst equal to the rate. Overload returns a temporary callback failure; the rate, concurrency, or cancellation cause appears in bounded operational diagnostics without request payloads.
 
 Ordering can be semantically important. The bundled HIBP action must precede ClickHouse when the ClickHouse row should include the fresh `plugin.exchange.haveibeenpwnd.hash_info` value.
 
@@ -274,18 +282,20 @@ Without an operator scope override, current coarse authentication behavior is:
 
 | Auth | Public scope | Internal scope | Admin scope |
 | --- | --- | --- | --- |
-| `none` | allowed | 403 | 403 |
-| `token` | valid bearer token | bearer token with `authenticate` | bearer token with `admin` |
-| `admin` | bearer token with `admin` | bearer token with `admin` | bearer token with `admin` |
-| `session` | Basic-auth context | Basic-auth context | Basic-auth context |
+| `none` | allowed | 403 | bearer token with `nauthilus:admin` |
+| `token` | valid bearer token | bearer token with `nauthilus:authenticate` | bearer token with `nauthilus:admin` |
+| `admin` | bearer token with `nauthilus:admin` | bearer token with `nauthilus:admin` | bearer token with `nauthilus:admin` |
+| `session` | Basic-auth context | Basic-auth context | bearer token with `nauthilus:admin` |
 
-`HookAuthSession` does not elevate enforcement based on `HookScopeAdmin`. Do not treat `ScopeAdmin` plus `HookAuthSession` as administrative authorization. Use `HookAuthAdmin` for an administrative hook, and keep external routing/auth controls in place until the core limitation is fixed.
+Every administrative descriptor, meaning `HookAuthAdmin` or `HookScopeAdmin` with any auth mode, always requires a bearer token with the backchannel `nauthilus:admin` scope. A Basic/session context never satisfies an administrative hook.
 
 Operators can configure `plugins.modules[].hooks[].required_scopes` for a
 registered local hook. A non-empty list is injected into the effective
-descriptor, requires `HookAuthToken` on a non-public hook, and replaces the
-coarse matrix above. It uses any-of semantics: one matching bearer scope is
-enough. Plugins must leave `HookDescriptor.RequiredScopes` empty. Authorization
+descriptor and requires `HookAuthToken` on a non-public hook. For a
+non-administrative hook it replaces the coarse matrix above with any-of
+semantics: one matching bearer scope is enough. For an administrative hook the
+list can only narrow access: the caller needs `nauthilus:admin` and, in
+addition, at least one listed scope. Plugins must leave `HookDescriptor.RequiredScopes` empty. Authorization
 runs before body reading and request construction; invalid, duplicate,
 unmatched, or conflicting operator entries fail registration.
 

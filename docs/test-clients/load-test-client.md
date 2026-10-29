@@ -98,3 +98,19 @@ For an isolated development target with a deliberately untrusted certificate, th
 The client can evaluate a configured success HTTP status or a JSON `{ "ok": true|false }` response, compare parallel responses, and color output using latency/error/tracking thresholds. Threshold colors are diagnostics unless your wrapper turns the process result into a CI gate.
 
 Start with low concurrency/RPS, confirm response correctness and server metrics, then increase one dimension at a time. Use [Prometheus metrics](../configuration/metrics.md) and [OpenTelemetry tracing](../guides/tracing-opentelemetry.md) to separate client saturation from Nauthilus/backend saturation.
+
+### Classifying errors during a load test
+
+- A backend that cannot decide (LDAP timeout, exhausted pool, unreachable authority, canceled request) produces a
+  temporary failure, not a failed password. Such requests do not increment brute-force buckets, so a load group with
+  correct passwords no longer bans its own address range when a backend degrades. See
+  [Backend Failures and Temporary Failures](../configuration/auth-pipeline.md#backend-failures-and-temporary-failures).
+- If Redis cannot answer the repeating-wrong-password check, the request is answered with a temporary failure and
+  `bruteforce_rwp_decisions_total{verdict="undecided"}` rises.
+- On the gRPC authority and Policy transports, only classified request-size, fact-count, concurrency, or rate limits map
+  to `RESOURCE_EXHAUSTED`. Caller authentication failures are `UNAUTHENTICATED`, permission failures
+  `PERMISSION_DENIED`, an unavailable runtime generation or dependency `UNAVAILABLE`, and a disabled decision route
+  `UNIMPLEMENTED`. A generic admission rejection is not evidence of capacity exhaustion.
+- Native plugin loggers honor the configured severity. At `warn`, a high warning count alone does not indicate that a
+  plugin bypasses the log filter, and a post-action transition logs one classified audit record when audit and
+  operational observers share a logger.

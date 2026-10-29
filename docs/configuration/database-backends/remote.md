@@ -134,6 +134,19 @@ runtime:
 
 Enabling backend references requires authority Redis. If Redis is unavailable or unconfigured, the authority listener fails during startup instead of silently exposing a partial split-deployment service. An `AuthService`-only authority can leave this option disabled, but it is not sufficient for the full remote edge profile documented here.
 
+## Authority Error Handling
+
+The edge never counts an authority transport error as an authentication failure. It classifies the gRPC status of the
+authority answer:
+
+| Authority answer | Edge behavior |
+| --- | --- |
+| `UNAVAILABLE`, `DEADLINE_EXCEEDED`, `RESOURCE_EXHAUSTED`, unknown codes | Temporary backend failure (tempfail). |
+| `INVALID_ARGUMENT`, `FAILED_PRECONDITION`, `ALREADY_EXISTS`, `OPERATION_RESULT_CONFLICT` | The authority refused the request. Temporary backend failure (tempfail); no statement about the credentials. |
+| `UNAUTHENTICATED` | The authority rejected the edge caller credentials. The remote backend declines and the next backend decides; logged as a warning with the backend and authority names. A rejected cached caller token is replaced and the RPC retried once first, see [Rejected Caller Tokens](../identity-proxy.md#rejected-caller-tokens). |
+| `PERMISSION_DENIED` | The remote backend declines and the next backend decides. Logged at debug level only, because the authority also answers it for user-level results such as a denied identity lookup, a principal mismatch, or a pre-authentication rejection. |
+| `OPERATION_RESULT_DENIED`, or an operation outside `allowed_operations` | The remote backend declines and the next backend decides. |
+
 ## Backend References
 
 Successful authority operations can return an opaque `backend_ref`. The edge stores that reference in its encrypted session and uses it for follow-up MFA, WebAuthn, and identity operations. The reference is not self-contained. The authority stores the real payload in authority Redis and validates it on every follow-up call.

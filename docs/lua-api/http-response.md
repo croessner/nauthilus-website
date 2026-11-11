@@ -6,6 +6,10 @@ sidebar_position: 6
 ---
 # HTTP response
 
+:::note Availability
+`nauthilus_http_response` is available in custom hooks and in synchronous response actions. Environment sources, subject sources, and POST-Actions cannot load it. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 The `nauthilus_http_response` module allows Lua code to set or modify HTTP response headers,
 set the HTTP status code, and write the raw response body. This is useful, for example, to
 signal frontends (like Keycloak) to apply additional protection measures (e.g., CAPTCHA),

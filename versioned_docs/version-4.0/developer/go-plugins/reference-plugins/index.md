@@ -7,8 +7,8 @@ sidebar_position: 1
 
 # Bundled Reference Plugins
 
-Nauthilus ships the native Go plugin artifacts `geoip`, `clickhouse`, `haveibeenpwnd`, `reputation`, and
-`dkim2-intelligence` in its stable and debug container images below `/usr/local/lib/nauthilus/plugins`. They demonstrate different
+Nauthilus ships the native Go plugin artifacts `geoip`, `clickhouse`, `haveibeenpwnd`, and `reputation`
+in its stable and debug container images below `/usr/local/lib/nauthilus/plugins`. They demonstrate different
 `pluginapi/v1` extension points:
 
 | Plugin | Extension point | Qualified component with the standard module name | Primary purpose |
@@ -17,7 +17,7 @@ Nauthilus ships the native Go plugin artifacts `geoip`, `clickhouse`, `haveibeen
 | [ClickHouse](./clickhouse.md) | `PostActionTarget` | `authn/plugin.clickhouse.post_action` | Write batched authentication analytics as ClickHouse JSONEachRow data. |
 | [Have I Been Pwned](./haveibeenpwnd.md) | `PostActionTarget` | `authn/plugin.haveibeenpwnd.post_action` | Check an authenticated request password through the HIBP k-anonymity API and optionally send mail. |
 | [Reputation](./reputation.md) | Generic native `DecisionFactProvider`s, a `DecisionEffectProvider`, an `ObligationTarget`, and admin hooks | `authn/plugin.reputation.<component>`, `authn/plugin.reputation.learn_outcome`, `reputation/plugin.reputation.observation_context` | Admit independent evidence, store decaying reputation in primary Redis, publish assessment records, and administer audited overrides. Includes the `reputation-worker` Kafka consumer. |
-| [DKIM2 Intelligence](./dkim2-intelligence.md) | Generic native `DecisionFactProvider` | `dkim2/plugin.dkim2_intelligence.assessment` | Correlate an admitted DKIM2 verifier projection with reputation, current-peer GeoIP/ASN, and operator identity contracts without selecting the decision. Replaces the `dkim2-reputation` plugin of early v4 prereleases. |
+| [DKIM2 Intelligence](./dkim2-intelligence.md) (external since v4.0.2, not bundled) | Generic native `DecisionFactProvider` | `dkim2/plugin.dkim2_intelligence.assessment` | Correlate an admitted DKIM2 verifier projection with reputation, current-peer GeoIP/ASN, and operator identity contracts without selecting the decision. Replaces the `dkim2-reputation` plugin of early v4 prereleases. |
 
 The bundled artifacts:
 
@@ -58,9 +58,9 @@ go build \
   ./contrib/plugins/<plugin>
 ```
 
-Replace `<plugin>` with `geoip`, `clickhouse`, `haveibeenpwnd`, `reputation`, or `dkim2-intelligence`. The host loader
+Replace `<plugin>` with `geoip`, `clickhouse`, `haveibeenpwnd`, or `reputation`. The host loader
 rejects artifacts that do not carry its exact native artifact identity, so the container build and the
-`geoip` and `dkim2-intelligence` Makefiles pass `-ldflags "$(go run -mod=vendor ./scripts/native_artifact_fingerprint)"`. If the host uses additional build tags, add the exact same tags. Build from the
+`geoip` Makefile passes `-ldflags "$(go run -mod=vendor ./scripts/native_artifact_fingerprint)"`. If the host uses additional build tags, add the exact same tags. Build from the
 exact Nauthilus tag or commit used for the host; `pluginapi.APIVersion` compatibility alone does not guarantee that
 Go's plugin loader will accept the artifact.
 

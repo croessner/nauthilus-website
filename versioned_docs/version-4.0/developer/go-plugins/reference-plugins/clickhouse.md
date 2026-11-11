@@ -164,7 +164,7 @@ The plugin emits all 75 keys on every encoded row because the struct fields do n
 
 | Group | Fields | Source |
 | --- | --- | --- |
-| Record identity | `ts`, `session`, `service`, `deployment`, `instance`, `decision_sources` | UTC millisecond timestamp, request snapshot, module config, exchange/policy evidence |
+| Record identity | `ts`, `session`, `service`, `deployment`, `instance`, `decision_sources`, `rbl_lists` | UTC millisecond timestamp, request snapshot, module config, exchange/policy evidence, RBL diagnostics |
 | Network and protocol | `client_ip`, `client_port`, `client_net`, `client_id`, `hostname`, `proto`, `method`, `user_agent`, `local_ip`, `local_port` | `RequestSnapshot` |
 | Identity and credential analytics | `display_name`, `account`, `username`, `password_hash`, `pwnd_info` | snapshot, validated eight-character ClickHouse export derived from the host-owned full password hash, HIBP exchange |
 | Brute-force and IDP | `brute_force_bucket`, `brute_force_counter`, `oidc_cid`, `saml_entity_id`, `grant_type`, `mfa_method`, `failed_login_count`, `failed_login_rank`, `failed_login_recognized` | snapshot diagnostics/IDP plus failed-login exchange |
@@ -174,6 +174,22 @@ The plugin emits all 75 keys on every encoded row because the struct fields do n
 | Outcome and TLS | `repeating`, `rwp`, `user_found`, `authenticated`, `xssl_protocol`, `xssl_cipher`, `ssl_fingerprint`, `latency`, `http_status`, `status_msg` | request runtime flags, legacy TLS snapshot, diagnostics |
 
 `features` is intentionally not emitted. `decision_sources` is the supported analytics source list.
+
+Since v4.0.3 the host publishes `plugin.exchange.feature.rbl` and `plugin.exchange.feature.brute_force` when the RBL
+threshold is reached or a brute-force bucket triggers, so `decision_sources` lists `rbl` and `brute_force` in the
+standard exchange order. Query membership, for example `has(splitByChar(',', decision_sources), 'rbl')`, instead of
+comparing exact strings.
+
+`rbl_lists` (`Array(LowCardinality(String))`, since v4.0.3) holds every configured RBL list that listed the client IP,
+in configuration order, also below the RBL threshold. Existing installations must add the column before deploying a
+v4.0.3 or later plugin:
+
+```sql
+ALTER TABLE nauthilus.logins ADD COLUMN IF NOT EXISTS rbl_lists
+  Array(LowCardinality(String)) AFTER decision_sources;
+```
+
+The statement is part of `contrib/clickhouse-kubernetes/schema.sql`.
 
 :::note Reputation columns
 

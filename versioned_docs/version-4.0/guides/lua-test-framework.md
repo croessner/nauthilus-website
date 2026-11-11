@@ -363,6 +363,13 @@ local servers = backend.get_backend_servers()
 backend.select_backend_server(servers[1].host, servers[1].port)
 ```
 
+:::warning
+The test framework mocks the full Lua API. `get_backend_servers` and `select_backend_server` are not available to
+subject sources in the Nauthilus 4 Policy VM, and the same applies to Redis writes and other restricted functions. A
+passing test does not show that a script loads under top-level `policy`; see
+[Lua runtimes and capabilities](../lua-api/runtimes.md).
+:::
+
 JSON example:
 
 ```json

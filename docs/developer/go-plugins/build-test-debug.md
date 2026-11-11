@@ -52,8 +52,8 @@ build tags, every tracked or untracked non-ignored Go, C/C++, assembly, and `.sy
 -X github.com/croessner/nauthilus/v4/pluginapi/v1.nativeArtifactIdentity=nauthilus-native-artifact-v1:<sha256>:end-native-artifact
 ```
 
-The repository `Makefile`, the `geoip` and `dkim2-intelligence` plugin Makefiles under `contrib/plugins`, and the
-container builds (which build all five bundled plugins) already pass this value.
+The repository `Makefile`, the `geoip` plugin Makefile under `contrib/plugins`, and the
+container builds (which build all four bundled plugins) already pass this value.
 For your own build:
 
 1. Build the server and every plugin from one unchanged Nauthilus source snapshot, with the same toolchain, target

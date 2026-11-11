@@ -6,6 +6,10 @@ sidebar_position: 10
 ---
 # Prometheus
 
+:::note Availability
+Create collectors (`create_*_vec`) in an init script. Policy callbacks (environment sources, subject sources, and actions) can update existing collectors but cannot create them. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 Nauthilus has basic support for some Prometheus metrics.
 
 ```lua

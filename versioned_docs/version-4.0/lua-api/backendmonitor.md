@@ -6,15 +6,33 @@ sidebar_position: 3
 ---
 # Backend server monitoring
 
-If backend health checks are enabled, the following functions are available in **subject sources**:
+The `nauthilus_backend` module is available in **subject sources**:
 
 ```lua
 local nauthilus_backend = require("nauthilus_backend")
 ```
 
+:::warning Availability in Nauthilus 4
+Subject sources run in the Policy VM. It provides the backend-result functions
+[`apply_backend_result`](#nauthilus_backendapply_backend_result) and
+[`remove_from_backend_result`](#nauthilus_backendremove_from_backend_result), but not the server-selection functions.
+A subject source that uses `get_backend_servers`, `select_backend_server`, or `check_backend_connection` is rejected when
+the configuration is loaded.
+
+These three functions are documented here because the [Lua test framework](../guides/lua-test-framework.md) still
+mocks them and scripts from Nauthilus 3 use them. To select the backend server for the nginx `Auth-Server` and
+`Auth-Port` headers in Nauthilus 4, use a native Go subject source that returns `SelectedBackend`; see
+[Result types](../developer/go-plugins/api-reference/results.md) and
+[Lua runtimes and capabilities](runtimes.md).
+:::
+
 ## nauthilus\_backend.get\_backend\_servers
 
 Retrieves a list of available backend servers.
+
+:::warning
+Not available to subject sources in Nauthilus 4. See the availability note at the top of this page.
+:::
 
 ### Syntax
 
@@ -59,6 +77,10 @@ end
 ## nauthilus\_backend.select\_backend\_server
 
 Selects a backend server for the Nginx endpoint in NAuthilus.
+
+:::warning
+Not available to subject sources in Nauthilus 4. See the availability note at the top of this page.
+:::
 
 ### Syntax
 
@@ -111,17 +133,14 @@ local nauthilus_backend = require("nauthilus_backend")
 
 local b = nauthilus_backend_result:new()
 local attributes = {}
--- See nauthilus_backend.get_backend_servers above!
-local server = valid_servers[some_number] -- You must define some logic on how to choose a backend server from the list
 
-attributes["hostip"] = server.ip
+attributes["hostip"] = "10.10.10.10" -- A value computed by the subject source
+
 b:attributes(attributes)
 nauthilus_backend.apply_backend_result(b)
 ```
 
 The result will be available as HTTP-response header **X-Nauthilus-Hostip** and can easily be parsed in a Dovecot Lua backend.
-
-This example lacks persistent routing from users to backend servers. But it is a good starting point. Combine it with Redis or SQL databases.
 
 ## nauthilus\_backend.remove\_from\_backend\_result
 
@@ -156,6 +175,10 @@ Removing attributes is always done before adding attributes (from apply\_backend
 ## nauthilus\_backend.check\_backend\_connection
 
 Checks if a connection to a backend server can be established.
+
+:::warning
+Not available to subject sources in Nauthilus 4. See the availability note at the top of this page.
+:::
 
 ### Syntax
 

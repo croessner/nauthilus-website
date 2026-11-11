@@ -300,6 +300,13 @@ Plan `use` entries reference built-in authentication providers by their exact id
 order. The bare instance names are accepted only in `require_providers` of a rule that has no domain plan. A built-in
 provider is only accepted at a checkpoint whose immutable schedule contains it.
 
+For the `lookup_identity` action (HTTP `mode=no-auth`, gRPC `LookupIdentity`, IdP no-auth lookups) the built-in plan
+runs only the Lua environment. Since v4.0.6 the TLS-encryption and RBL checks are opt-in there: a domain plan that binds
+`authn/builtin/tls_encryption` or `authn/builtin/rbl` to `lookup_identity` runs them in no-auth mode. An RBL opt-in
+multiplies block-list query volume, because lookup traffic is usually far higher than login traffic. Configuration load
+rejects `authn/builtin/brute_force` and `authn/builtin/relay_domains` bindings to `lookup_identity`; remove such
+`actions` entries before upgrading.
+
 ## Runtime capacity
 
 `policy.runtime` sizes the host-owned parts of a Policy generation:
@@ -349,6 +356,12 @@ authenticate the request. The HTTP auth endpoints answer with `Auth-Status: Temp
 `AUTH_DECISION_TEMPFAIL` (`ListAccounts` returns an empty listing). Typed rejections keep their mapping: invalid input
 stays HTTP 400 or `InvalidArgument`, and permission denials stay HTTP 403 or `PermissionDenied`. Each error is logged as
 `Authentication application failed` with the cause and counted by `auth_application_errors_total{transport}`.
+
+Since v4.0.6 every temporary failure writes a terminal WARN line with `msg="Temporary server problem, try again later"`
+and the fields `tempfail_reason`, `checkpoint`, `status_code`, `policy_set`, `policy_rule`, and `outcome_marker`,
+including decisions without a selected policy rule. See
+[Request termination and cancel sources](server-configuration.md#request-termination-and-cancel-sources) for the
+cancellation fields these lines carry since v4.0.7.
 
 ## Generation behavior
 

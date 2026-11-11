@@ -182,7 +182,7 @@ docker run --rm -v "$PWD/nauthilus.yml:/etc/nauthilus/nauthilus.yml:ro" \
 
 ## Bundled Native Go Plugins
 
-Current stable and debug images build `geoip.so`, `clickhouse.so`, `haveibeenpwnd.so`, `reputation.so`, and `dkim2-intelligence.so` from the same source tree and Go toolchain as the server. The stable image also ships `/usr/app/reputation-worker`; the debug image leaves it out on purpose. The artifacts are installed below:
+Current stable and debug images build `geoip.so`, `clickhouse.so`, `haveibeenpwnd.so`, and `reputation.so` from the same source tree and Go toolchain as the server. The stable image also ships `/usr/app/reputation-worker`; the debug image leaves it out on purpose. The artifacts are installed below:
 
 ```text
 /usr/local/lib/nauthilus/plugins/

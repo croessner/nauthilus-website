@@ -73,6 +73,46 @@ The literal text between the placeholders must make the split deterministic. Adj
 
 The parsed master-user state is available to auth policies as `auth.master_user.active` for `authenticate` requests. See [Auth Policy Reference](auth-policy.md) for the corresponding policy attributes and examples.
 
+## Credential Syntax and Empty Credentials
+
+Since v4.0.3 an empty username or password value is an ordinary failed login, not a malformed request. HTTP JSON, CBOR,
+form, header, nginx, and Basic requests and gRPC `Authenticate` answer it with `Invalid login or password` through the
+built-in rules `standard_empty_username` and `standard_empty_password`. Such a request runs no backend and does not
+update brute-force buckets. A missing credential key and JSON or CBOR `null` still return `400 Bad Request`; for HTTP
+header transports an absent header is a missing key and a present empty header is an empty value. `lookup_identity`
+answers an empty username with a temporary failure through `standard_lookup_identity_empty_username`.
+
+Since v4.0.6 a username is rejected only for invalid UTF-8 and control characters. Spaces and IMAP atom specials such
+as `(`, `)`, `{`, `%`, `"`, and `\` reach the backends, which decide whether the account exists; percent-decoded nginx
+headers such as `Vorname%20Nachname` are accepted. An unsafe `authenticate` username is answered like an empty one with
+`Invalid login or password`. `lookup_identity` over gRPC keeps `InvalidArgument`. LDAP filters expand the legacy `%s`
+placeholder and `%{...}` macros in one pass, so a username that contains macro syntax stays literal.
+
+## Response Texts
+
+`auth.response` overrides the generic client status texts (since v4.0.3):
+
+```yaml
+auth:
+  response:
+    failure_message: "Invalid login or password"
+    tempfail_message: "Temporary server problem, try again later"
+```
+
+| Key | Type | Default | Purpose |
+|---|---:|---|---|
+| `failure_message` | string | built-in text | Text of an ordinary failed login. |
+| `tempfail_message` | string | built-in text | Text of a temporary failure. |
+
+The texts apply to HTTP `Auth-Status` headers, plain-text bodies, and gRPC authority responses. An empty value keeps
+the built-in text. Control characters and texts longer than 256 characters are rejected at load time. A configured text
+is also its i18n key, so a Policy localization catalog may translate it. Specific reasons such as missing TLS,
+Policy-selected response messages, internal diagnostics, and the IdP login form keep their own texts. The gRPC
+authority binds the texts at startup; a change needs a restart there.
+
+`status_message` in the summary log lines, Lua `request.status_message`, and native post-action snapshots report the
+text the client receives, including these overrides (since v4.0.6).
+
 ## Backend Failures and Temporary Failures
 
 Nauthilus distinguishes a backend that decided against the credentials from a backend that could not decide. Only a

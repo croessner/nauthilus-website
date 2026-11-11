@@ -82,9 +82,9 @@ policy:
   namespaces:
     authn:
       providers:
-        lua_environment_geoip:
+        lua_environment_risk_facts:
           kind: lua_environment
-          script_path: "/etc/nauthilus/lua/environment/geoip.lua"
+          script_path: "/etc/nauthilus/lua/environment/risk_facts.lua"
           targets: [{action: authenticate}]
           executions: [host_sync]
         lua_environment_policy_gate:
@@ -103,12 +103,20 @@ policy:
           targets: [{action: authenticate}]
           executions: [host_sync]
       effects:
-        lua_action_telegram:
+        lua_action_bruteforce_header:
           kind: lua_action
           action_type: brute_force
-          script_path: "/etc/nauthilus/lua/actions/telegram.lua"
+          script_path: "/etc/nauthilus/lua-plugins.d/actions/bruteforce_header.lua"
           execution: host_sync
 ```
+
+:::warning Policy callbacks run in the Policy VM
+Scripts configured as `lua_environment`, `lua_subject`, or `lua_action` cannot write to Redis or the cache and cannot
+use outbound HTTP, LDAP, DNS, or mail. A script that uses such a function is rejected when the configuration is loaded.
+Most bundled `lua-plugins.d` environment, subject, and action scripts are therefore reference material and cannot be
+configured here. Hooks, init scripts, and backend scripts are not restricted. See
+[Lua runtimes and capabilities](../../lua-api/runtimes.md).
+:::
 
 The effect entries define reusable scripts. Request-time dispatch is selected by the active policy decision, not by the effect definition itself. Synchronous actions use `auth.obligation.lua_action.dispatch` with `action_type` set to `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`; Lua POST-Actions use `auth.obligation.lua_post_action.enqueue` with `action_type: post` and `execution: host_post_action`.
 
@@ -125,15 +133,15 @@ policy:
           checkpoints:
             pre_auth:
               providers:
-                - name: geoip
-                  use: authn/lua_environment_geoip
+                - name: risk_facts
+                  use: authn/lua_environment_risk_facts
                   actions: [authenticate, lookup_identity]
                   run_if:
                     auth_state: any
                 - name: policy_gate
                   use: authn/lua_environment_policy_gate
                   actions: [authenticate, lookup_identity]
-                  after: [geoip]
+                  after: [risk_facts]
                   run_if:
                     auth_state: any
 ```

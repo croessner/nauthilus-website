@@ -9,6 +9,13 @@ sidebar_position: 1
 Nauthilus has Lua 5.1 support in all areas of the service. To understand the interfaces, you must first get an idea of
 what happens with an incoming authentication request.
 
+:::important Not every script sees the same API
+Init scripts, custom hooks, and Lua backends can use the full Lua API described in this reference. Environment sources,
+subject sources, and actions that are configured under top-level `policy` run in the restricted Policy VM: they cannot
+write to Redis or the cache, cannot open outbound HTTP, LDAP, DNS, or mail connections, and cannot select a backend
+server. Read [Lua runtimes and capabilities](runtimes.md) before you port or write a script.
+:::
+
 ## Authentication workflow
 
 An incoming authentication request first enters the **brute\_force** check. After that it continues with the **environment**
@@ -116,7 +123,8 @@ must reload the service.
 
 Nauthilus does automatically preload Lua modules.
 
-This is the list of modules that are currently available:
+This is the list of modules that are available to init scripts, custom hooks, and Lua backends. Environment sources,
+subject sources, and actions see the subset listed in [Lua runtimes and capabilities](runtimes.md#policy-vm):
 
 | Loader name                                               | Description                                                                            |
 |-----------------------------------------------------------|----------------------------------------------------------------------------------------|

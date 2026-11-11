@@ -6,6 +6,10 @@ sidebar_position: 11
 ---
 # PS net
 
+:::note Availability
+Register connection targets (`register_connection_target`) in an init script. Policy callbacks (environment sources, subject sources, and actions) can only look up registered targets. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 Register connections and count established connections.
 
 ```lua

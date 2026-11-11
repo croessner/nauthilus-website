@@ -127,11 +127,18 @@ encode the error payload as a CBOR map:
 }
 ```
 
+An empty username or password value is answered as an ordinary failed login with `Invalid login or password`, not as a
+malformed request (since v4.0.3). A missing credential key and JSON or CBOR `null` still return `400 Bad Request`. The
+generic failure and temporary-failure texts can be overridden with
+[`auth.response`](configuration/auth-pipeline.md#response-texts).
+
 ## No-Auth and List-Accounts Modes
 
 `/api/v1/auth/cbor` supports the same query modes as the JSON endpoint:
 
-- `mode=no-auth` runs a request without requiring a password.
+- `mode=no-auth` runs a request without requiring a password. Since v4.0.6 it does not run the TLS-encryption and RBL
+  checks unless a domain plan binds them to `lookup_identity`; see
+  [Built-in authentication providers](configuration/auth-policy.md#built-in-authentication-providers).
 - `mode=list-accounts` returns the known account names for the current request context.
 
 With `storage.redis.identity_cache.enabled: true`, successful LDAP results of `mode=no-auth` requests can be served
@@ -355,6 +362,74 @@ The public IdP contract is served at:
 - `/.well-known/openapi.json`
 
 These documents are the stable machine-readable contracts used by the generated client checks and by the website API reference. Runtime request validation is optional and default-off. When enabled, it validates only selected management operation IDs such as cache flush and brute-force list/flush requests. See [Runtime, Observability, and Storage](configuration/server-configuration.md#openapi-runtime-request-validation) for the configuration block and the current operation allowlist.
+
+## Custom Hooks
+
+Custom hooks are HTTP endpoints that are implemented as Lua scripts or as native Go plugin hooks. They are available
+in Nauthilus 4 and are the intended place for management, reporting, and maintenance endpoints that need the full
+Lua API, including Redis writes and outbound HTTP.
+
+### `{method} /api/v1/custom/{http_location}`
+
+Each Lua hook binds one HTTP method to one location below `/api/v1/custom/`. The location may contain slashes.
+
+```yaml
+auth:
+  controls:
+    enabled:
+      - lua
+    lua:
+      hooks:
+        - http_location: "quota/report"
+          http_method: "GET"
+          script_path: "/etc/nauthilus/lua/hooks/quota-report.lua"
+          scopes:
+            - "nauthilus:admin"
+```
+
+| Key | Meaning |
+|---|---|
+| `http_location` | Path below `/api/v1/custom/`. Required. |
+| `http_method` | One of `HEAD`, `GET`, `POST`, `PUT`, `DELETE`, `PATCH`. Required. |
+| `script_path` | Lua script that defines `nauthilus_run_hook`. Required. |
+| `http_alias_location` | Optional absolute path that serves the same hook outside `/api/v1/custom/`. |
+| `content_type` | Optional response content type. |
+| `scopes` | Bearer token scopes; any one of them authorizes the request. |
+| `public` | `true` allows anonymous access when no `scopes` are set. |
+
+The script defines one entry function:
+
+```lua
+local nauthilus_http_request = require("nauthilus_http_request")
+local nauthilus_redis = require("nauthilus_redis")
+
+function nauthilus_run_hook(request)
+    local account = nauthilus_http_request.get_http_request_header("X-Account")[1]
+    local used, err = nauthilus_redis.redis_get("default", "quota:" .. tostring(account))
+
+    return { account = account, used = used, error = err }
+end
+```
+
+A returned Lua table is sent as JSON with the current response status. A script that writes its own body with
+[`nauthilus_http_response`](lua-api/http-response.md) can return any content type.
+
+| Status Code | Description |
+| :--- | :--- |
+| `200 OK` | Hook executed (unless the script sets another status) |
+| `401 Unauthorized` | Missing or invalid credentials |
+| `403 Forbidden` | Valid Bearer token without a required scope |
+| `404 Not Found` | No hook is configured for this location and method, or `custom_hooks` is disabled |
+| `500 Internal Server Error` | Hook execution failed |
+
+A hook without `public` and without `scopes` requires the configured backchannel Basic authentication. See
+[Hook Authorization](configuration/database-backends/lua.md#hook-authorization) for the complete access model and
+[Lua runtimes and capabilities](lua-api/runtimes.md) for what a hook script can use. The endpoint group is switched
+off with `runtime.servers.http.disabled_endpoints.custom_hooks`.
+
+Native Go plugins register hooks below the same prefix, for example the
+[reputation management API](guides/reputation-operations.md). See
+[Hooks](developer/go-plugins/api-reference/hooks.md) for the plugin side.
 
 ## Identity Endpoints
 

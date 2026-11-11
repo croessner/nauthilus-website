@@ -444,7 +444,10 @@ Stable and debug Nauthilus container images build these artifacts with the same 
 | `/usr/local/lib/nauthilus/plugins/clickhouse.so` | Batched ClickHouse post-action | [ClickHouse](../developer/go-plugins/reference-plugins/clickhouse.md) |
 | `/usr/local/lib/nauthilus/plugins/haveibeenpwnd.so` | HIBP password lookup and optional mail post-action | [Have I Been Pwned](../developer/go-plugins/reference-plugins/haveibeenpwnd.md) |
 | `/usr/local/lib/nauthilus/plugins/reputation.so` | Generic reputation fact, effect, and learning providers | [Reputation](../developer/go-plugins/reference-plugins/reputation.md) |
-| `/usr/local/lib/nauthilus/plugins/dkim2-intelligence.so` | DKIM2 chain correlation fact provider | [DKIM2 Intelligence](../developer/go-plugins/reference-plugins/dkim2-intelligence.md) |
+
+Since v4.0.2 the [DKIM2 Intelligence](../developer/go-plugins/reference-plugins/dkim2-intelligence.md) plugin is
+maintained as an external native plugin and is no longer part of the images. Operators who load `dkim2_intelligence`
+must supply an artifact built from the exact host release source and toolchain.
 
 The debug image contains the server, these plugins, and the fake SMTP/IMAP test servers only. The `reputation-worker`
 executable and the client tools are intentionally shipped in the stable image alone. Examples for the bundled plugins use
@@ -510,7 +513,7 @@ Automatic spans use the `nauthilus/plugin/runtime` instrumentation scope and the
 
 A SIGHUP reload applies changes inside `plugins.modules[].config` of a module whose plugin implements
 `ReloadablePlugin`. Every other field of the `plugins` section is restart-bound, and so is the `config` of a module
-whose plugin does not support reload. The bundled `clickhouse`, `geoip`, `haveibeenpwnd`, and `dkim2-intelligence`
+whose plugin does not support reload. The bundled `clickhouse`, `geoip`, and `haveibeenpwnd`
 plugins reload their config; individual keys such as `decision_bindings` in `geoip` stay restart-bound.
 
 A reload runs in two phases around the Policy generation swap:

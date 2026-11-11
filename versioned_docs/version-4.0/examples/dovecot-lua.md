@@ -6,12 +6,15 @@ sidebar_position: 1
 ---
 # Dovecot Lua integration
 
-With some Lua glue in Dovecot, it is possible to connect the service directly to Nauthilus. Starting with Dovecot 2.319
+With some Lua glue in Dovecot, it is possible to connect the service directly to Nauthilus. Starting with Dovecot 2.3.19
 there exists a HTTP client which can be used to communicate seamlessly with nauthilus.
 
-Here is a real life example on how to achieve this. The mail system is using LDAP. The latter uses a custom schema,
-which you can find [here](https://gitlab.roessner-net.de/croessner/openldap-schema/-/tree/main/mail). Upon successful
-login, some extra fields are returned for the userdb backend.
+Here is a real life example on how to achieve this. The mail system is using LDAP with a site-specific mail schema.
+The schema is not published; the attribute names starting with `rnsMS` in the code below are placeholders for the
+attributes of your own directory (quota, over-quota flag, mail location, master-user marker). Upon successful login,
+some extra fields are returned for the userdb backend.
+
+The matching Nauthilus configuration is shown in [Nauthilus configuration](#nauthilus-configuration) below.
 
 Nauthilus is TLS encrypted and requires HTTP basic authentication. The credentials are read from a file. You can create
 one like this:
@@ -132,7 +135,7 @@ local function query_db(request, password, dbtype)
   req.client_id = client_id
   req.local_ip = local_ip
   req.local_port = local_port
-  req.service = request.service
+  req.protocol = request.service
   req.method = request.mech:lower()
 
   if request.secured == "TLS" or request.secured == "secured" then
@@ -300,7 +303,83 @@ end
 
 Look at the code especially to the response headers. Nauthilus is delivering all extra fields by prefixing HTTP headers
 with X-Nauthilus- and the name of an extra field. The result itself is JSON. Most of the time, you will use values from the
-**attributes** list. In the example above, you can see my current working configuration with OpenLDAP and my own schema.
+**attributes** list. In the example above, you can see a working configuration with OpenLDAP and a site-specific schema.
+
+## Nauthilus configuration
+
+The Dovecot script needs three things from Nauthilus: the JSON endpoint with backchannel Basic authentication, an LDAP
+search for the protocols that Dovecot sends, and the attributes that the script reads from the response.
+
+```yaml title="nauthilus.yml"
+runtime:
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+storage:
+  redis:
+    primary:
+      address: "127.0.0.1:6379"
+    password_nonce: "replace-with-a-random-nonce"
+    encryption_secret: "replace-with-a-random-secret"
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # The same credentials as in /etc/dovecot/http-auth.secret
+      username: "username"
+      password: "password"
+
+  backends:
+    order:
+      - "cache"
+      - "ldap"
+
+    ldap:
+      default:
+        server_uri:
+          - "ldap://ldap.example.com:389"
+        bind_dn: "cn=nauthilus,ou=services,dc=example,dc=com"
+        bind_pw: "replace-with-the-bind-password"
+
+      search:
+        # Dovecot sends its service name as the protocol.
+        - protocol:
+            - "imap"
+            - "pop3"
+            - "lmtp"
+            - "sieve"
+            - "doveadm"
+          cache_name: "dovecot"
+          base_dn: "ou=people,dc=example,dc=com"
+          filter:
+            # Used for password checks and for ?mode=no-auth
+            user: "(&(objectClass=inetOrgPerson)(uid=%L{user}))"
+            # Used for ?mode=list-accounts
+            list_accounts: "(objectClass=inetOrgPerson)"
+          mapping:
+            account_field: "uid"
+          # Replace the rnsMS* names with the attributes of your own schema.
+          attribute:
+            - "uid"
+            - "rnsMSQuota"
+            - "rnsMSOverQuota"
+            - "rnsMSMailPath"
+            - "rnsMSDovecotMaster"
+```
+
+Every attribute in the `attribute` list is returned in the JSON response below `attributes`, each as a list of values.
+`Proxy-Host` in the Dovecot script is not an LDAP attribute; it is an attribute that a subject source adds to the
+backend result with [`apply_backend_result`](../lua-api/backendmonitor.md#nauthilus_backendapply_backend_result).
+Without such a subject source the script delivers mail locally.
+
+`http_uri` in the Dovecot script points to `/api/v1/auth/json` on this listener. TLS for the listener and all further
+keys are described in [Server configuration](../configuration/server-configuration.md) and
+[LDAP backend](../configuration/database-backends/ldap.md). The [OpenLDAP tutorial](../guides/tutorial-openldap.md)
+contains a complete stack that you can start locally. The LDAP schema in
+[`contrib/ldap`](https://github.com/croessner/nauthilus/tree/main/contrib/ldap) of the Nauthilus repository only adds
+the attribute for WebAuthn credentials; it is not required for this example.
 
 ## Nauthilus modes
 

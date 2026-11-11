@@ -6,6 +6,10 @@ sidebar_position: 14
 ---
 # DNS
 
+:::note Availability
+`nauthilus_dns` is available in init scripts, custom hooks, and Lua backends. It cannot be loaded by environment sources, subject sources, or actions, which run in the Policy VM. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 The DNS module provides functions for performing DNS lookups.
 
 ```lua

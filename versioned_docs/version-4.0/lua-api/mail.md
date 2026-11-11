@@ -6,6 +6,10 @@ sidebar_position: 7
 ---
 # Mail
 
+:::note Availability
+`nauthilus_mail` is available in init scripts, custom hooks, and Lua backends. It cannot be loaded by environment sources, subject sources, or actions, which run in the Policy VM. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 SMTP/LMTP related functions
 
 ```lua

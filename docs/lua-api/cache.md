@@ -6,6 +6,10 @@ sidebar_position: 13
 ---
 # Cache
 
+:::note Availability
+Policy callbacks (environment sources, subject sources, and actions) can only read the cache. `cache_set`, `cache_delete`, `cache_update`, `cache_flush`, `cache_push`, and `cache_pop_all` are available in init scripts, custom hooks, and Lua backends. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 Available since Nauthilus version 1.8.9.
 
 The `nauthilus_cache` module provides a process-wide in-memory cache that can be accessed from any Lua script

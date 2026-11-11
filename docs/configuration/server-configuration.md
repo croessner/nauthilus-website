@@ -443,6 +443,37 @@ observability:
 Filtering reduces the encoded output only; producers still compute the values. Removed fields are also missing from
 downstream log searches, so keep the identifiers and decision evidence your operations need.
 
+### Authentication Result Fields
+
+The final auth log line reports `authenticated`, `authz`, and `authn`. Since v4.0.5 `authn` is the result of the
+credential check itself: a verified password that a subject source rejects afterwards logs
+`authenticated=fail authz=false authn=true`. Wrong or empty credentials, rejections before the credential check, and
+technical failures keep `authn=false`. Log queries that read `authn=false` as "denied" must use `authenticated`.
+
+### Request Termination and Cancel Sources
+
+Since v4.0.7 the HTTP server records why a connection ended and logs it:
+
+| Log line | Level | Meaning |
+|---|---|---|
+| `msg="Client Closed Request"` with `status=499` | NOTICE | The client ended the request. v4.0.6 logged this line at WARN. |
+| `msg="Request connection terminated"` | WARN | The connection ended for a server-side reason, such as a connection deadline. |
+
+Both lines carry `error` with the transport cause, for example
+`client disconnected: read tcp ...: connection reset by peer`, and `duration_ms`. HTTP auth requests also carry
+`client_ip` and `protocol` once they are resolved.
+
+`Authentication application failed`, `Native plugin call failed` (request-bound calls only), and the terminal tempfail
+WARN line carry the state of the failing request's own context:
+
+| Field | Content |
+|---|---|
+| `request_context_error` | `context canceled`, `context deadline exceeded`, or empty while the context is active. |
+| `request_context_cause` | The recorded cause, for example `client disconnected: ...`. |
+| `cancel_source` | `request`: the own request context ended, typically a client disconnect. `foreign`: the error carries a cancellation or deadline while the own context is still active, for example from a deduplicated lookup shared with another request or an internal deadline. Empty: no cancellation is involved. |
+
+Authentication decisions, temporary failures, and response bodies are unchanged by these fields.
+
 ### Startup Failures
 
 A failed startup is logged once at `ERROR` with the failing step, for example

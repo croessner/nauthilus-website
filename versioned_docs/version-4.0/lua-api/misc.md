@@ -7,6 +7,10 @@ sidebar_position: 9
 
 # nauthilus_misc
 
+:::note Availability
+`wait_random` is not available to environment sources, subject sources, or actions, which run in the Policy VM. See [Lua runtimes and capabilities](runtimes.md).
+:::
+
 The `nauthilus_misc` module exposes small helper functions for Lua scripts.
 
 ```lua

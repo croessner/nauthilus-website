@@ -48,6 +48,15 @@ policy_facts.status_message("geoip", "Policy violation")
 
 All attributes below are registered by `lua-plugins.d/policy/registry.lua`.
 
+:::warning Most bundled emitters are reference-only in Nauthilus 4
+The registry lists the attributes of every bundled script, but only `subject/idp_policy.lua` and
+`actions/bruteforce_header.lua` load in the Policy VM that runs environment sources, subject sources, and actions. The
+other scripts in the tables below need Redis writes, outbound HTTP, or backend selection and are rejected when they are
+configured under top-level `policy`. They remain in the repository as migration and design material; use the bundled
+native plugins (`geoip`, `reputation`, `clickhouse`, `haveibeenpwnd`) or your own native plugin for those tasks. See
+[Lua runtimes and capabilities](../lua-api/runtimes.md).
+:::
+
 ### Environment Source Plugins
 
 | Plugin | Attribute | Type | Meaning |
@@ -123,9 +132,9 @@ policy:
           registry_scripts:
             - "/etc/nauthilus/lua-plugins.d/policy/registry.lua"
       providers:
-        lua_subject_geoip:
+        lua_subject_idp_policy:
           kind: lua_subject
-          script_path: /etc/nauthilus/lua-plugins.d/subject/geoip.lua
+          script_path: /etc/nauthilus/lua-plugins.d/subject/idp_policy.lua
           targets: [{action: authenticate}]
           executions: [host_sync]
       domain_plans:
@@ -133,8 +142,8 @@ policy:
           checkpoints:
             subject_analysis:
               providers:
-                - name: geoip
-                  use: authn/lua_subject_geoip
+                - name: idp_policy
+                  use: authn/lua_subject_idp_policy
                   actions: [authenticate]
             auth_decision:
               providers: []
@@ -142,19 +151,19 @@ policy:
         configured:
           visibility: private
           rules:
-            - name: deny_geoip_rejection
+            - name: deny_idp_policy_rejection
               checkpoint: auth_decision
               actions: [authenticate]
               if:
-                attribute: lua.plugin.geoip.rejected
+                attribute: lua.plugin.idp_policy.rejected
                 is: true
               then:
                 decision: deny
-                reason: geoip_policy_rejected
+                reason: idp_policy_rejected
                 response_marker: auth.response.fail
                 response_message:
                   from: attribute_detail
-                  attribute: lua.plugin.geoip.rejected
+                  attribute: lua.plugin.idp_policy.rejected
                   detail: status_message
                   fallback: "Invalid login or password"
   targets:

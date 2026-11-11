@@ -1,11 +1,21 @@
 ---
 title: DKIM2 Intelligence Plugin
-description: Reference for the bundled Policy fact provider that correlates a verified DKIM2 chain with reputation, GeoIP/ASN, and operator identity contracts
+description: Reference for the external Policy fact provider that correlates a verified DKIM2 chain with reputation, GeoIP/ASN, and operator identity contracts
 keywords: [Go plugin, DKIM2, reputation, GeoIP, identity contract, DecisionFactProvider, Policy]
 sidebar_position: 5
 ---
 
 # DKIM2 Intelligence Plugin
+
+:::info External plugin since v4.0.2
+Up to v4.0.1 this plugin was bundled with Nauthilus. Since v4.0.2 it is maintained outside the Nauthilus repository as
+an external native plugin and is no longer shipped in the stable and debug images. The plugin also owns the DKIM2 Policy
+integration: its verifier contract, wire example, and reference Policy configuration. Build the artifact from the exact
+host release source tree, toolchain, and build tags, and install it with its checksum and detached signature in the
+immutable plugin directory. An artifact built for another release, including the one bundled with v4.0.1, is rejected
+before it is loaded. Paths below `contrib/plugins/dkim2-intelligence` and `server/docs/examples` on this page refer to
+the plugin's own source tree.
+:::
 
 The `dkim2-intelligence` native plugin is a deterministic generic Policy fact provider for the exact target
 `dkim2/accept-message-instance`. It combines three inputs into one correlated view:
@@ -39,8 +49,7 @@ The static `dkim2-reputation` plugin of early v4 prereleases has been removed. I
 | Request-time I/O | None. The plugin has no Redis, HTTP, credential, effect, permit, or deny capability. |
 | Container artifact | `/usr/local/lib/nauthilus/plugins/dkim2-intelligence.so` |
 
-The plugin ships in the stable and debug container images together with `geoip`, `clickhouse`, `haveibeenpwnd`, and
-`reputation`. For a local build, run `make build` in `contrib/plugins/dkim2-intelligence`. The Makefile embeds the native
+The plugin is not part of the container images. For a local build, run `make build` in `contrib/plugins/dkim2-intelligence`. The Makefile embeds the native
 artifact fingerprint and builds with `GOEXPERIMENT=runtimesecret`, `-mod=vendor`, `-trimpath`, and
 `-buildmode=plugin`. Build the host and all plugins from the same source tree and compiler identity. The repository check
 `scripts/check-native-artifact-bundle.sh` includes this module and rejects stale or unmarked artifacts.

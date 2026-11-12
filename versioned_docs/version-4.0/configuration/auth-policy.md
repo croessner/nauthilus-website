@@ -363,6 +363,30 @@ including decisions without a selected policy rule. See
 [Request termination and cancel sources](server-configuration.md#request-termination-and-cancel-sources) for the
 cancellation fields these lines carry since v4.0.7.
 
+### Temporary failure causes
+
+`tempfail_reason` in the terminal WARN line names the bounded cause:
+
+| `tempfail_reason` | Meaning |
+| --- | --- |
+| `backend_tempfail` | A backend settled without a result, for example because it was unreachable (since v4.0.9) |
+| `policy_indeterminate` | A checkpoint could not decide reliably, for example because a required fact provider failed |
+| `auth_fsm_guard` | A permit was rejected because host evidence for it was missing |
+| `brute_force_error` | The brute-force check failed technically |
+| `environment_tempfail` | An environment check answered a temporary failure |
+
+Since v4.0.9 a failed backend adds two fields:
+
+- `skipped_providers` lists the subject providers that had no backend result to analyze, as `instance:reason` entries
+  such as `plugin_subject_policy:backend_unavailable`.
+- `tempfail_error` carries the first technical error, for example `backend_temporary_failure: plugin backend
+  "mod.passdb" could not complete the request: plugin reported a temporary failure (user_lookup_failed)`.
+
+A subject provider is skipped with `backend_unavailable` whenever the host settles a request without a backend result.
+That covers a backend temporary failure and credentials the host rejects before any backend runs. An empty password or
+username therefore still ends as an ordinary failed login through `standard_empty_password` or
+`standard_empty_username`, whatever `run_if.auth_state` the subject provider uses.
+
 ## Generation behavior
 
 Startup and reload use the same prepare, validate, and commit boundary. A failed candidate leaves the previous complete generation active, and an in-flight request keeps the generation on which it started.

@@ -324,8 +324,10 @@ runtime:
         min_tls_version: "TLS1.2"
         cipher_suites: []
     dns:
-      resolver: "192.0.2.53"
+      resolver: "192.0.2.53:53"
       timeout: 5s
+      attempts: 3
+      pool_size: 0
       resolve_client_ip: false
     grpc:
       nauthilus_authorities:
@@ -361,6 +363,46 @@ runtime:
 Outbound HTTP client TLS uses the same `min_tls_version` and `cipher_suites` validation rules as the inbound HTTP server TLS block: TLS 1.3 cipher-suite names are rejected, and `cipher_suites` must be empty when the minimum version is `TLS1.3`.
 
 Outbound authority clients under `runtime.clients.grpc.nauthilus_authorities` are used by the remote backend. Non-loopback targets require TLS and mTLS certificate material. Caller auth is mandatory; use OIDC client credentials with `private_key_jwt` for production edge instances. The caller-token cache uses the edge instance's Redis connection.
+
+#### DNS client
+
+Since v4.0.8 all outbound DNS lookups share one long-lived client: RBL checks, the client IP reverse lookup, the Lua
+`nauthilus_dns` module, and the connection monitor. The client bounds every lookup by a total budget, retries lost
+queries inside that budget, and can reuse UDP sockets. Changing the settings requires a restart.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `resolver` | system resolvers | Optional `host:port` of the resolver to use |
+| `timeout` | `5s` | Total budget of one lookup, including all attempts |
+| `attempts` | `3` | Maximum number of queries sent for one lookup; `1` disables retries |
+| `retry_interval` | `timeout / attempts` | Delay before an additional attempt is started |
+| `pool_size` | `0` (disabled) | Idle UDP sockets kept per resolver |
+| `pool_max_uses` | `256` | Queries after which a pooled socket is replaced |
+| `resolve_client_ip` | `false` | Resolve the client IP to a host name |
+
+UDP does not retransmit, so a single lost query or response would otherwise end in a timeout after the full budget.
+The client starts an additional attempt after each `retry_interval` while the earlier attempts keep running. The first
+definitive answer wins, and "name does not exist" counts as an answer. With `timeout: 300ms` and `attempts: 3` the
+queries leave at 0 ms, 100 ms, and 200 ms, and a lookup fails only when all three stay unanswered until 300 ms. In the
+normal case exactly one query is sent; a slow or lossy resolver can receive up to `attempts` queries per lookup.
+
+Without a pool every query opens its own UDP socket. Behind NAT or connection tracking each socket creates a state
+entry that outlives the query, which adds up at high request rates. With `pool_size` greater than zero the client
+keeps that many idle sockets per resolver and reuses them:
+
+- A socket serves one query at a time. When no idle socket is available, the query opens its own socket instead of
+  waiting, so `pool_size` is not a concurrency limit.
+- A socket whose query stayed unanswered or failed is closed and not reused.
+- A socket is replaced after `pool_max_uses` queries, which keeps the source port from staying fixed.
+- TCP fallback for truncated responses does not use the pool.
+
+| Metric | Labels | Meaning |
+| --- | --- | --- |
+| `dns_lookups_total` | `result`, `attempts` | Finished lookups. `result` is `success`, `not_found`, `timeout`, or `error`; `attempts` is the number of queries started |
+| `dns_pool_sockets_total` | `source` | Pooled queries by socket source, `reused` or `new` |
+
+`dns_lookups_total{result="success",attempts="2"}` counts lookups that a retry rescued. A high share of
+`source="new"` means the pool is too small or sockets are retired often because queries stay unanswered.
 
 ## `observability`
 

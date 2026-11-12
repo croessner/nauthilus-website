@@ -132,6 +132,9 @@ runtime:
     dns:
       resolver: ""
       timeout: 5s
+      attempts: 3
+      pool_size: 0
+      pool_max_uses: 256
       resolve_client_ip: false
 
     grpc:

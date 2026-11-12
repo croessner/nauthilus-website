@@ -11,7 +11,7 @@ This guide explains how to compile Nauthilus from source instead of using a pre-
 
 ## Prerequisites
 
-- Go 1.27.3. `go.mod` declares `go 1.27` with `toolchain go1.27.3`, and the project CI, container builds, and
+- Go 1.27.4. `go.mod` declares `go 1.27` with `toolchain go1.27.4`, and the project CI, container builds, and
   `make guardrails` require exactly this toolchain.
 - Git.
 - A C toolchain when the selected target or native Go plugins require CGO.
@@ -26,7 +26,7 @@ go version
 GOEXPERIMENT=runtimesecret go env GOEXPERIMENT
 ```
 
-`go version` must report `go1.27.3`. With an older local Go 1.27 release, the Go command downloads the declared
+`go version` must report `go1.27.4`. With an older local Go 1.27 release, the Go command downloads the declared
 toolchain automatically unless `GOTOOLCHAIN=local` is set.
 
 ## Get the Source

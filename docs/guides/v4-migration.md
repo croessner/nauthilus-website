@@ -17,7 +17,7 @@ in a non-production environment before rollout.
 
 1. Replace only the exact module prefix `github.com/croessner/nauthilus/v3` with
    `github.com/croessner/nauthilus/v4`.
-2. Use Go 1.27.3 (the toolchain since v4.0.2) with `GOEXPERIMENT=runtimesecret`. Rebuild every native `.so` against the exact host commit, toolchain,
+2. Use Go 1.27.4 (the toolchain since v4.0.8) with `GOEXPERIMENT=runtimesecret`. Rebuild every native `.so` against the exact host commit, toolchain,
    module graph, build tags, CGO mode, OS, and architecture, and embed the host's native artifact identity with
    `-ldflags "$(go run -mod=vendor ./scripts/native_artifact_fingerprint)"`. Unmarked artifacts are rejected.
 3. Manually migrate the removed v3 `auth.policy` subtree to top-level `policy`. There is no converter, dual root, or

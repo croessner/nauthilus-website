@@ -22,7 +22,7 @@ type StatusMessage struct {
 
 | Field | Meaning and current evaluation |
 | --- | --- |
-| `Code` | Stable plugin-defined machine code. The current adapter preserves it in backend internal additional attributes, but most other paths do not consume it. |
+| `Code` | Stable plugin-defined machine code. The current adapter preserves it in backend internal additional attributes. Since v4.0.9 a temporary `BackendResult` or `AccountListResult` status also puts it into the backend error and the terminal tempfail log line, so set it to the failed step (for example `user_lookup_failed`). Most other paths do not consume it. |
 | `MessageKey` | Host translation/message-catalog key. Current source, backend, obligation, and MFA adapters can apply it as the runtime status key. |
 | `DefaultText` | Protocol-neutral fallback status text. Current adapters can apply it as the runtime status message. Never include secrets. |
 | `Temporary` | Temporary-failure hint. Currently drives temporary failure for `BackendResult` and `AccountListResult`; it is ignored on environment, subject, obligation, and typed MFA result statuses. |

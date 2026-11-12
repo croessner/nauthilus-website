@@ -37,7 +37,7 @@ semantics match the REST contract. See [Generic Policy API](../guides/generic-po
 
 ## Go Toolchain and Native Plugins
 
-The Nauthilus `v4.0.7` source and release build use exactly Go 1.27.3 with `GOEXPERIMENT=runtimesecret`. Native Go `.so` plugins are
+The Nauthilus `v4.0.9` source and release build use exactly Go 1.27.4 with `GOEXPERIMENT=runtimesecret`. Native Go `.so` plugins are
 not protected by protobuf wire compatibility: rebuild them from the exact Nauthilus commit with the same Go version,
 module graph, experiment, build tags, CGO mode, operating system, and architecture. The public `pluginapi/v1` contract
 does not make mismatched Go binaries load-compatible.

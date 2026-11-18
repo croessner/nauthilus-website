@@ -20,6 +20,10 @@ Rows written under the versioned diagnostic data contract carry `contract_versio
 and the brute-force evidence they are the input of the read-only
 [Support Authentication History](../../../guides/support-authentication-history.md).
 
+The [ClickHouse Data Model Reference](../../data-stores/clickhouse-data-model.md) lists every table and view with the
+component that fills each column, and the [Redis Keyspace Reference](../../data-stores/redis-keyspace.md#314-native-plugins)
+lists the Redis keys of the plugin.
+
 The container artifact is:
 
 ```text

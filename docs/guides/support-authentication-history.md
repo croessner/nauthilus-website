@@ -56,6 +56,9 @@ Requests that select no analytics effect produce no row.
 Rows written before the diagnostic data contract was deployed carry `contract_version = 0`. The history shows them as
 legacy (`LEGACY_UNINTERPRETED`) and never derives a cause from them.
 
+The columns of each table, the component that fills them, the reader's access model, and the schema migrations are
+described in the [ClickHouse Data Model Reference](../developer/data-stores/clickhouse-data-model.md).
+
 ## Reader account
 
 Provision a dedicated ClickHouse account with `contrib/clickhouse-kubernetes/history-reader.sql`. The script only

@@ -398,3 +398,7 @@ they run once for every answered request, whichever rule answered it.
 - `protocols` now belongs inside the brute-force block.
 - learning names use the current control names, for example `rbl`, not `realtime_blackhole_lists`.
 - old neural-network configuration is not part of the current public configuration model.
+- The Redis keys of brute-force protection, their types, and their lifetimes are listed under
+  [Brute-Force Protection](../developer/data-stores/redis-keyspace.md#31-brute-force-protection) in the Redis Keyspace
+  Reference. The evidence that the ClickHouse plugin records for bans, counted increments, and ban hits is described in
+  the [ClickHouse Data Model Reference](../developer/data-stores/clickhouse-data-model.md#43-nauthilusbruteforce_lifecycle).

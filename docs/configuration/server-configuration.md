@@ -612,6 +612,10 @@ bounds, and the query profile.
 ## `storage`
 
 `storage` contains the Redis configuration and the optional read-only support history source (`storage.history`).
+The [Redis Keyspace Reference](../developer/data-stores/redis-keyspace.md) lists every key that Nauthilus and its
+bundled plugins create under the configured `prefix`, and the
+[ClickHouse Data Model Reference](../developer/data-stores/clickhouse-data-model.md) describes the tables that the
+support history reads.
 
 ```yaml
 storage:
@@ -831,7 +835,9 @@ expire through their fixed TTL.
 
 `storage.history.clickhouse` enables the read-only
 [Support Authentication History](../guides/support-authentication-history.md) API over the evidence that the ClickHouse
-plugin recorded. An empty `url` disables it; the routes then answer `503 HISTORY_NOT_CONFIGURED`.
+plugin recorded. An empty `url` disables it; the routes then answer `503 HISTORY_NOT_CONFIGURED`. The tables, their
+columns, and the read-only account are described in the
+[ClickHouse Data Model Reference](../developer/data-stores/clickhouse-data-model.md).
 
 ```yaml
 storage:

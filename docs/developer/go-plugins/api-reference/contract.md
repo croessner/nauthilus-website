@@ -247,6 +247,18 @@ type Registrar interface {
 
 Nil implementations, invalid names/descriptors, and duplicate qualified names are rejected. Names returned by component `Name` or `Descriptor` methods are evaluated inside panic boundaries.
 
+### Optional registrars
+
+Additional registration surfaces are separate interfaces that the host's registrar may implement. Assert them inside
+`Register` and keep the plugin working when the assertion fails; they never change the base `Plugin` or `Registrar`
+method set.
+
+| Interface | Method | Reference |
+| --- | --- | --- |
+| `DecisionRegistrar` | `RegisterDecisionFactProvider` and `RegisterDecisionEffectProvider` | [Policy declarations](./policy.md) |
+| `AuthEventRegistrar` | `RegisterAuthEventSink(AuthEventSink) error` (since 4.1.0) | [Host event sinks](./events.md#authevent) |
+| `BruteForceEventRegistrar` | `RegisterBruteForceEventSink(BruteForceEventSink) error` (since 4.1.0) | [Host event sinks](./events.md#bruteforceevent) |
+
 ## `Host`
 
 ```go

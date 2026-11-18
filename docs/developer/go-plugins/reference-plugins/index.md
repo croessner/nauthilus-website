@@ -14,7 +14,7 @@ in its stable and debug container images below `/usr/local/lib/nauthilus/plugins
 | Plugin | Extension point | Qualified component with the standard module name | Primary purpose |
 | --- | --- | --- | --- |
 | [GeoIP/ASN](./geoip.md) | Generic native Decision Fact Providers, one per configured `decision_bindings` entry | `authn/plugin.geoip.environment` in the authentication example | Add local GeoIP, ASN, and freshness evidence for any configured Policy target. |
-| [ClickHouse](./clickhouse.md) | `PostActionTarget` | `authn/plugin.clickhouse.post_action` | Write batched authentication analytics as ClickHouse JSONEachRow data. |
+| [ClickHouse](./clickhouse.md) | `PostActionTarget` | `authn/plugin.clickhouse.post_action` | Write batched authentication analytics, step events, and brute-force evidence as ClickHouse JSONEachRow data. |
 | [Have I Been Pwned](./haveibeenpwnd.md) | `PostActionTarget` | `authn/plugin.haveibeenpwnd.post_action` | Check an authenticated request password through the HIBP k-anonymity API and optionally send mail. |
 | [Reputation](./reputation.md) | Generic native `DecisionFactProvider`s, a `DecisionEffectProvider`, an `ObligationTarget`, and admin hooks | `authn/plugin.reputation.<component>`, `authn/plugin.reputation.learn_outcome`, `reputation/plugin.reputation.observation_context` | Admit independent evidence, store decaying reputation in primary Redis, publish assessment records, and administer audited overrides. Includes the `reputation-worker` Kafka consumer. |
 | [DKIM2 Intelligence](./dkim2-intelligence.md) (external since v4.0.2, not bundled) | Generic native `DecisionFactProvider` | `dkim2/plugin.dkim2_intelligence.assessment` | Correlate an admitted DKIM2 verifier projection with reputation, current-peer GeoIP/ASN, and operator identity contracts without selecting the decision. Replaces the `dkim2-reputation` plugin of early v4 prereleases. |
@@ -47,11 +47,14 @@ mkdir -p build
 
 export CGO_ENABLED=1 GOEXPERIMENT=runtimesecret
 NATIVE_ARTIFACT_LDFLAGS="$(go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo")"
+NATIVE_PGO_FLAG="-pgo=off"
+if [ -f server/default.pgo ]; then NATIVE_PGO_FLAG="-pgo=$PWD/server/default.pgo"; fi
 
 go build \
   -mod=vendor \
   -tags="netgo" \
   -trimpath \
+  "${NATIVE_PGO_FLAG}" \
   -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -buildmode=plugin \
   -o build/<plugin>.so \
@@ -60,7 +63,8 @@ go build \
 
 Replace `<plugin>` with `geoip`, `clickhouse`, `haveibeenpwnd`, or `reputation`. The host loader
 rejects artifacts that do not carry its exact native artifact identity, so the container build and the
-`geoip` Makefile passes `-ldflags "$(go run -mod=vendor ./scripts/native_artifact_fingerprint)"`. If the host uses additional build tags, add the exact same tags. Build from the
+`geoip` Makefile passes `-ldflags "$(go run -mod=vendor ./scripts/native_artifact_fingerprint)"`. If the host uses additional build tags, add the exact same tags. `NATIVE_PGO_FLAG` applies the host's
+`server/default.pgo`, which every plugin of a PGO-built host needs; see [PGO profile](../build-test-debug.md#pgo-profile). Build from the
 exact Nauthilus tag or commit used for the host; `pluginapi.APIVersion` compatibility alone does not guarantee that
 Go's plugin loader will accept the artifact.
 
@@ -78,7 +82,8 @@ The plugins demonstrate several distinct data paths:
 - Reputation contributes assessment records under `plugin.reputation.*` and writes learned evidence only through Policy-selected obligations; it emits no decision and no runtime exchange delta.
 - DKIM2 Intelligence contributes a correlated assessed chain, one SMTP-peer record, and a structural completeness flag under `plugin.dkim2_intelligence.*`, and no decision, SMTP action, or runtime exchange delta.
 - HIBP returns a plan-local `PostActionEnqueueResult.RuntimeDelta` under `plugin.exchange.haveibeenpwnd` for later post-action steps.
-- ClickHouse consumes request snapshots, policy facts, and `plugin.exchange.*` data, but emits no policy facts and no runtime delta of its own.
+- ClickHouse consumes request snapshots, policy facts, `plugin.exchange.*` data, and host step and brute-force events,
+  but emits no policy facts and no runtime delta of its own.
 
 Policy facts are validated decision evidence. Runtime exchange values are JSON-compatible coordination data. A post-action delta is visible only to later steps in the same detached post-action plan; it does not change the already selected decision, live request runtime, or client response.
 
@@ -88,7 +93,8 @@ The pages describe the plugin implementation as it exists now, including known i
 
 - GeoIP registers only the providers listed in `decision_bindings`; there is no implicit binding, authentication-shaped environment source, or runtime exchange alias.
 - Reputation is not reloadable: every configuration change requires a restart of all servers and workers that share its Redis prefix.
-- The checked-in ClickHouse schema and Kubernetes initialization assets do not currently cover every field emitted by the native plugin. They must be aligned before being treated as a validated deployment.
+- The standalone ClickHouse `schema.sql` and migrations cover every emitted field; the schema embedded in the Kubernetes
+  Job does not yet and must not be used as is.
 - ClickHouse buffers rows per process in memory (bounded by `max_buffer_rows`); there is no durable spool, so rows still buffered when a process ends are lost.
 - HIBP mail uses `Host.Mail("mail")`, runs only after a fresh positive HTTP lookup, and does not retry after a mail gate has been claimed and rendering or sending fails.
 

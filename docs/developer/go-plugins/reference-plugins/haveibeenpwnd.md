@@ -280,6 +280,8 @@ Plugin logs, metrics, and span attributes omit passwords, accounts, full hashes,
 
 ```shell
 NATIVE_ARTIFACT_LDFLAGS="$(go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo")"
+NATIVE_PGO_FLAG="-pgo=off"
+if [ -f server/default.pgo ]; then NATIVE_PGO_FLAG="-pgo=$PWD/server/default.pgo"; fi
 GOEXPERIMENT=runtimesecret \
 GOCACHE=/tmp/nauthilus-go-cache \
 go test ./contrib/plugins/haveibeenpwnd
@@ -291,6 +293,7 @@ go build \
   -mod=vendor \
   -tags="netgo" \
   -trimpath \
+  "${NATIVE_PGO_FLAG}" \
   -buildmode=plugin \
   -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -o build/haveibeenpwnd.so \

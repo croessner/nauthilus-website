@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
-description: Native OIDC and restricted dynamic client registration configuration in config v2
-keywords: [Identity Provider, OIDC, Authorization Code, Device Code, Client Credentials, Dynamic Client Registration]
+description: Native OIDC, hosted resources, and restricted dynamic client registration configuration in config v2
+keywords: [Identity Provider, OIDC, Authorization Code, Device Code, Client Credentials, Dynamic Client Registration, Hosted Resources, RFC 8414, RFC 9207]
 ---
 
 # OIDC
@@ -12,6 +12,8 @@ Nauthilus provides a built-in OpenID Connect provider with:
 - Device Authorization
 - Client Credentials
 - restricted RFC 7591 Dynamic Client Registration for public native mail clients
+- RFC 8414 authorization server metadata and RFC 9207 issuer identification
+- hosted resources that Nauthilus serves itself, such as the read-only MCP support endpoint
 
 The current configuration root is:
 
@@ -20,6 +22,8 @@ The current configuration root is:
 ## Endpoints
 
 - `GET /.well-known/openid-configuration`
+- `GET /.well-known/oauth-authorization-server`
+- `GET /.well-known/oauth-authorization-server/<issuer path>` for an issuer with a path
 - `POST /oidc/register` when restricted Dynamic Client Registration is enabled
 - `GET /oidc/authorize`
 - `POST /oidc/token`
@@ -33,6 +37,43 @@ The current configuration root is:
 Optional legacy GET support for `/oidc/token` is controlled by:
 
 - `identity.oidc.tokens.token_endpoint_allow_get`
+
+## Authorization Server Metadata and Issuer Identification
+
+The provider metadata is one document. Nauthilus serves it as OIDC discovery at `/.well-known/openid-configuration` and,
+unchanged, as RFC 8414 authorization server metadata at `/.well-known/oauth-authorization-server`. OAuth clients that do
+not speak OIDC discovery, such as MCP clients, find the issuer there.
+
+For an issuer with a path, for example `https://idp.example.com/auth`, the RFC 8414 path-insertion location
+`https://idp.example.com/.well-known/oauth-authorization-server/auth` answers as well. Only the path of the configured
+issuer is served; any other path below `/.well-known/oauth-authorization-server/` answers `404`. Issuer paths with
+several segments are served the same way. The root form is always served, which is also what a reverse proxy reaches
+when it strips the issuer path from the appended form
+`https://idp.example.com/auth/.well-known/oauth-authorization-server`.
+
+Every authorization response that is redirected to the client, with a code or with an error, carries the RFC 9207 `iss`
+parameter with the exact value of `identity.oidc.issuer`:
+
+```text
+http://127.0.0.1:53682/callback?code=...&iss=https%3A%2F%2Fidp.example.com&state=...
+```
+
+The metadata advertises this with `authorization_response_iss_parameter_supported: true`. A client that implements RFC
+9207 compares `iss` with the issuer it discovered and rejects a mismatch, so a client that talks to several
+authorization servers detects a mix-up before it redeems a code. Clients without RFC 9207 support ignore the parameter.
+Requests that are refused with a plain `400` before any redirect, for example an unknown `client_id` or `redirect_uri`,
+carry no `iss`.
+
+:::note Upgrade notes
+
+- Both metadata documents contain the new field `authorization_response_iss_parameter_supported`, and every callback
+  URL carries the additional query parameter `iss`. Keep `identity.oidc.issuer` exactly as your clients know it; an
+  RFC 9207 client rejects a response whose `iss` differs, for example by a trailing slash.
+- If your reverse proxy forwards only `/.well-known/openid-configuration` to Nauthilus, also forward
+  `/.well-known/oauth-authorization-server` (and its path-insertion form for an issuer with a path). A CORS policy with
+  `path_prefixes: ["/.well-known/"]` already covers the new document.
+
+:::
 
 ## Client Authentication Metadata
 
@@ -161,7 +202,9 @@ the resources, for example `["roundcube-app", "https://mail.example.org/jmap"]`.
 parameter. Every value must be an absolute URI without fragment, registered by a resource server, and requestable by the
 client; duplicates are removed. Any other value fails with `invalid_target`: a redirect to the validated redirect URI for
 dynamic clients, a plain `400` for static clients and at the device endpoint. The validated resources survive login,
-MFA, and consent resumes and are bound to the authorization code or device request.
+MFA, and consent resumes and are bound to the authorization code or device request. A hosted resource is registered by
+Nauthilus itself rather than by a resource server client; it must be the only `resource` value of a request and is never
+accepted at the device endpoint. See [Hosted Resources](#hosted-resources).
 
 **Token endpoint.**
 
@@ -195,6 +238,71 @@ Service tokens stay inactive for callers that only have `token_introspection`. E
 `{"active": false}`. The response shape is unchanged apart from `azp` and an array `aud`. JWT access tokens of dynamic
 clients are still revalidated against their client through `azp`, so an array audience never bypasses the dynamic-client
 checks.
+
+## Hosted Resources
+
+`identity.oidc.hosted_resources` declares RFC 8707 protected resources that Nauthilus serves itself. For such a resource
+Nauthilus is the authorization server and the resource server. No client owns it, so delegated introspection through a
+`token_introspection` block never matches its tokens. The read-only MCP support endpoint is the hosted resource that
+`runtime.servers.mcp.hosted_resource` names; see [Read-only Support Access over MCP](../../guides/support-mcp-access.md)
+for the listener, the reverse proxy, and the client setup.
+
+```yaml
+identity:
+  oidc:
+    hosted_resources:
+      - name: "support-mcp"
+        resource: "https://login.example.com/mcp"
+        scopes:
+          - "nauthilus:history_read"
+          - "nauthilus:history_detail"
+          - "nauthilus:operations_read"
+        user_right:
+          from: "groups"
+          any_of: ["nauthilus-support"]
+        max_authentication_age: 12h
+        max_access_token_lifetime: 15m
+        static_clients: ["support-cli"]
+```
+
+| Key under `identity.oidc.hosted_resources[]` | Default | Meaning |
+| --- | --- | --- |
+| `name` | required | Reference name: 1 to 63 lower-case letters, digits, or dashes, starting with a letter or digit; unique. |
+| `resource` | required | The resource indicator, which is also the token audience. Absolute HTTPS URL with a host and without query, user info, fragment, or whitespace; plain HTTP only for loopback hosts. |
+| `scopes` | required | The scopes the resource gates: a non-empty subset of `nauthilus:history_read`, `nauthilus:history_detail`, and `nauthilus:operations_read`. |
+| `user_right.from` | required | `groups` evaluates group names, `group_dns` group distinguished names. |
+| `user_right.any_of` | required | Groups that entitle a user; at least one. |
+| `max_authentication_age` | `12h` | How long after the interactive login a grant may still be issued or refreshed; `5m` to `720h`. |
+| `max_access_token_lifetime` | `15m` | Ceiling for the lifetime of every access token that carries the resource; `1m` to `1h`. |
+| `static_clients` | required | The only clients admitted to the resource. |
+
+**Validation.** Configuration validation requires `identity.oidc.enabled` and rejects unknown keys, names or resources
+that repeat, a resource that equals a configured `client_id`, a resource owned by a `token_introspection` block, and a
+reserved `nauthilus:` audience. Every entry of `static_clients` must be a configured static client that
+
+- is public or sets `require_pkce`;
+- allows only `authorization_code`, optionally with `refresh_token`;
+- requires MFA through `require_mfa` or `required_mfa_level`;
+- lists at least one scope of the resource in its `scopes`.
+
+**Issuer behaviour.**
+
+| Step | Behaviour |
+| --- | --- |
+| Authorization request | Only a client in `static_clients` may name the resource. A dynamically registered client never may, whatever it declared. The resource must be the only `resource` value. Violations fail with `invalid_target`. |
+| Login age | A browser session whose login is older than `max_authentication_age` must log in again, including MFA. With `prompt=none` the client receives `login_required`. |
+| User right | The groups (`groups`) or group distinguished names (`group_dns`) from the fresh backend lookup that builds the token claims must contain one entry of `any_of`; otherwise the client receives `access_denied` and the flow is consumed. A token claim never decides it. |
+| Code exchange and refresh | Refused with `invalid_grant` once the login is older than `max_authentication_age`. A client that is no longer in `static_clients` receives `invalid_target`. |
+| Access token | Audience is the client ID plus the resource. The lifetime is the client's lifetime, capped at `max_access_token_lifetime`. |
+| Device authorization | Never grants a hosted resource; requests and device-code exchanges that carry one fail with `invalid_target`. |
+
+The authentication backend must resolve groups for the `oidc` protocol, for example through an LDAP `groups` search
+(see [Groups Resolution](../database-backends/ldap.md#groups-resolution)). A user whose groups cannot be resolved has no
+user right.
+
+A removed group membership ends access at the next authorization, at the latest after `max_authentication_age`, when
+refresh fails. Removing a client from `static_clients` ends access at once, because the resource server checks the
+admission of the issuing client on every request.
 
 ## CORS for Discovery
 
@@ -473,6 +581,11 @@ revocation epochs are stored in Redis. Plan the IdP Redis with these properties:
 - **Keyed references.** Bearer tokens, refresh tokens, device codes, user codes, and authorization codes appear in Redis
   keys only as HMAC-SHA256 digests keyed with `storage.redis.encryption_secret`, each with its own domain separator.
   The secret is mandatory: configuration validation rejects an empty value or one shorter than 16 characters.
+- **Consent challenges.** A pending consent decision lives in its own key family and digest namespace
+  (`oidc:consent:<digest>`), apart from authorization codes (`oidc:code:<digest>`), and is consumed with `GETDEL` when
+  the user decides. The consent challenge is visible to the user agent, so it can never be redeemed at the token
+  endpoint. The token endpoint also rejects every `code` value outside the issued shape (unreserved URI characters, at
+  most 256 characters) with `invalid_grant` before it reads code storage.
 - **Secret rotation.** Changing `storage.redis.encryption_secret` changes every keyed reference. Running device flows,
   unredeemed authorization codes, and all opaque access and refresh tokens become invalid. Revocation epochs and dynamic
   client records are not keyed and survive the rotation.
@@ -523,6 +636,17 @@ redis-cli -c unlink '<prefix>oidc:dcr:{registry}:active'
 
 Leave the other retired keys to their TTLs. Former device codes, user codes, and authorization codes share key prefixes
 with the new digest keys, so a broader pattern scan could remove live state.
+
+:::
+
+:::warning Consent challenges in Nauthilus 4.0
+
+Nauthilus 4.0.0 through 4.0.9 stored a pending consent decision as `consent:<challenge>` in the authorization-code key
+space. A client that read the challenge from the consent URL or form could redeem it at the token endpoint with its own
+credentials and PKCE verifier and receive tokens before the user decided. 4.1.0 separates the key families and refuses
+such values. During a rolling update, a consent page that an older instance started cannot be decided on a newer one;
+the user starts the authorization again, which costs at most the ten-minute authorization lifetime. No stored value has
+to be migrated or removed.
 
 :::
 
@@ -587,5 +711,14 @@ The reserved `nauthilus:*` scopes are used for backchannel administration, autho
 | `nauthilus:webauthn_read` | Read public WebAuthn credential descriptors. |
 | `nauthilus:webauthn_write` | Save, update, or delete WebAuthn credentials. |
 | `nauthilus:attribute_read` | Release identity attributes to a trusted authority caller. |
+| `nauthilus:history_read` | Read-only support history of a named subject (support projection). |
+| `nauthilus:history_detail` | Support history with the detail projection; implies `nauthilus:history_read`. |
+| `nauthilus:operations_read` | Read-only operational diagnostics. |
 
 For split edge/authority deployments, configure the edge service-principal client with only the scopes needed by its remote backend `allowed_operations`.
+
+The three support scopes are accepted from backchannel service tokens on the `/api/v1/support/*` routes and from user
+tokens of a hosted resource. They are the only scopes a hosted resource may gate. `nauthilus:admin`,
+`nauthilus:security`, and Basic credentials grant no support access. See
+[Read-only Support Access over MCP](../../guides/support-mcp-access.md) and
+[Support Authentication History](../../guides/support-authentication-history.md).

@@ -19,7 +19,8 @@ Current Nauthilus container builds compile the server and bundled plugins from o
 - `netgo` plus any selected release build tags;
 - `-trimpath`;
 - the same `github.com/croessner/nauthilus/v4` package sources;
-- one shared native artifact identity passed through `-ldflags`.
+- one shared native artifact identity passed through `-ldflags`;
+- the host's PGO profile passed through `-pgo` (see [PGO profile](#pgo-profile)).
 
 A corresponding plugin build is:
 
@@ -27,11 +28,16 @@ A corresponding plugin build is:
 export GOEXPERIMENT=runtimesecret
 NATIVE_ARTIFACT_LDFLAGS="$(cd /path/to/nauthilus && \
   go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo ${BUILD_TAGS}")"
+NATIVE_PGO_FLAG="-pgo=off"
+if [ -f /path/to/nauthilus/server/default.pgo ]; then
+  NATIVE_PGO_FLAG="-pgo=/path/to/nauthilus/server/default.pgo"
+fi
 
 go build \
   -mod=vendor \
   -tags="netgo ${BUILD_TAGS}" \
   -trimpath \
+  "${NATIVE_PGO_FLAG}" \
   -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -buildmode=plugin \
   -o build/customer.so \
@@ -46,7 +52,8 @@ Nauthilus rejects any native artifact that does not carry the host's exact build
 `scripts/native_artifact_fingerprint` in the Nauthilus source tree. It hashes the Go toolchain settings (`GOVERSION`,
 `GOOS`, `GOARCH`, `CGO_ENABLED`, `GOEXPERIMENT`, `GOFLAGS`, `GOAMD64`, `GOARM64`, CGO flags, `CC`, `CXX`), the sorted
 build tags, every tracked or untracked non-ignored Go, C/C++, assembly, and `.syso` source file, `go.mod`, `go.sum`,
-`vendor/modules.txt`, and the resources embedded by the server, the bundled plugins, and the sample plugin. The tool prints one `-ldflags` value:
+`vendor/modules.txt`, and the resources embedded by the server, the bundled plugins, and the sample plugin. Revisions
+that contain `scripts/native-pgo-flag.sh` also hash `server/default.pgo`. The tool prints one `-ldflags` value:
 
 ```text
 -X github.com/croessner/nauthilus/v4/pluginapi/v1.nativeArtifactIdentity=nauthilus-native-artifact-v1:<sha256>:end-native-artifact
@@ -69,8 +76,34 @@ package-hash check follows afterwards. Setting `Metadata().Build.ArtifactIdentit
 `pluginapi.NativeArtifactIdentity()` records the identity in discovery output but is diagnostic only.
 
 In a Nauthilus checkout, `sh scripts/check-native-artifact-bundle.sh` builds a disposable probe plus the sample and
-bundled plugin fixtures, and proves that a stale and an unmarked artifact are rejected. It publishes nothing and starts no
+bundled plugin fixtures, and proves that a stale and an unmarked artifact are rejected; with a PGO profile present it
+also rejects a plugin built without it. It publishes nothing and starts no
 plugin services.
+
+## PGO profile
+
+Go applies profile-guided optimization to every package of a binary, the standard library included, when the binary is
+built with a profile. Nauthilus revisions that contain `server/default.pgo` build the server with it automatically
+(`-pgo=auto`). A plugin compiled without the same profile carries differently optimized copies of the shared packages.
+It passes the native artifact identity check and is then refused by Go:
+
+```text
+plugin.Open("/usr/local/lib/nauthilus/plugins/customer.so"): plugin was built with a different version of package internal/runtime/maps
+```
+
+Pass the host's profile to every plugin build:
+
+- `-pgo=/path/to/nauthilus/server/default.pgo` when the host revision contains the file;
+- `-pgo=off` when it does not. Releases up to and including `v4.0.9` ship no profile.
+
+Checkouts that contain `scripts/native-pgo-flag.sh` print the matching flag with `sh scripts/native-pgo-flag.sh`; the
+container builds, the `geoip` Makefile, and `make native-plugins-build-check` use it. In those revisions the native
+artifact fingerprint also hashes `server/default.pgo`, and `scripts/check-native-artifact-bundle.sh` proves that a
+plugin built with `-pgo=off` is refused while a profile is present.
+
+The profile is refreshed from the end-to-end workload of every release and committed for the next build, so it changes
+from release to release. Rebuild out-of-tree plugins for every host release, as the native artifact identity already
+requires.
 
 ## Why API version is not enough
 
@@ -78,12 +111,12 @@ The loader first has to satisfy Go's shared-package compatibility checks. Only t
 
 | Layer | What must match |
 | --- | --- |
-| Go plugin loader | toolchain/package hashes, experiments, build tags, shared sources, dependency graph |
+| Go plugin loader | toolchain/package hashes, experiments, build tags, PGO profile, shared sources, dependency graph |
 | Nauthilus contract | factory signature, non-nil plugin, metadata, exact `pluginapi.APIVersion` |
 | Operator policy | allowlisted resolved path, checksum/signature/trust policy, capabilities |
 | Runtime registration | unique names, descriptors, facts, hooks, and strict plugin config |
 
-`built with a different version of package ...` is an ABI/package-hash failure. Rebuild against the exact host source and dependency graph; changing only `Metadata().APIVersion` cannot fix it.
+`built with a different version of package ...` is an ABI/package-hash failure. Rebuild against the exact host source, dependency graph, and PGO profile; changing only `Metadata().APIVersion` cannot fix it.
 
 ## Unit tests without `.so` loading
 

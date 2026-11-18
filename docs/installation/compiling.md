@@ -118,8 +118,11 @@ Go applies profile-guided optimization automatically when a CPU profile named `d
 directory. For Nauthilus that file is `server/default.pgo`. When the file is committed, `make build`, the direct
 `go build ./server` command above, release builds, and Docker builds consume it without extra flags. The profile is
 produced from the release end-to-end workload of one release and used by the next one; a release built without the file
-is an ordinary non-PGO build. `v4.0.0` ships without `server/default.pgo`, so its binaries and images are
-non-PGO builds. Pass `-pgo=off` to disable the profile for a single build.
+is an ordinary non-PGO build. Releases up to and including `v4.0.9` ship without `server/default.pgo`, so their
+binaries and images are non-PGO builds. Pass `-pgo=off` to disable the profile for a single build.
+
+Native Go plugins must be compiled with the same profile as the server; Go refuses to load a plugin built without it.
+See the [plugin PGO requirement](/docs/developer/go-plugins/build-test-debug#pgo-profile).
 
 ## Protobuf Code Generation
 

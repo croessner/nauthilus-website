@@ -156,10 +156,15 @@ from the fingerprint tool in the exact Nauthilus source checkout that built the 
 export GOEXPERIMENT=runtimesecret
 NATIVE_ARTIFACT_LDFLAGS="$(cd /path/to/nauthilus && \
   go run -mod=vendor ./scripts/native_artifact_fingerprint -tags=netgo)"
+NATIVE_PGO_FLAG="-pgo=off"
+if [ -f /path/to/nauthilus/server/default.pgo ]; then
+  NATIVE_PGO_FLAG="-pgo=/path/to/nauthilus/server/default.pgo"
+fi
 
 go build \
   -tags=netgo \
   -trimpath \
+  "${NATIVE_PGO_FLAG}" \
   -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -buildmode=plugin \
   -o build/customer-risk.so \
@@ -167,7 +172,9 @@ go build \
 ```
 
 Without these `-ldflags`, the loader rejects the artifact before `plugin.Open`. See
-[native artifact identity](./build-test-debug.md#native-artifact-identity).
+[native artifact identity](./build-test-debug.md#native-artifact-identity). `NATIVE_PGO_FLAG` repeats the host's PGO
+profile: a host built with `server/default.pgo` refuses a plugin compiled without it, see
+[PGO profile](./build-test-debug.md#pgo-profile).
 
 If the host is built with additional build tags, the plugin build must use the same set. If your release process vendors modules, vendor the plugin's dependency graph and add `-mod=vendor` to match that process.
 

@@ -117,7 +117,9 @@ text the client receives, including these overrides (since v4.0.6).
 
 Nauthilus distinguishes a backend that decided against the credentials from a backend that could not decide. Only a
 decision is counted by brute-force protection; a technical fault is answered with a temporary failure and never counted
-as a wrong password.
+as a wrong password. The same host-verified outcome feeds the brute-force toleration of the client address: a verified
+success counts the account as a positive, a rejected password as a negative, and a temporary failure counts as neither
+(see [Toleration](brute-force.md#toleration)).
 
 | Backend result | Pipeline outcome |
 |---|---|
@@ -143,8 +145,11 @@ credentials. See [Remote backend](database-backends/remote.md).
 
 Requests that cannot be admitted or that end with an unexpected application error are also temporary failures and
 never authenticate the request: an exhausted [`policy.runtime.authn`](auth-policy.md#internal-authentication-admission)
-bound, a saturated post-action supervisor, a failing `host_sync` provider, or an unavailable Decision Service
-generation. See [Unexpected application errors](auth-policy.md#unexpected-application-errors).
+bound, a saturated post-action supervisor for a rule-selected post-action, a failing `host_sync` provider, or an
+unavailable Decision Service generation. See
+[Unexpected application errors](auth-policy.md#unexpected-application-errors).
+[Terminal post-actions](auth-policy.md#terminal-post-actions) are best-effort and never turn an answer into a temporary
+failure.
 
 When the repeating-wrong-password check cannot reach Redis after a failed password, Nauthilus also answers with a
 temporary failure and does not count the request. See

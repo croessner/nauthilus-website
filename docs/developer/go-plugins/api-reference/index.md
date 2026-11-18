@@ -30,7 +30,7 @@ Each page uses these terms:
 | **Discovery only** | The value is reported or retained for diagnostics but does not authorize or schedule behavior. |
 | **Currently ignored** | The field is public but the current production path does not act on it. Do not depend on it until the implementation changes. |
 
-The statements about current behavior describe the Nauthilus 3.1 development line represented by this documentation. They are not a promise that an ignored field will remain ignored.
+The statements about current behavior describe the Nauthilus 4.1 development line represented by this documentation. They are not a promise that an ignored field will remain ignored.
 
 ## Package map
 
@@ -39,7 +39,8 @@ The statements about current behavior describe the Nauthilus 3.1 development lin
 | [Core contract](./contract.md) | API version, metadata, capabilities, plugin lifecycle, configuration views, registration, host and logging contracts |
 | [Runtime and request values](./runtime.md) | request snapshots, TLS and IdP values, runtime context, credentials and secrets |
 | [Common results](./results.md) | statuses, facts, patches, response mutation, backend result values and backend server references |
-| [Extension points](./extensions.md) | init tasks, environment and subject sources, obligations and post-actions |
+| [Extension points](./extensions.md) | init tasks, environment and subject sources, obligations, post-actions and the terminal `AuthOutcome` |
+| [Host event sinks](./events.md) | `AuthEvent` and `BruteForceEvent` sinks, their optional registrars and delivery lanes |
 | [Backends and MFA](./backends.md) | password backends, account lists, TOTP, recovery codes, WebAuthn and public MFA state |
 | [Host services](./services.md) | HTTP, mail, connection targets, Redis, cache, helpers, LDAP, metrics and tracing |
 | [HTTP hooks](./hooks.md) | hook descriptors, authentication matrix, requests and responses |

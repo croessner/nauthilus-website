@@ -38,9 +38,9 @@ This boundary provides two guarantees to the host: plugin outputs are explicit a
 | Identity | `Username`, `Account`, `AccountField`, `UniqueUserID`, `DisplayName` | Values known at the current extension point; fields can be empty when not resolved yet. |
 | Transport | `ClientIP`, `ClientPort`, `ClientNet`, `ClientHost`, `LocalIP`, `LocalPort`, `UserAgent` | Safe value copies, not network objects. |
 | Protocol | `Service`, `Protocol`, `Method`, `Session`, `ExternalSessionID` | `Session` is request correlation state; treat it as sensitive even though it is exposed. |
-| IdP | `IDP.RequestedScopes`, client metadata, grant type, redirect URI, MFA method/completion | Populated only when the host has the corresponding IdP context. |
+| IdP | `IDP.RequestedScopes`, client metadata, grant type, redirect URI, MFA method/completion, non-authorizing `IDP.FlowRef` | Populated only when the host has the corresponding IdP context. |
 | TLS | normalized `TLSInfo` and compatibility values below `TLS.Legacy` | Certificate/key material is never exposed. |
-| Diagnostics | status text, brute-force metadata, latency, HTTP status | Bounded current outcome metadata, not a mutable result. |
+| Diagnostics | status text, brute-force metadata including `BruteForceTolerated`, latency, HTTP status | Bounded current outcome metadata, not a mutable result. |
 | Runtime flags | debug, no-auth, user-found, authenticated, authorized, source-stage flags | A snapshot of host-derived booleans at the invocation point. |
 | Headers | `map[string][]string` | Copied and redacted; authorization, cookie, proxy authorization, and configured password-bearing headers are not passed through in clear text. |
 
@@ -268,6 +268,33 @@ Use `Host.Go` for supervised background work and return promptly after acceptanc
 
 `PostActionRequest.PasswordHash` contains the host-owned lowercase 64-character SHA-256 digest of `nonce + NUL + password`, but only when the module requested and the operator allowed the `password_hash` capability. Without that grant the field is empty; `credentials` does not imply it. Development mode does not change this representation. Treat it as sensitive password-derived material and never log or persist it. The bundled ClickHouse integrations validate the full digest and export only its first eight characters to their established analytics schema, and therefore require `allow_capabilities: [password_hash]`.
 
+### Terminal outcome
+
+Policy prepares a post-action while it selects the effect, before the response is finalized. Since 4.1.0 the host
+binds the sealed terminal result of the request as `PostActionRequest.Outcome` (`pluginapi.AuthOutcome`) when the
+detached work executes after the response boundary: the decision (`ok`, `fail`, `tempfail`, `unknown`), the Policy
+operation, the presenting rule's stage, markers, and name, the bounded tempfail cause, the terminal auth FSM state, the
+client status text, the configured host status code, and the transport with its committed HTTP status. The host also
+refreshes `Snapshot.Diagnostics.HTTPStatus` and `StatusMessage` from it. Read the answer from `Outcome` instead of
+deriving it from capture-time values such as `Runtime.Authenticated`. `Outcome.Known == false` means the run never
+sealed an outcome; do not substitute a credential-failure default.
+
+When a post-action request would exceed the host work bounds, the host drops the largest record-valued facts first and
+sets `PostActionRequest.FactsTrimmed`; scalar facts are kept. See
+[`AuthOutcome`](./api-reference/extensions.md#authoutcome) for the field reference.
+
+### Terminal post-actions
+
+An operator can list a post-action under `terminal_post_actions` of an authn target. It then runs exactly once for
+every answered request, whichever rule answered it, including requests answered by built-in `authn/standard_auth`
+rules such as a brute-force reject after a ban hit. A rule obligation that names the same effect is folded into this
+completion, so the post-action is not called twice for one request. Terminal completions are best-effort supervisor
+plans: they run with the facts of the last evaluated checkpoint, are accepted only while fewer than half of the
+supervisor capacity (rounded up) is in flight, and a rejection never changes the answer. A post-action that may be
+declared terminal must therefore tolerate being skipped under load and must not assume that a specific rule selected
+it. See
+[Terminal post-actions](../../configuration/auth-policy.md#terminal-post-actions).
+
 ### Callback admission limits
 
 Obligation and post-action targets may implement `AdmissionLimits() (requestsPerSecond, maxConcurrency int)`. The registrar freezes the values once (1 to 10000 requests per second, 1 to 1024 concurrent callbacks; invalid values reject registration), and the host enforces them per registered component and runtime generation before invoking plugin code. The rate limiter is a token bucket with burst equal to the rate. Overload returns a temporary callback failure; the rate, concurrency, or cancellation cause appears in bounded operational diagnostics without request payloads.
@@ -316,9 +343,21 @@ deadline expiry produces 504, and an invalid status or unsafe response header
 produces 502. Returned error details and recovered panic values are not exposed
 to the HTTP caller.
 
+## Host event sinks
+
+Since 4.1.0 a module can register diagnostic sinks through the optional `AuthEventRegistrar` and
+`BruteForceEventRegistrar` interfaces. `AuthEvent` covers second-factor verifications and OIDC authorization-code
+issuance and redemption; `BruteForceEvent` covers counted increments, tolerated thresholds, ban hits, ban activations
+and releases, and counter resets. The host builds the events at its own decision points and delivers them from bounded
+per-process lanes on host goroutines, never on a request. A full lane drops the event and counts it in
+`plugin_auth_events_total{outcome,lane}`, and a sink can never delay or change a request, a decision, or a ban. Events
+are secret-free: no passwords, password hashes, OTP values, codes, tokens, or repeating-wrong-password state. See
+[Host event sinks](./api-reference/events.md).
+
 ## Exact reference
 
 - [Extension points](./api-reference/extensions.md)
+- [Host event sinks](./api-reference/events.md)
 - [Backend and MFA interfaces](./api-reference/backends.md)
 - [Runtime and request values](./api-reference/runtime.md)
 - [Result value objects](./api-reference/results.md)

@@ -290,6 +290,40 @@ director that sends its load over gRPC.
 
 Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings. See [gRPC Authority APIs](../grpc-api.md) for the service contract and [Split Identity Proxy Configuration](identity-proxy.md) for the distributed deployment model.
 
+### MCP Support Listener
+
+The optional MCP listener exposes the read-only support operations to MCP clients such as Codex and Claude Code. It is
+disabled by default, serves plain HTTP behind a TLS-terminating reverse proxy, and accepts only user access tokens that
+the built-in issuer issued for the hosted resource it names.
+
+```yaml
+runtime:
+  servers:
+    mcp:
+      enabled: false
+      address: "127.0.0.1:9097"
+      hosted_resource: "support-mcp"
+      tls_termination: "trusted_reverse_proxy"
+      trusted_proxies: ["127.0.0.1/32"]
+      allowed_hosts: ["login.example.com"]
+      allowed_browser_origins: []
+      limits:
+        timeout: 15s
+        max_concurrent: 8
+        max_concurrent_per_principal: 2
+        max_request_bytes: 65536
+        max_response_bytes: 1048576
+        failed_auth_per_minute: 30
+      audit:
+        enabled: true
+```
+
+`runtime.servers.mcp.trusted_proxies` is independent of `runtime.servers.http.trusted_proxies`; an HTTPS resource
+requires at least one entry. Unset limits use the values shown, and a limit cannot be switched off. Listener, transport,
+and limit settings are read when the HTTP servers start. See
+[Read-only Support Access over MCP](../guides/support-mcp-access.md) for every key, the reverse proxy, and the client
+setup.
+
 ### Shared Runtime Timeouts
 
 Timeouts are shared by HTTP and gRPC authentication paths.
@@ -454,6 +488,7 @@ Important paths:
 - `observability.metrics.monitor_connections`
 - `observability.metrics.prometheus_timer.*`
 - `observability.metrics.endpoint_auth.basic.*`
+- `observability.diagnostics.operations.*`
 
 ### NOTICE Field Filtering
 
@@ -528,9 +563,55 @@ visible at every log level.
 operation, timing, and status but never carry the raw `db.statement` attribute, because Redis keys and arguments can
 contain bearer tokens, credentials, or account data. Telemetry that an older release already exported is not removed.
 
+### Operational Diagnostics
+
+`observability.diagnostics.operations` enables the read-only operational diagnostics behind
+`POST /api/v1/support/operations/diagnostics` and the MCP tool `operational_diagnostics`. The instance-local
+`nauthilus_runtime` source reads the in-process Prometheus registry; the optional `loki` source counts known log
+messages and the optional `prometheus` source counts the increase of fixed counters in the requested window, both
+through the fixed `nauthilus_diagnostics` query profile.
+
+```yaml
+observability:
+  diagnostics:
+    operations:
+      enabled: true
+      sources:
+        nauthilus_runtime:
+          enabled: true
+        loki:
+          enabled: true
+          url: "https://loki.example.com"
+          tenant: "mail-prod"
+          selector:
+            app: "nauthilus"
+            namespace: "mail"
+          instance_label: "pod"
+          query_profile: "nauthilus_diagnostics"
+          timeout: 3s
+          max_time_window: 1h
+          max_series: 200
+          max_response_bytes: 1048576
+          bearer_token: "${LOKI_READ_TOKEN}"
+        prometheus:
+          enabled: true
+          url: "https://prometheus.example.org"
+          selector:
+            job: "nauthilus"
+          instance_label: "instance"
+          query_profile: "nauthilus_diagnostics"
+          bearer_token: "${PROMETHEUS_READ_TOKEN}"
+```
+
+`bearer_token` and `basic_auth` are mutually exclusive; `tls` takes the outbound client TLS keys. The service and its
+sources are built at process start, so restart the process after a change. The Loki source needs the raw slog JSON or
+text line in Loki. The Prometheus source needs the scrape to keep the core metric families, otherwise every component
+reads `unknown`. See [Operational Diagnostics](../guides/support-mcp-access.md#operational-diagnostics) for keys,
+bounds, and the query profile.
+
 ## `storage`
 
-`storage` currently contains the Redis configuration.
+`storage` contains the Redis configuration and the optional read-only support history source (`storage.history`).
 
 ```yaml
 storage:
@@ -616,6 +697,13 @@ revocation epochs:
 
 See [Token State in Redis](idp/oidc.md#token-state-in-redis) for the key layout, secret rotation, and the upgrade impact
 from earlier v4 prereleases.
+
+### Redis for Brute-Force Protection
+
+The affected-account lifecycle of brute-force protection (since 4.1.0) uses `ZADD GT`/`XX`, `ZRANGE … BYSCORE`, and
+`SMISMEMBER` and therefore requires Redis 6.2 or newer, or a compatible Valkey. Its keys share the hash slot of the
+affected-account set and start with `storage.redis.prefix`; a prefix whose braces prevent a same-slot key makes the
+maintenance refuse to remove anything. See [Affected Accounts](brute-force.md#affected-accounts).
 
 ### Redis Subsystems
 
@@ -738,6 +826,45 @@ expire through their fixed TTL.
   existing identity entries become cold; previously invalidated entries never become valid again.
 - A cached identity is never password evidence. Account authorization, Policy rules, and plugins still evaluate every
   request.
+
+### Support History Reader
+
+`storage.history.clickhouse` enables the read-only
+[Support Authentication History](../guides/support-authentication-history.md) API over the evidence that the ClickHouse
+plugin recorded. An empty `url` disables it; the routes then answer `503 HISTORY_NOT_CONFIGURED`.
+
+```yaml
+storage:
+  history:
+    clickhouse:
+      url: "https://clickhouse.example.internal:8443/"
+      database: nauthilus
+      username: nauthilus_history
+      password: "${NAUTHILUS_HISTORY_CLICKHOUSE_PASSWORD}"
+      deployment: production
+      budget_mode: query_settings
+      timeout: 15s
+      max_execution_time: 8s
+      max_rows_to_read: 5000000
+      max_bytes_to_read: 2147483648
+      max_response_bytes: 8388608
+```
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `url` | empty | Absolute `http`/`https` URL of the ClickHouse HTTP interface, without query parameters or credentials. Empty disables the capability. |
+| `database` | `nauthilus` | Plain identifier of the diagnostic tables' database. |
+| `username` | empty | Dedicated read-only account; required when `url` is set. |
+| `password` | empty | Reader password; redacted in dumps. |
+| `deployment` | empty | Required when `url` is set; must equal the ClickHouse plugin's `deployment` label. |
+| `budget_mode` | `query_settings` | `query_settings` (reader profile `readonly = 2`) or `profile` (`readonly = 1`). |
+| `timeout` | `15s` | Time budget of one operation; at most `1m`. |
+| `max_execution_time` | `8s` | Per-query limit; at most `1m` and shorter than `timeout`. |
+| `max_rows_to_read` | `5000000` | Per-query row budget. |
+| `max_bytes_to_read` | `2147483648` | Per-query byte budget. |
+| `max_response_bytes` | `8388608` | Response body cap; at most `67108864`. |
+
+The reader is built at startup; changes need a restart.
 
 ## What Moved Out
 

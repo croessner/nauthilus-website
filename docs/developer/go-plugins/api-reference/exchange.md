@@ -35,6 +35,8 @@ These constants define conventions, not capability gates. Runtime delta validati
 | Constant | Exact value |
 | --- | --- |
 | `FeatureBlocklist` | `blocklist` |
+| `FeatureTLSEncryption` | `tls_encryption` |
+| `FeatureRelayDomains` | `relay_domains` |
 | `FeatureRBL` | `rbl` |
 | `FeatureBruteForce` | `brute_force` |
 | `FeatureGeoIPPolicy` | `geoip_policyd` |
@@ -46,6 +48,11 @@ These constants define conventions, not capability gates. Runtime delta validati
 | `FeatureHaveIBeenPwned` | `haveibeenpwnd` |
 
 The package uses this table order when it enumerates standard feature-marker sources. Unknown feature names follow in lexical order.
+
+The host itself sets a triggered marker with `source: builtin` when one of the built-in controls `tls_encryption`,
+`relay_domains`, `rbl`, or `brute_force` triggers, so these controls appear in `decision_sources`.
+`FeatureTLSEncryption` (a request without transport encryption) and `FeatureRelayDomains` (an unknown relay domain in
+the login name) are new in 4.1.0; earlier releases set this host marker only for `rbl` and `brute_force`.
 
 ## Field constants
 

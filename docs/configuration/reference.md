@@ -195,7 +195,9 @@ and `storage.redis.encryption_secret` print empty, and LDAP pool sizes such as `
 `lookup_pool_size` print as `0`; set them before the output can be used as a configuration. Runtime defaults that the
 schema does not carry are included, for example `storage.redis.identity_cache.ttl = 1m`,
 `policy.runtime.post_actions.workers`, `policy.runtime.post_actions.queue_capacity`,
-`policy.runtime.authn.max_concurrency`, and `policy.runtime.authn.requests_per_second` (see
+`policy.runtime.authn.max_concurrency`, `policy.runtime.authn.requests_per_second`,
+`auth.controls.brute_force.affected_accounts.retention = 24h`, and
+`auth.controls.brute_force.affected_accounts.cleanup_enabled = true` (see
 [Identity Lookup Cache](server-configuration.md#identity-lookup-cache) and
 [Runtime capacity](auth-policy.md#runtime-capacity)).
 
@@ -210,6 +212,14 @@ nauthilus -n --config /etc/nauthilus/nauthilus.yml
 ```
 
 This prints only values that differ from defaults after includes, patches, value expansion, and environment overrides have been applied.
+
+### Secrets in Log Output
+
+Redaction is not limited to dumps. Since 4.1.0 every secret configuration value renders as `<hidden>` wherever it is
+formatted or logged, including the configuration sections that Nauthilus logs at startup with
+`observability.log.level: debug`, structured `slog` output, and nested or unexported fields. Earlier v4 releases printed
+OIDC client secrets in plain text in that startup debug output; restrict or purge such logs and rotate the affected
+client secrets. Only `-P` dumps and the development-mode request dump reveal secret values deliberately.
 
 ### Print Sensitive Values
 
@@ -237,6 +247,7 @@ Examples of values redacted by default:
 
 - `storage.redis.password_nonce`
 - `storage.redis.encryption_secret`
+- `storage.history.clickhouse.password`
 - `observability.metrics.endpoint_auth.basic.password`
 - `runtime.clients.grpc.nauthilus_authorities.<name>.caller_auth.basic_auth.password`
 - `runtime.clients.grpc.nauthilus_authorities.<name>.caller_auth.oidc_bearer.client_secret`
@@ -244,6 +255,10 @@ Examples of values redacted by default:
 - `auth.request.headers.password_encoded`
 - `auth.backends.ldap.default.bind_pw`
 - `identity.oidc.dynamic_client_registration.source_hmac_key`
+- `observability.diagnostics.operations.sources.loki.bearer_token`
+- `observability.diagnostics.operations.sources.loki.basic_auth.password`
+- `observability.diagnostics.operations.sources.prometheus.bearer_token`
+- `observability.diagnostics.operations.sources.prometheus.basic_auth.password`
 - `identity.saml.key`
 
 File paths such as `client_private_key_file` and `static_token_file` are not themselves redacted secrets, but the files they point to must be readable only by trusted Nauthilus runtime users.

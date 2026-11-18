@@ -106,10 +106,18 @@ Selected OIDC keys that are easy to miss:
 | `identity.oidc.dynamic_client_registration.implied_scopes` | `[]` | Registered scopes added to every authorization of a dynamic client. |
 | `identity.oidc.dynamic_client_registration.id_token_claims.mappings` | `[]` | ID-token claim mappings applied to all dynamic clients. |
 | `identity.oidc.dynamic_client_registration.access_token_claims.mappings` | `[]` | Access-token claim mappings applied to all dynamic clients. |
+| `identity.oidc.hosted_resources[].resource` | required | Resource indicator and token audience of a protected resource that Nauthilus serves itself, such as the read-only MCP support endpoint. See [Hosted Resources](oidc.md#hosted-resources). |
+| `identity.oidc.hosted_resources[].scopes` | required | Support scopes the resource gates: `nauthilus:history_read`, `nauthilus:history_detail`, `nauthilus:operations_read`. |
+| `identity.oidc.hosted_resources[].static_clients` | required | The only static clients admitted to the resource; dynamically registered clients never are. |
+| `identity.oidc.hosted_resources[].user_right.from` | required | `groups` or `group_dns`, evaluated at authorization from a fresh backend lookup. |
+| `identity.oidc.hosted_resources[].user_right.any_of` | required | Directory groups that entitle a user. |
+| `identity.oidc.hosted_resources[].max_authentication_age` | `12h` | Forces a new login at authorization and refuses code exchange and refresh after this login age; `5m` to `720h`. |
+| `identity.oidc.hosted_resources[].max_access_token_lifetime` | `15m` | Access-token lifetime ceiling for the resource; `1m` to `1h`. |
 
 See:
 
 - [MFA Assurance Policy](mfa-assurance.md)
 - [OIDC](oidc.md)
 - [Operating OIDC Dynamic Client Registration](../../guides/oidc-dynamic-client-registration.md)
+- [Read-only Support Access over MCP](../../guides/support-mcp-access.md)
 - [SAML](saml2.md)

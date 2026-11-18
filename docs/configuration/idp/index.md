@@ -28,7 +28,8 @@ This replaces the older split where IdP-related options were spread across `idp`
 - `identity.frontend`: templates, assets, links, localization, security headers
 - `identity.mfa`: TOTP and WebAuthn settings
 - `identity.mfa_policy`: global mapping from MFA methods to assurance levels
-- `identity.oidc`: native OpenID Connect provider
+- `identity.oidc`: native OpenID Connect provider, including hosted resources such as the read-only MCP support
+  endpoint
 - `identity.saml`: native SAML IdP
 
 ## Example
@@ -77,6 +78,8 @@ identity:
 
 - [MFA Assurance Policy](mfa-assurance.md)
 - [OIDC](oidc.md)
+- [Hosted Resources](oidc.md#hosted-resources)
+- [Read-only Support Access over MCP](../../guides/support-mcp-access.md)
 - [SAML](saml2.md)
 - [Reference](reference.md)
 - [Templates](templates.md)

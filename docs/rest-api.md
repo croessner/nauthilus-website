@@ -227,7 +227,8 @@ They have different authorization semantics:
   scope `nauthilus:authenticate` on every protected `/api/v1/*` request.
 - Routes with an additional scope check accept any one of the listed route scopes.
 - Configured backchannel Basic authentication is the administrative management credential. After it succeeds, it is not
-  subject to Bearer scope checks.
+  subject to Bearer scope checks. Exception: the support routes under `/api/v1/support/*` map permissions only from
+  Bearer scopes; Basic credentials and `nauthilus:admin` receive `403 FORBIDDEN` there.
 - Missing or invalid authentication returns `401`. A valid Bearer token that lacks the base or route scope returns
   `403`.
 
@@ -241,6 +242,8 @@ The current route-specific Bearer requirements are:
 | Add/delete TOTP or recovery-code state | `nauthilus:mfa_write` or `nauthilus:admin`. |
 | Read WebAuthn credential descriptors | `nauthilus:webauthn_read` or `nauthilus:admin`. |
 | Save/update/delete WebAuthn credentials | `nauthilus:webauthn_write` or `nauthilus:admin`. |
+| Support history (`/api/v1/support/authentication-attempts/search`, `.../detail`, `/api/v1/support/bruteforce-bans/search`) | `nauthilus:history_read` or `nauthilus:history_detail` only; see [Support Authentication History](guides/support-authentication-history.md). |
+| Operational diagnostics (`POST /api/v1/support/operations/diagnostics`) | `nauthilus:operations_read` only; see [Read-only Support Access over MCP](guides/support-mcp-access.md#operational-diagnostics). |
 
 Grant only the route scopes the client needs. The built-in IdP issues suitable machine-to-machine tokens with the
 Client Credentials Grant; do not request `openid` for such clients.

@@ -107,7 +107,7 @@ local list, err = nauthilus_brute_force.get_custom_tolerations()
 
 ## nauthilus_brute_force.get_tolerate_map
 
-Retrieves the current authentication statistics (counters) for a specific IP address from the toleration system.
+Retrieves the current toleration counters for a specific IP address.
 
 ### Syntax
 
@@ -121,8 +121,14 @@ local counters, err = nauthilus_brute_force.get_tolerate_map(ip)
 
 ### Returns
 
-- `counters` (table): A table mapping labels (e.g., "total", "failed") to their numeric counts.
+- `counters` (table): `positive` is the number of distinct accounts that authenticated successfully from the address
+  and `negative` the number of failed login attempts from it, both counted within the address's `tolerate_ttl`. The
+  table is empty when tolerations are disabled for the address (no `tolerate_ttl`) or the counters could not be read.
 - `err` (string/nil): Error message.
+
+Since 4.1.0 the values are counted on read over exactly the window, the same values the toleration decision uses.
+Earlier releases returned raw counters that could outlive the window. See
+[Toleration](../configuration/brute-force.md#toleration).
 
 ---
 

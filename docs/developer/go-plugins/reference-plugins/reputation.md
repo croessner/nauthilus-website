@@ -420,9 +420,11 @@ The release images build the plugin and the worker from the same source tree:
 
 ```shell
 NATIVE_ARTIFACT_LDFLAGS="$(go run -mod=vendor ./scripts/native_artifact_fingerprint -tags="netgo")"
+NATIVE_PGO_FLAG="-pgo=off"
+if [ -f server/default.pgo ]; then NATIVE_PGO_FLAG="-pgo=$PWD/server/default.pgo"; fi
 # Plugin artifact
 CGO_ENABLED=1 GOEXPERIMENT=runtimesecret \
-go build -mod=vendor -tags="netgo" -trimpath -buildmode=plugin \
+go build -mod=vendor -tags="netgo" -trimpath "${NATIVE_PGO_FLAG}" -buildmode=plugin \
   -ldflags "${NATIVE_ARTIFACT_LDFLAGS}" \
   -o build/reputation.so ./contrib/plugins/reputation
 

@@ -259,6 +259,8 @@ type PostActionRequest struct {
     PasswordHash   string
     Args           ArgsView
     Facts          []PolicyFact
+    Outcome        AuthOutcome
+    FactsTrimmed   bool
 }
 
 func (r PostActionRequest) ExecutionIdentity() ExecutionIdentityView
@@ -266,13 +268,60 @@ func (r PostActionRequest) ExecutionIdentity() ExecutionIdentityView
 
 | Field | Meaning and security note |
 | --- | --- |
-| `Snapshot` | Final request snapshot available to the enqueue decision. |
+| `Snapshot` | Final request snapshot available to the enqueue decision. Since 4.1.0 the host refreshes `Snapshot.Diagnostics.HTTPStatus` and `StatusMessage` from `Outcome`; other values, such as `Runtime.Authenticated`, keep their capture-time meaning. |
 | `Runtime` | Read-only runtime values. |
 | `Credentials` | Capability-gated provider. Use only synchronously inside `Enqueue`; never retain or pass to detached work. |
 | `BackendOutcome` | Immutable host-captured credential evidence; see [Host-captured request views](#host-captured-request-views). |
 | `PasswordHash` | Host-generated password-derived value. It is set only when a password was present **and** the module requested and the operator allowed the `password_hash` capability; otherwise it is empty. `credentials` does not imply it, and `password_hash` grants no raw credential access. It is the lowercase 64-character SHA-256 digest of `nonce || NUL || password` in every runtime mode. Treat it as sensitive, never log/trace/store/expose it, and validate the full digest before deriving any shortened integration-specific representation. |
 | `Args` | Read-only post-action arguments. |
-| `Facts` | Facts available at the post-decision stage. |
+| `Facts` | Facts available at the post-decision stage. Record-valued facts arrive as `pluginapi.DecisionRecordList`, in obligation requests as well; see [strict values and ordered records](./policy.md#strict-values-and-ordered-records). |
+| `Outcome` | Host-sealed terminal result of the request, bound when the detached work executes after the response boundary; see [`AuthOutcome`](#authoutcome). Since 4.1.0. |
+| `FactsTrimmed` | The request would have exceeded the host work bounds, so the host dropped record-valued facts, largest first, until it fit. Scalar facts are always kept; a request that still exceeds the bounds without record facts fails as before. Since 4.1.0. |
+
+### `AuthOutcome`
+
+```go
+type AuthOutcome struct {
+    Decision           AuthOutcomeDecision
+    Operation          string
+    Stage              string
+    OutcomeMarker      string
+    ResponseMarker     string
+    PolicyRule         string
+    TempFailReason     string
+    TempFailCheckpoint string
+    PolicyStatus       string
+    FSMState           string
+    StatusMessage      string
+    Transport          AuthTransport
+    HTTPStatus         int
+    TransportStatus    int
+    Known              bool
+}
+```
+
+Policy prepares a post-action while it selects the effect, before the response is finalized. A detached post-action
+therefore cannot infer the answer from the request state it was prepared with: a tempfail, for example, would look like
+a credential failure. The host seals the terminal result of every authn request it answers and binds it as
+`PostActionRequest.Outcome` when the post-action executes after the response boundary, including for
+[terminal post-actions](../../../configuration/auth-policy.md#terminal-post-actions).
+
+| Field | Meaning |
+| --- | --- |
+| `Decision` | `ok` (`AuthOutcomeOK`), `fail` (`AuthOutcomeFail`), `tempfail` (`AuthOutcomeTempFail`), or `unknown` (`AuthOutcomeUnknown`). |
+| `Operation` | Policy operation, for example `authenticate`, `lookup_identity`, or `list_accounts`. |
+| `Stage` | Policy stage of the rule that presented the result. A tempfail without a presenting rule names the checkpoint that failed (since 4.1.0); otherwise it is empty without a presenting rule. |
+| `OutcomeMarker`, `ResponseMarker`, `PolicyRule` | Stable Policy markers and the name of the presenting rule. A tempfail without a presenting rule takes rule and outcome marker from its tempfail cause. |
+| `TempFailReason`, `TempFailCheckpoint`, `PolicyStatus` | Bounded tempfail cause, as in the terminal tempfail log line (`tempfail_reason`, `checkpoint`, `status_code`); empty for other decisions. |
+| `FSMState` | Terminal auth FSM state. |
+| `StatusMessage` | Client-visible status text, including configured `auth.response` overrides. |
+| `Transport` | `http` (`AuthTransportHTTP`) or `grpc` (`AuthTransportGRPC`); empty when unknown. |
+| `HTTPStatus` | Host status code configured for the decision. It does not prove what the transport sent. |
+| `TransportStatus` | Committed HTTP status, or `0` for gRPC and unknown transports. |
+| `Known` | The host sealed a terminal outcome before the post-action executed. |
+
+When `Known` is `false`, `Decision` is `unknown`, only the transport fields may be set, and every other field is empty.
+Consumers must not substitute a credential-failure default for an unknown outcome.
 
 ### `PostActionEnqueueResult`
 

@@ -51,7 +51,8 @@ The static `dkim2-reputation` plugin of early v4 prereleases has been removed. I
 
 The plugin is not part of the container images. For a local build, run `make build` in `contrib/plugins/dkim2-intelligence`. The Makefile embeds the native
 artifact fingerprint and builds with `GOEXPERIMENT=runtimesecret`, `-mod=vendor`, `-trimpath`, and
-`-buildmode=plugin`. Build the host and all plugins from the same source tree and compiler identity. The repository check
+`-buildmode=plugin`. Build the host and all plugins from the same source tree, compiler identity, and PGO profile
+([PGO profile](../build-test-debug.md#pgo-profile)). The repository check
 `scripts/check-native-artifact-bundle.sh` includes this module and rejects stale or unmarked artifacts.
 
 ## Provider graph

@@ -19,8 +19,8 @@ This guide covers deployment and operation. The field-by-field contract is in th
 The Lua subject plugin `geoip_reputation.lua`, its `GEOIP_REPUTATION_*` settings, and its
 `lua.plugin.geoip_reputation.*` facts were removed without a runtime alias. Remove them from deployment configuration
 and Policy rules. The native plugin does not import the old Redis counters; a new model starts with unknown reputation.
-ClickHouse `reputation_*` columns are now filled only from an explicitly supplied `plugin.exchange.geoip_reputation`
-map, not from Policy facts.
+The native ClickHouse plugin no longer exports the flat `reputation_*` columns; structured assessments are written to
+`reputation_assessments` (see [ClickHouse](../developer/go-plugins/reference-plugins/clickhouse.md#complete-row-contract)).
 
 :::
 

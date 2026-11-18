@@ -18,7 +18,8 @@ The brute force protection system works as follows:
 1. Nauthilus tracks failed authentication attempts by IP address.
 2. When the number of failed attempts exceeds a configured threshold within a specified time period, the IP address is blocked.
 3. Blocked IP addresses are stored in Redis with information about which brute force rule triggered the block.
-4. User accounts that have been affected by brute force attempts are also tracked in Redis.
+4. User accounts that have been affected by brute force attempts are also tracked in Redis. Since 4.1.0 these entries
+   age out per account; see [Affected Accounts](configuration/brute-force.md#affected-accounts).
 
 Only authentication decisions are counted. A backend that could not decide, for example because LDAP timed out or the
 authority was unavailable, produces a temporary failure that never increments the buckets. A user who repeats the same
@@ -42,6 +43,9 @@ This approach is particularly beneficial for:
 - Situations where some users might have incorrect passwords among many legitimate users
 - Reducing false positives while maintaining security
 
+Positives are distinct accounts with a successful login, negatives are failed attempts, both within `tolerate_ttl`;
+see [Toleration](configuration/brute-force.md#toleration).
+
 ### Configuration
 
 Adaptive toleration can be enabled globally in the configuration file:
@@ -50,6 +54,7 @@ Adaptive toleration can be enabled globally in the configuration file:
 auth:
   controls:
     brute_force:
+      tolerate_ttl: 24h         # No tolerate_ttl disables tolerations
       adaptive_toleration: true
       min_tolerate_percent: 10  # Default: 10%
       max_tolerate_percent: 50  # Default: 50%
@@ -99,6 +104,9 @@ This will:
 4. Remove the user's password history
 5. Remove the user from the affected accounts list
 6. Remove the user from the cache
+
+If the stored account mappings cannot be read, the flush stops before removing anything and answers HTTP 503
+`Account mapping lookup failed`; retry later.
 
 #### Response
 
@@ -175,6 +183,7 @@ When freeing users from brute force protection, we recommend the following appro
 
 1. **First, identify the affected user and IP addresses**:
    - Use the `/api/v1/bruteforce/list` endpoint to list all blocked IP addresses and affected accounts.
+   - For an alias, use `POST /api/v1/bruteforce/list` with `"account_resolution": "account_mapping"`.
    - Example: `curl -X GET http://nauthilus-server/api/v1/bruteforce/list`
 
 2. **If you know the user account**:

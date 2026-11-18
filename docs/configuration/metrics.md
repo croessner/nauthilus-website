@@ -72,7 +72,7 @@ Dashboards that summed these protocols under `other` must select the new values.
 ## Brute-Force Metrics
 
 In addition to `bruteforce_hits_total{bucket}` and `bruteforce_rejected_total{bucket}`, Nauthilus reports the
-repeating-wrong-password (RWP) and toleration decisions:
+repeating-wrong-password (RWP) and toleration decisions, and the affected-account maintenance:
 
 | Metric | Type | Labels | Meaning |
 |---|---|---|---|
@@ -80,11 +80,19 @@ repeating-wrong-password (RWP) and toleration decisions:
 | `bruteforce_rwp_window_duration_seconds` | histogram | none | Duration of one RWP sliding-window round-trip to Redis, observed on success and failure. |
 | `bruteforce_toleration_decisions_total` | counter | `mode` | Toleration lookups by resulting mode: `disabled`, `static`, or `adaptive`. |
 | `bruteforce_toleration_percent` | histogram | none | Tolerated percentage actually applied. Lookups in `disabled` mode are not observed. |
+| `bruteforce_affected_accounts_maintenance_total` | counter | `action` | Affected-account lifecycle changes of the background maintenance: `armed`, `rearmed`, `adopted`, `backfilled`, `extended`, `removed`, `index_restored`, `index_orphan_removed`. |
+| `bruteforce_affected_accounts_maintenance_errors_total` | counter | `step` | Failed or refused maintenance steps: `lease`, `state`, `rearm`, `remove`, `adopt`, `index`, `gauges`, and `refused` (the Redis prefix prevents a same-slot key; nothing is removed). |
+| `bruteforce_affected_accounts_members` | gauge | `key` | Members of the affected-account `set`, its `retention` deadlines, and its `index`; every instance refreshes it once per minute while brute-force protection is enabled. |
 
 A rising `undecided` rate or a growing RWP round-trip duration means brute-force accounting is degraded; see
 [Unavailable Brute-Force State](brute-force.md#unavailable-brute-force-state). The existing `tolerate.is_tolerated` trace
 span also carries the attributes `toleration.mode`, `toleration.active`, `toleration.custom`, `toleration.percent`,
 `toleration.positive`, and `toleration.negative`.
+
+Since 4.1.0 `redis_write_total` counts each command of the affected-account write and of the affected-account flush
+(three each) instead of one per pipeline, and `bruteforce_redis_roundtrips_total` has the additional kind
+`pipeline_affected_account_history` for the management listing. See
+[Affected Accounts](brute-force.md#affected-accounts).
 
 ## Backchannel Caller Metrics
 
@@ -113,16 +121,44 @@ temporary failure.
 |---|---|---|
 | `post_action_effect_states_total` | `state`, `phase`, `boundary` | Every supervisor transition. |
 | `post_action_acceptance_failures_total` | `error_class` | Rejected post-action ownership transfers, for example `saturated`, `shutdown`, or `unknown_provider`. |
+| `policy_terminal_post_actions_total` | `operation`, `post_action`, `result` | Once-per-request [terminal post-action](auth-policy.md#terminal-post-actions) completions: `accepted`, `failed`, `disabled`, `no_outcome`, `unavailable`, `admission_rejected`. |
 
 Any increase of `post_action_acceptance_failures_total{error_class="saturated"}` means authentication requests failed
 temporarily because the supervisor is undersized or a post-action provider is slow. Size `workers` as roughly the peak
 accepted post-actions per second times the average post-action duration in seconds, with headroom.
+
+Since 4.1.0 best-effort plans, currently terminal post-actions, are accepted only while fewer than half of
+`queue_capacity` (rounded up) is in flight. Their rejections are counted as
+`post_action_acceptance_failures_total{error_class="best_effort_saturated"}`, logged at debug level, and never fail a
+request; only `saturated` means that requests failed temporarily.
 
 ## Dynamic Client Registration Metrics
 
 The OIDC registration endpoint reports `idp_dynamic_client_registrations_total{outcome,code}` and
 `idp_dynamic_client_registration_duration_seconds`. See
 [Operating OIDC Dynamic Client Registration](../guides/oidc-dynamic-client-registration.md#monitoring-and-audit).
+
+## MCP Support Endpoint Metrics
+
+`mcp_requests_total{result}` counts the refused requests and the tool calls of the optional read-only MCP endpoint
+(`runtime.servers.mcp`). It is exported on the normal `/metrics` endpoint, not on the MCP listener.
+
+| `result` | Meaning |
+|---|---|
+| `ok` | Tool call answered with a result |
+| `tool_error` | Tool call answered with a service error envelope |
+| `unauthorized` | `401`: missing or refused token |
+| `forbidden` | `403`: insufficient scope |
+| `rejected` | Transport guard or body inspection refused the request |
+| `rate_limited` | Failed bearer attempt limit reached |
+| `busy` | Concurrency limit reached |
+| `error` | Token state could not be read |
+
+Alert on sustained `mcp_requests_total{result=~"unauthorized|rate_limited|error"}`. The `nauthilus_runtime` source of
+the operational diagnostics reads `ldap_target_health`, `ldap_breaker_state`, `ldap_errors_total`,
+`backend_servers_status`, `redis_connection_timeouts_total`, `plugin_auth_events_total`, and
+`policy_check_technical_errors_total` from the same registry. See
+[Read-only Support Access over MCP](../guides/support-mcp-access.md#audit-and-monitoring).
 
 ## Native Go Plugin Metrics
 
@@ -132,6 +168,7 @@ The native plugin runner exports bounded call metrics for every request-time com
 plugin_calls_total{module,component,extension_point,method,result}
 plugin_call_duration_seconds{module,component,extension_point,method,result}
 plugin_reconfigure_total{module,result}
+plugin_auth_events_total{outcome,lane}
 ```
 
 `plugin_reconfigure_total` counts one increment per module and configuration reload. `result` is `reloaded`,
@@ -142,11 +179,20 @@ Plugins can also register counters, gauges, histograms, and summaries through th
 
 Every observation must supply exactly the declared labels. Invalid observations are dropped because the public observation methods do not return an error. Plugin authors must keep labels bounded and must not use usernames, IP addresses, account names, URLs, queries, session IDs, or error strings.
 
+The runner also counts host diagnostic events delivered to event sinks in `plugin_auth_events_total{outcome,lane}`:
+`outcome` is `queued`, `delivered`, `failed`, or `dropped`; `lane` is `mfa`, `oidc_completion`,
+`bruteforce_lifecycle`, `bruteforce_counted`, or `bruteforce_hits`. A full lane drops events instead of blocking
+requests; alert on `dropped`. See
+[ClickHouse](../developer/go-plugins/reference-plugins/clickhouse.md#metrics-spans-and-debug).
+
 Bundled reference plugins add:
 
 - GeoIP: `geoip_lookup_total`, `geoip_lookup_seconds`, `geoip_database_records`, and `freshness_total` below its plugin
   namespace;
-- ClickHouse: queued-row, flush-batch, and flush-duration metrics;
+- ClickHouse (`nauthilus_plugin_clickhouse_...`): `clickhouse_queued_rows_total`, `clickhouse_flush_batches_total`, and
+  `clickhouse_flush_duration_seconds` for login rows (queue results include `dropped_reject_limit`), the same three
+  families with the `clickhouse_event_` prefix for step events, and with `clickhouse_bruteforce_{lifecycle,counted,hits}_`
+  for brute-force evidence;
 - Have I Been Pwned: check, HTTP-duration, and mail-attempt metrics;
 - Reputation (`nauthilus_plugin_reputation_...`): `learning_total`, `learning_queue_pending`, `learning_queue_active`,
   `admission_total`, `observations_total`, `subject_updates_total`, `storage_total`, `assessments_total`, and the

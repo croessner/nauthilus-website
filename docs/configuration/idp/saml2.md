@@ -70,13 +70,34 @@ or `cert_file`; Nauthilus validates that configuration at startup. An unsigned m
 rejected. When a signature is present even though it is not required, Nauthilus still validates it and rejects an
 invalid signature.
 
-Redirect-binding messages use the detached query signature. POST-binding SLO messages use an XML signature. Nauthilus
-rejects malformed signature parameter combinations and unsupported algorithms, including SHA-1 signature algorithms.
+Redirect-binding messages use the detached query signature. POST-binding SLO messages use an XML signature. A
+Redirect-bound LogoutResponse may alternatively carry an enveloped XML signature. Nauthilus rejects malformed signature
+parameter combinations and unsupported algorithms, including SHA-1 signature algorithms. Since 4.1.0 this also applies
+to the signature check that the SAML library runs while it validates an AuthnRequest, so every validation path refuses
+SHA-1 AuthnRequest signatures.
+
+### Outbound SLO Signatures
+
+Nauthilus always signs the LogoutRequests and LogoutResponses it sends, independent of the inbound policy fields:
+
+| Binding | Signature |
+|---|---|
+| HTTP-Redirect | `SigAlg` and `Signature` query parameters over the deflated message; the XML contains no `<ds:Signature>` (SAML bindings 3.4.4.1) |
+| HTTP-POST | Enveloped XML signature |
+
+Before 4.1.0 a LogoutResponse sent over the Redirect binding reached the service provider without a usable signature,
+so service providers that require signed logout responses rejected it. Such service providers now accept the
+Redirect-bound answer to an SP-initiated logout.
 
 ## Single Logout Security
 
 SAML SLO validates message type, signature, protocol fields, destination, time bounds, participant correlation, and
 request replay state before local session cleanup. `identity.saml.slo` controls front-channel and back-channel fanout.
+
+A LogoutRequest may list several `SessionIndex` elements (SAML core 3.7.1). Since 4.1.0 a participant session matches
+when any listed index matches; earlier releases compared only the first one, rejected the request, and left the IdP
+session active. A request without `SessionIndex` still matches by issuer and `NameID`, and a request whose indexes all
+miss is still rejected.
 
 The SLO endpoint applies its per-client rate limit and body-size limit before it parses the message. A `RelayState`
 longer than 80 bytes (the SAML binding limit), an encoded `SAMLRequest` or `SAMLResponse` larger than 512 KiB, and

@@ -21,7 +21,7 @@ A complete Policy generation owns all of these resources together:
 
 - `policy.api`: Policy HTTP and gRPC transport settings, limits, and caller profiles
 - `policy.namespaces.<namespace>`: schemas, providers, effects, localization, condition sets, domain plans, and policy sets
-- `policy.targets[]`: the exact namespace, action, schema, mode, default policy, domain plan, checkpoint plans, and report settings activated at runtime
+- `policy.targets[]`: the exact namespace, action, schema, mode, default policy, domain plan, checkpoint plans, terminal post-actions, and report settings activated at runtime
 
 The built-in authentication fallback has the qualified identity `authn/standard_auth`. The unqualified v3 spelling `standard_auth` is rejected.
 
@@ -307,6 +307,63 @@ multiplies block-list query volume, because lookup traffic is usually far higher
 rejects `authn/builtin/brute_force` and `authn/builtin/relay_domains` bindings to `lookup_identity`; remove such
 `actions` entries before upgrading.
 
+## Terminal post-actions
+
+Rule obligations run only when their rule answers the request. A request answered by a built-in `authn/standard_auth`
+rule, for example a brute-force reject after a ban hit closed the remaining pre-auth providers, carries only the
+built-in effects, so a login-log post-action listed on a configured rule never runs for it. Since 4.1.0 an authn target
+can declare post-actions that run exactly once for every answered request, whichever rule answered it:
+
+```yaml
+policy:
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/password
+      terminal_post_actions:
+        - id: authn/plugin.clickhouse.post_action
+```
+
+Each entry selects one effect by `id`, with optional `parameters`, like a rule obligation.
+
+- The completion runs after the terminal outcome of the request is sealed, with the facts of the last evaluated
+  checkpoint. The post-action therefore sees the answered decision, stage, markers, and rule; native post-actions read
+  them from [`PostActionRequest.Outcome`](../developer/go-plugins/api-reference/extensions.md#authoutcome).
+- A rule obligation that names a terminal post-action is folded into the completion. It is neither run per checkpoint
+  nor decision-relevant, so a neutral pre-auth rule and a final rule that both list the ClickHouse post-action produce
+  one login row instead of two. A folded obligation must use the same `parameters` as the `terminal_post_actions`
+  entry; otherwise the candidate is rejected.
+- Terminal post-actions are best-effort. A preparation or supervisor-acceptance failure is counted and never turns the
+  answered decision into a temporary failure. The supervisor accepts them only within its
+  [best-effort share](#post-action-supervisor).
+- Only host post-action effects that are allowed for the target are accepted, for example native plugin post-actions
+  or Lua action effects with `execution: host_post_action`. Effects that decide or count, such as
+  `authn/brute_force_update`, duplicate entries, and `terminal_post_actions` on targets outside the `authn` namespace
+  are rejected by configuration loading or candidate compilation.
+- `mode: observe` withholds them like every other effect.
+- The guarantee is at most one completion attempt per request. Delivery and storage stay with the post-action, for
+  example the best-effort buffer of the ClickHouse plugin.
+
+`policy_terminal_post_actions_total{operation,post_action,result}` counts every completion:
+
+| `result` | Meaning |
+| --- | --- |
+| `accepted` | The supervisor owns the post-action and runs it after the response. |
+| `failed` | Preparation or supervisor acceptance failed, including a rejection at the best-effort share; the answer is unchanged. |
+| `disabled` | Observe mode withheld the completion. |
+| `no_outcome` | The request ended without a sealed terminal outcome. |
+| `unavailable` | The Decision Session could not run a completion. |
+| `admission_rejected` | The request was answered before a Policy session existed, for example after an exhausted [`policy.runtime.authn`](#internal-authentication-admission) bound. It is counted for every authn request, whether or not its target declares terminal post-actions. |
+
+`accepted` and `failed` carry the effect ID as `post_action`; a skipped completion (`disabled`, `no_outcome`,
+`unavailable`, `admission_rejected`) has an empty `post_action` label. The results `failed`, `disabled`, `no_outcome`,
+and `unavailable` are also logged at debug level as `Terminal post-action did not run` with the fields
+`terminal_post_action` and `terminal_post_action_result`. Alert on the metric; a per-request warning would flood the
+log during an attack.
+
 ## Runtime capacity
 
 `policy.runtime` sizes the host-owned parts of a Policy generation:
@@ -331,6 +388,14 @@ accepted post-actions per second times the average post-action duration in secon
 `post_action_effect_states_total{state,phase,boundary}` and `post_action_acceptance_failures_total{error_class}`
 expose the supervisor; any `saturated` increase means requests failed temporarily.
 
+Since 4.1.0 the supervisor reserves half of its capacity for post-actions whose acceptance decides an answer.
+Best-effort plans, currently the [terminal post-actions](#terminal-post-actions), are accepted only while fewer than
+half of `queue_capacity` (rounded up) is in flight. The threshold counts every in-flight plan, so a flood of
+completions, such as ban hits during an attack, cannot saturate the queue that the rule post-actions of other requests
+rely on. A best-effort plan rejected at this share is counted as
+`post_action_acceptance_failures_total{error_class="best_effort_saturated"}`, logged at debug level, and never changes
+a decision. A supervisor with `queue_capacity: 1` cannot reserve anything.
+
 ### Internal authentication admission
 
 Every authentication request (HTTP backchannel, nginx, gRPC authority, and the identity provider) opens one Decision
@@ -346,6 +411,9 @@ Other admission rejections, such as a missing grant, stay fail-closed. `policy_a
 counts rejections with the reason `concurrency` or `rate`, and each one is logged at warn level.
 
 A reload that changes `policy.runtime` builds the next generation with a new supervisor and new internal profiles.
+The previous generation retires once its last in-flight request and post-action are done. Since 4.1.0 that final
+retirement no longer runs on the post-action worker itself, so a reload with an in-flight post-action no longer stalls
+for the 30-second cleanup budget and logs a failed retirement.
 
 ### Unexpected application errors
 

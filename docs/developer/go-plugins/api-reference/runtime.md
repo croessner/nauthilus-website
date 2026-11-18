@@ -22,6 +22,7 @@ type IDPInfo struct {
     ClientName              string
     RedirectURI             string
     MFAMethod               string
+    FlowRef                 string
     MFACompleted            bool
 }
 ```
@@ -37,6 +38,7 @@ type IDPInfo struct {
 | `ClientName` | Resolved display name of that client. |
 | `RedirectURI` | Current validated redirect URI when applicable. Treat as sensitive/high-cardinality. |
 | `MFAMethod` | Current MFA method identifier. |
+| `FlowRef` | Since 4.1.0: non-authorizing digest of the IdP browser flow. It lets analytics join the password request with later [step events](./events.md#authevent) of the same flow. Empty outside IdP browser flows; it never equals a flow handle and grants nothing. |
 | `MFACompleted` | Whether MFA has completed in the current flow. |
 
 These values are populated only on relevant IdP paths and only when known at the extension stage. The custom-hook adapter currently leaves all `IDP` fields empty.
@@ -45,12 +47,13 @@ These values are populated only on relevant IdP paths and only when known at the
 
 ```go
 type RequestDiagnostics struct {
-    StatusMessage     string
-    BruteForceName    string
-    EnvironmentName   string
-    LatencyMillis     int64
-    BruteForceCounter uint
-    HTTPStatus        int
+    StatusMessage       string
+    BruteForceName      string
+    EnvironmentName     string
+    LatencyMillis       int64
+    BruteForceCounter   uint
+    HTTPStatus          int
+    BruteForceTolerated bool
 }
 ```
 
@@ -61,7 +64,8 @@ type RequestDiagnostics struct {
 | `EnvironmentName` | Environment source/check diagnostic name. |
 | `LatencyMillis` | Bounded current request latency in milliseconds. |
 | `BruteForceCounter` | Current brute-force counter. |
-| `HTTPStatus` | Current HTTP status when an HTTP-facing path has one. |
+| `HTTPStatus` | Current HTTP status when an HTTP-facing path has one. In post-action requests the host refreshes it and `StatusMessage` from the sealed [`AuthOutcome`](./extensions.md#authoutcome). |
+| `BruteForceTolerated` | Since 4.1.0: toleration suppressed the ban of the triggered bucket named in `BruteForceName`. Only meaningful when `BruteForceName` is set. |
 
 All fields are public surface. Population is adapter- and stage-dependent; custom hooks currently leave the complete struct at zero values.
 

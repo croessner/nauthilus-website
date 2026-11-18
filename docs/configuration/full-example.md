@@ -104,6 +104,26 @@ runtime:
           min_tls_version: "TLS1.2"
           require_client_cert: false
 
+    mcp:
+      enabled: false
+      address: "127.0.0.1:9097"
+      hosted_resource: ""
+      tls_termination: "trusted_reverse_proxy"
+      trusted_proxies: []
+      allowed_hosts: []
+      allowed_browser_origins: []
+
+      limits:
+        timeout: 15s
+        max_concurrent: 8
+        max_concurrent_per_principal: 2
+        max_request_bytes: 65536
+        max_response_bytes: 1048576
+        failed_auth_per_minute: 30
+
+      audit:
+        enabled: true
+
   timeouts:
     redis_read: 1s
     redis_write: 2s
@@ -238,6 +258,44 @@ observability:
         username: ""
         password: ""
 
+  diagnostics:
+    operations:
+      enabled: false
+
+      sources:
+        nauthilus_runtime:
+          enabled: true
+        loki:
+          enabled: false
+          url: ""
+          tenant: ""
+          selector: {}
+          instance_label: ""
+          query_profile: "nauthilus_diagnostics"
+          timeout: 3s
+          max_time_window: 1h
+          max_series: 200
+          max_response_bytes: 1048576
+          bearer_token: ""
+          basic_auth:
+            username: ""
+            password: ""
+        prometheus:
+          enabled: false
+          url: ""
+          tenant: ""
+          selector: {}
+          instance_label: ""
+          query_profile: "nauthilus_diagnostics"
+          timeout: 3s
+          max_time_window: 1h
+          max_series: 200
+          max_response_bytes: 1048576
+          bearer_token: ""
+          basic_auth:
+            username: ""
+            password: ""
+
 storage:
   redis:
     protocol: 2
@@ -318,6 +376,20 @@ storage:
       opt_in: false
       opt_out: false
       prefixes: []
+
+  history:
+    clickhouse:
+      url: ""
+      database: "nauthilus"
+      username: ""
+      password: ""
+      deployment: ""
+      budget_mode: "query_settings"
+      timeout: 15s
+      max_execution_time: 8s
+      max_rows_to_read: 5000000
+      max_bytes_to_read: 2147483648
+      max_response_bytes: 8388608
 
 auth:
   request:
@@ -453,6 +525,10 @@ auth:
         rwp_ipv6_cidr: 128
         tolerations_ipv6_cidr: 128
 
+      affected_accounts:
+        retention: 24h
+        cleanup_enabled: true
+
       tolerate_ttl: 30m
       rwp_window: 15m
       rwp_allowed_unique_hashes: 3
@@ -555,6 +631,7 @@ policy:
       mode: enforce
       default_policy: authn/standard_auth
       domain_plan: authn/password
+      terminal_post_actions: []
       report:
         enabled: false
         include_fsm: true
@@ -619,6 +696,7 @@ identity:
     code_challenge_methods_supported: []
     claims_supported: []
     access_token_type: "jwt"
+    hosted_resources: []
 
     dynamic_client_registration:
       enabled: false
@@ -702,6 +780,11 @@ identity:
       max_participants: 64
       back_channel_max_retries: 1
 ```
+
+`runtime.servers.mcp`, `observability.diagnostics.operations`, `identity.oidc.hosted_resources`, and
+`storage.history.clickhouse` are disabled or empty in the reference example; unset limits use the values shown. They
+configure the optional read-only [Support Authentication History](../guides/support-authentication-history.md), the
+[Read-only Support Access over MCP](../guides/support-mcp-access.md), and the operational diagnostics described there.
 
 The values under `identity.mfa_policy.levels` are the built-in assurance defaults. OIDC clients and SAML service
 providers can add `require_mfa`, `supported_mfa`, `required_mfa_level`, and local `mfa_policy.levels` overrides. See

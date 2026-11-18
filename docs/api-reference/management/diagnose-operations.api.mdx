@@ -1,0 +1,64 @@
+---
+id: diagnose-operations
+title: "Diagnose the support-relevant components from runtime state and recorded log evidence."
+description: "Requires nauthilus:operations_read. Filters are accepted only in the JSON body; query parameters are refused. HTTP 200 means the call was processed; every source states its completeness in `sources`. The runtime source reports the current state of this instance only; log evidence covers the instances and window stated in its coverage. Nothing is changed."
+sidebar_label: "Diagnose the support-relevant components from runtime state and recorded log evidence."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "post api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Diagnose the support-relevant components from runtime state and recorded log evidence."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/api/v1/support/operations/diagnostics"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Requires nauthilus:operations_read. Filters are accepted only in the JSON body; query parameters are refused. HTTP 200 means the call was processed; every source states its completeness in `sources`. The runtime source reports the current state of this instance only; log evidence covers the instances and window stated in its coverage. Nothing is changed.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./diagnose-operations.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./diagnose-operations.StatusCodes.json")}
+>
+
+</StatusCodes>

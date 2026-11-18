@@ -29,6 +29,18 @@ const sidebar: SidebarsConfig = {
           label: "Get OIDC discovery metadata.",
           className: "api-method get",
         },
+        {
+          type: "doc",
+          id: "api-reference/idp/get-o-auth-authorization-server-metadata",
+          label: "Get RFC 8414 authorization server metadata.",
+          className: "api-method get",
+        },
+        {
+          type: "doc",
+          id: "api-reference/idp/get-o-auth-authorization-server-metadata-for-issuer-path",
+          label: "Get RFC 8414 authorization server metadata for an issuer with a path.",
+          className: "api-method get",
+        },
       ],
     },
     {

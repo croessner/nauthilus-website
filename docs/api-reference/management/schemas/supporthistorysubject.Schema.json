@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"description":"Login is a claim as typed; account is a canonical account. At least one is required.","properties":{"login":{"type":"string","maxLength":256},"account":{"type":"string","maxLength":256}},"title":"SupportHistorySubject"},"schemaType":"response"}

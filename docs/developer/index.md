@@ -33,6 +33,15 @@ Two references describe what Nauthilus stores and which code owns it:
 
 The [Data Stores](./data-stores/index.md) overview explains how to use them.
 
+## Server internals
+
+[Server Internals](./server-internals/index.md) collects developer notes on parts of the server that are easy to break
+and hard to see from the outside: the [CSRF middleware](./server-internals/csrf-middleware.md), the
+[IdP MFA flow](./server-internals/idp-mfa-flow.md), the
+[browser session contract](./server-internals/browser-session-contract.md), the
+[invalidation of cached identity state after MFA writes](./server-internals/mfa-cache-consistency.md), and the
+[backchannel authentication state machine](./server-internals/auth-backchannel-fsm-adr.md).
+
 ## Other APIs
 
 - [Lua API](../lua-api/introduction.md) documents the embedded Lua extension surface.

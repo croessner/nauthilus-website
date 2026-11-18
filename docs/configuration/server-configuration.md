@@ -13,7 +13,9 @@ What used to be spread across a large `server` section is now split into three f
 - `observability`
 - `storage`
 
-This page covers those sections.
+This page covers those sections. Before a release and after security-relevant changes, walk through the
+[Operational Security Checklist](../guides/operational-security-checklist.md); it names the settings of these sections
+that decide who can reach the backchannel, the metrics endpoint, and the configuration endpoints.
 
 ## `runtime`
 

@@ -27,8 +27,8 @@ Related documents:
 - [Cache Namespaces](../../configuration/database-backends/cache-namespaces.md) and
   [Identity Lookup Cache](../../configuration/server-configuration.md#identity-lookup-cache): LDAP identity cache.
 - [Identity Provider](../../configuration/idp/index.md): identity-provider operations. The browser-session model is
-  described in `server/docs/development/browser_session_contract.md` in the repository, and the cleanup of retired IdP
-  keys in `IDP.md`.
+  described in the [Browser Session Contract Inventory](../server-internals/browser-session-contract.md), and the
+  cleanup of retired IdP keys in `IDP.md` in the repository.
 - [ClickHouse Data Model Reference](./clickhouse-data-model.md): ClickHouse tables.
 
 ## 1. Conventions
@@ -904,7 +904,7 @@ recognize residual data in Redis and know whether it expires on its own.
 | `<prefix>acct:<acct_tag><username>:longwindow`, `<prefix>acct:<acct_tag><username>:stepup` | Retired | Layouts without `:proto:`. |
 | `<prefix>multilayer:global:<name>` without `<global_tag>`, for `<name>` = `auth_attempts:<window>`, `unique_ips:<window>`, `unique_users:<window>`, `current_metrics`, `historical_metrics:<hour>`, `metrics:<unix_seconds>` | Retired while hash tags are enabled | With `USE_KEY_HASHTAGS=false` these are the current names. With hash tags enabled they are residual data; all expire through their TTL except `<prefix>multilayer:global:current_metrics`, which has none and must be deleted manually. |
 | `{lua-nauthilus}:<prefix>multilayer:global:*`, `<prefix>multilayer:account:{lua-nauthilus}<username>:*`, `<prefix>hll:acct:{lua-nauthilus}<username>:*`, `<prefix>z:acct:{lua-nauthilus}<username>:*`, `<prefix>acct:{lua-nauthilus}<username>:*`, `{lua-nauthilus}:<prefix>multilayer:distributed_attack:*`, `{lua-nauthilus}:<prefix>z:spray:*` | Retired, Redis Cluster only | Names the Cluster rewrite of section 1.2 gives to monitoring keys with mixed hash tags. The bundled scripts pass keys with one shared tag, so they never produce these names, and nothing reads them. All expire through their TTL except `{lua-nauthilus}:<prefix>multilayer:global:current_metrics`, which has none and must be deleted manually. |
-| browser-session and IdP-flow namespaces outside `<prefix>:browser-session` | Retired | The canonical session runtime never reads them; see `server/docs/development/browser_session_contract.md` and `contrib/session-keyspace-retirement`. |
+| browser-session and IdP-flow namespaces outside `<prefix>:browser-session` | Retired | The canonical session runtime never reads them; see the [Browser Session Contract Inventory](../server-internals/browser-session-contract.md) and `contrib/session-keyspace-retirement`. |
 
 ## 4. Redis Lua Scripts
 

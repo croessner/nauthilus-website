@@ -1,0 +1,618 @@
+---
+title: IDP MFA Flow Developer Notes
+description: "How the IdP frontend handlers move through first factor, MFA, required-MFA registration, and WebAuthn continuation, as a debugging aid"
+keywords: [IdP, MFA, WebAuthn, OIDC, SAML, Login, Developer]
+sidebar_position: 3
+---
+
+# IDP MFA Flow Developer Notes
+
+This document describes the IDP first-factor, MFA, required-MFA registration,
+and WebAuthn continuation paths as implemented by the frontend handlers. It is
+intended as a debugging aid for regressions where the browser is sent back to
+`/login`, `/login/webauthn`, or `/mfa/*/register` even though an OIDC/SAML flow
+should resume.
+
+## Configuration Inputs
+
+The runtime path is not determined by the current URL alone. The IDP client and
+session state must be considered together.
+
+| Input | Meaning | Important effects |
+| --- | --- | --- |
+| `skip_consent` | OIDC client consent can be skipped. | A successful login can resume directly to the OIDC callback path after token/code handling. |
+| `delayed_response` | The first-factor password result is hidden until after MFA. | A wrong password still enters MFA if the account/factors can be resolved; the failure is revealed after the second factor. |
+| `require_mfa` | List of MFA methods that must be registered for this client or service provider. | After authentication, the flow may be diverted to `/mfa/<method>/register` before OIDC/SAML resumes. It must not silently narrow the login challenge methods when `supported_mfa` is unset, and it does not mean the current login used one of those methods. |
+| `supported_mfa` | Explicit list of MFA methods the client allows during login/registration. | Methods not supported by the client must not be offered. When unset, all registered methods remain eligible; `require_mfa` and `required_mfa_level` are evaluated separately. |
+| `mfa_policy.levels` | Global or client/SP-local mapping from MFA method to assurance level. | Defaults are `recovery_codes=1`, `totp=2`, and `webauthn=3`. Client/SP policy merges over the global policy. |
+| `required_mfa_level` | Minimum MFA assurance level required for normal browser SSO response issuance. | If unset or zero, compatibility behavior applies: any fresh MFA-backed browser session can satisfy ordinary SSO. If positive, the session must carry a fresh assurance level at or above this value or step-up is required. |
+| OIDC flow state | Authorization request, client id, redirect URI, scopes, PKCE, prompt. | Stored only in a typed Redis `OIDCFlow` bound to the `SessionAnchor`; the browser carries only opaque selectors. |
+| SAML flow state | Request, RelayState, entity id. | Stored only in a typed Redis `SAMLFlow`, with the same opaque continuation model as OIDC. |
+| Device-code flow state | User code/device code and pending verification state. | Stored in the cookie-free device store and typed browser flow; WebAuthn completion may need to call device-code completion instead of returning a browser redirect. |
+| Backend reference | Edge session reference to the authority-side backend result. | Stored in the `SessionAnchor` and preserved for follow-up MFA/backend-data lookups in split edge/authority deployments. |
+| MFA factor identity | Account whose second factor is being verified. | Can differ from final subject for formatted Master-User logins. |
+| Final subject identity | Account that receives the completed IDP session. | Must be restored after MFA before OIDC/SAML claim materialization. |
+
+The canonical browser contract is described in
+[Browser Session Contract Inventory](./browser-session-contract.md). The browser
+cookie is an authenticated opaque envelope that selects one `SessionAnchor`;
+it never stores identity, protocol requests, backend affinity, MFA state,
+assurance, consent, claims, redirect targets, or WebAuthn ceremony data.
+
+Authentication and identity lookups enter the common `AuthApplicationService`
+with an exact host-owned internal caller profile. The active generation admits
+those profiles and runs the common Decision Service checkpoints. OIDC/SAML/device records,
+delayed-response state, MFA and WebAuthn
+ceremonies, consent, and claim-release lifecycle remain domain-owned; adapters
+pass only the explicit operation, transport, client/SP, correlation,
+localization, requested-attribute, and existing backend-affinity facts needed
+for the current call.
+
+The top-level `policy` configuration, caller admission, catalog, extensions,
+and routes are committed as one generation. No IdP path retains a second
+evaluator or fallback policy authority.
+
+The `contrib/identity-proxy-e2e` profile has two relevant OIDC clients:
+
+```yaml
+client_id: split-e2e-mfa
+skip_consent: true
+require_mfa: [totp, webauthn, recovery_codes]
+supported_mfa: [totp, webauthn, recovery_codes]
+
+client_id: split-e2e-mfa-delayed
+skip_consent: true
+delayed_response: true
+require_mfa: [totp, webauthn, recovery_codes]
+supported_mfa: [totp, webauthn, recovery_codes]
+```
+
+## State Owners
+
+```mermaid
+flowchart LR
+  Browser["Browser session"]
+  Edge["Edge frontend handler"]
+  Envelope["Opaque canonical envelope"]
+  Anchor[(SessionAnchor)]
+  EdgeRedis[(Typed Redis flow and ceremony stores)]
+  App["Auth application"]
+  Decision["Shared Decision Service"]
+  Authority["Authority backend/gRPC"]
+
+  Browser -->|"OIDC/SAML/MFA HTTP"| Edge
+  Edge <-->|"authenticated session reference only"| Envelope
+  Edge <-->|"identity, backend affinity, assurance, child indexes"| Anchor
+  Edge <-->|"OIDC/SAML/MFA state, resume target, ceremony"| EdgeRedis
+  Edge -->|"typed operation and explicit facts"| App
+  App -->|"generation-backed admission and checkpoints"| Decision
+  App <-->|"auth, identity, credential and MFA backend work"| Authority
+
+  Anchor <-->|"owns typed children"| EdgeRedis
+```
+
+## First-Factor And MFA Selection
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Frontend as FrontendHandler
+  participant IDP as NauthilusIDP
+  participant App as AuthApplicationService
+  participant Decision as Shared Decision Service
+  participant Authority
+  participant Anchor as SessionAnchor
+  participant FlowStore as Redis Flow Store
+
+  Browser->>Frontend: GET /oidc/authorize or SAML entry
+  Frontend->>FlowStore: Store protocol flow state
+  Frontend->>Anchor: Index typed flow under canonical session
+  Frontend-->>Browser: Redirect /login
+
+  Browser->>Frontend: POST /login username/password
+  Frontend->>IDP: Authenticate or delayed-response account lookup
+  IDP->>App: Typed operation, internal profile, protocol/client/SP facts
+  critical Active generation-backed policy evaluation
+    App->>Decision: Admit and run shared authn checkpoints
+  end
+  App->>Authority: Resolve account, backend ref, attributes
+  Authority-->>App: User, backend ref, MFA attributes/state
+  critical Active generation-backed policy evaluation
+    App->>Decision: Complete final checkpoint with detached backend outcome
+    Decision-->>App: Terminal decision
+  end
+  App-->>IDP: Detached outcome
+  IDP-->>Frontend: Auth result and target user
+
+  alt formatted Master-User login
+    Frontend->>IDP: Resolve factor account
+    IDP->>App: Lookup factor identity with exact internal profile
+    critical Active generation-backed policy evaluation
+      App->>Decision: Admit shared identity checkpoint
+    end
+    App->>Authority: Resolve Master-User factor backend ref
+    Authority-->>App: Factor user and backend ref
+    critical Active generation-backed policy evaluation
+      App->>Decision: Complete identity checkpoint
+      Decision-->>App: Terminal identity decision
+    end
+    App-->>IDP: Detached factor identity outcome
+    IDP-->>Frontend: Factor user and factor backend ref
+  end
+
+  Frontend->>Anchor: Store pending identities and backend affinity
+  Frontend->>FlowStore: Store protocol and fail-latched StepUp when needed
+  Frontend->>Frontend: Compute MFA availability filtered by effective supported methods
+
+  alt no MFA required for login
+    Frontend->>Anchor: Commit authenticated identity and assurance
+    Frontend->>Frontend: Check require_mfa registration
+  else one method available
+    Frontend-->>Browser: Redirect /login/totp, /login/webauthn, or /login/recovery
+  else multiple methods available
+    Frontend-->>Browser: Redirect /login/mfa
+  end
+```
+
+Important invariant: once MFA availability has been computed from the password
+step and authority backend state, the immediate MFA continuation should not make
+a contradictory required-MFA decision because the WebAuthn finish request has a
+different body shape.
+
+## OIDC Reentry With Existing Sessions
+
+OIDC relying parties may start a new authorization request immediately after a
+successful token and userinfo exchange while the browser still has an
+authenticated account session. This is a new Authorization-Code request, not a
+continuation of the completed one. The handler must therefore persist a fresh
+OIDC flow for the current request before consent, MFA assurance, required-MFA
+registration, or code issuance is evaluated.
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant OIDC as OIDCHandler
+  participant Anchor as SessionAnchor
+  participant FlowStore as Redis Flow Store
+  participant Frontend as FrontendHandler
+
+  Browser->>OIDC: GET /oidc/authorize with account session and no idp_flow_id
+  OIDC->>FlowStore: Store current authorize request metadata
+  OIDC->>Anchor: Index the fresh OIDCFlow
+  alt SessionAnchor carries fresh SSO MFA assurance
+    OIDC-->>Browser: Redirect to client callback with code
+  else no fresh MFA assurance
+    OIDC->>FlowStore: Create a bound StepUp record
+    OIDC-->>Browser: Redirect /login/mfa
+    Browser->>Frontend: Complete TOTP/WebAuthn/recovery
+    Frontend->>FlowStore: Resolve parent resume target
+    Frontend-->>Browser: Redirect /oidc/authorize?...
+  end
+```
+
+Completing the previous OIDC request may remove temporary flow keys, but it must
+not make the next valid `/oidc/authorize` depend on the unauthenticated login
+start path. Direct `/login` access without an active IDP flow remains rejected.
+
+## SSO MFA Assurance Versus Step-Up
+
+Normal OIDC/SAML application SSO and sensitive self-service mutations use the
+same MFA proof, but they have different freshness boundaries.
+
+```mermaid
+flowchart TD
+  Start["OIDC/SAML authorize with browser account session"] --> ClientPolicy["Read client policy: require_mfa, supported_mfa, required_mfa_level"]
+  ClientPolicy --> LevelGate{"required_mfa_level positive?"}
+  LevelGate -- "no" --> CompatBoundary{"Compatibility path needs fresh MFA?"}
+  LevelGate -- "yes" --> LevelFresh{"Fresh assurance level is high enough?"}
+  CompatBoundary -- "no" --> Enrollment["Check require_mfa registration policy"]
+  CompatBoundary -- "yes" --> CompatFresh{"Fresh MFA proof exists?"}
+  CompatFresh -- "yes" --> Enrollment
+  CompatFresh -- "no" --> Challenge
+  LevelFresh -- "yes" --> Enrollment
+  LevelFresh -- "no" --> Challenge["Render MFA challenge using supported_mfa or all registered eligible methods"]
+  Challenge --> Complete["User completes TOTP, WebAuthn, or recovery"]
+  Complete --> Store["Store MFA assurance method/time/session scope/level"]
+  Store --> Enrollment
+  Enrollment --> Missing{"Required factor registration missing?"}
+  Missing -- "yes" --> Register["Start forced registration flow"]
+  Missing -- "no" --> Issue
+
+  SelfService["Self-service mutation"] --> StepFresh{"Fresh MFA proof still within step-up TTL?"}
+  StepFresh -- "yes" --> Mutate["Allow mutation"]
+  StepFresh -- "no" --> Block["Fail closed and require fresh MFA"]
+```
+
+Expected invariants:
+
+- A user who just completed WebAuthn for one OIDC client has a fresh MFA-backed
+  SSO session. A second OIDC client such as Roundcube must not immediately force
+  another MFA challenge only because its `require_mfa` list names different
+  enrollment methods when no stronger `required_mfa_level` is configured.
+- When `required_mfa_level` is positive, the browser session must have a fresh
+  assurance level at or above that value. Registration of a high-level method is
+  necessary for enrollment policy, but it is not sufficient to satisfy the
+  assurance gate unless the user has actually completed a method whose
+  configured level reaches the gate.
+- `supported_mfa` controls which challenge methods can be offered. If it is not
+  configured, the UI offers the registered methods available to the user.
+- `require_mfa` controls which factor registrations must exist before the
+  client response is issued.
+- `required_mfa_level` controls the normal browser SSO assurance strength.
+  The default policy maps recovery codes to level 1, TOTP to level 2, and
+  WebAuthn to level 3; operators may override the mapping globally or per
+  OIDC client/SAML service provider.
+- `delayed_response` only hides first-factor success or failure until after MFA;
+  it does not change which methods are supported and does not create a separate
+  client-specific MFA step-up by itself.
+- Self-service actions that mutate MFA/account state remain the boundary for
+  explicit step-up freshness checks.
+
+## MFA Level Policy
+
+`require_mfa`, `supported_mfa`, and `required_mfa_level` are separate policy
+axes:
+
+- `require_mfa` is enrollment policy. It answers which factors must exist before
+  a client or service provider can receive a successful response.
+- `supported_mfa` is challenge-offer policy. It answers which registered methods
+  may be shown during login, registration, or step-up.
+- `required_mfa_level` is assurance policy. It answers how strong the current
+  fresh browser-session MFA proof must be before normal OIDC/SAML SSO may
+  continue.
+
+The default assurance mapping is:
+
+```yaml
+identity:
+  mfa_policy:
+    levels:
+      recovery_codes: 1
+      totp: 2
+      webauthn: 3
+```
+
+Client and service-provider overrides merge over the global policy:
+
+```yaml
+identity:
+  oidc:
+    clients:
+      - client_id: security-admin
+        require_mfa: [webauthn]
+        required_mfa_level: 3
+
+      - client_id: equal-rank-app
+        required_mfa_level: 2
+        mfa_policy:
+          levels:
+            totp: 2
+            webauthn: 2
+
+  saml:
+    service_providers:
+      - entity_id: https://sp.example.com/metadata
+        require_mfa: [totp]
+        required_mfa_level: 2
+```
+
+If application A completes TOTP at level 2 and application B requires level 3,
+B must trigger a visible step-up even when the user has WebAuthn registered. If
+the operator configures TOTP and WebAuthn at the same level, the same level-2
+TOTP proof may satisfy a level-2 application B.
+
+## Delayed Response
+
+```mermaid
+flowchart TD
+  Start["POST /login"] --> Client{"client.delayed_response?"}
+  Client -- "false" --> Verify["Verify password"]
+  Verify --> Good{"password OK?"}
+  Good -- "no" --> LoginError["Render generic login error"]
+  Good -- "yes" --> MFA["Proceed to MFA or final session"]
+
+  Client -- "true" --> Resolve["Resolve account and factors without revealing result"]
+  Resolve --> Exists{"account/factors resolvable?"}
+  Exists -- "no" --> LoginError
+  Exists -- "yes" --> Hidden["Store unauthenticated fail-latched StepUp"]
+  Hidden --> MFA
+  MFA --> Second["Complete TOTP/WebAuthn/recovery"]
+  Second --> Reveal{"fail-latched first-factor outcome OK?"}
+  Reveal -- "no" --> LoginError
+  Reveal -- "yes" --> Final["Commit authenticated SessionAnchor"]
+```
+
+`delayed_response` means MFA handlers must validate the stored first-factor
+result after the second factor succeeds. It does not mean required-MFA
+registration should run against a different identity or backend reference.
+
+## WebAuthn Login Finish
+
+WebAuthn login is special because the browser sends a JSON assertion to
+`/login/webauthn/finish`. That request body is consumed by WebAuthn validation.
+Internal follow-up lookups must not treat the same JSON body as a Nauthilus auth
+request.
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant JS as idp_ui.js
+  participant Frontend as FrontendHandler
+  participant Core as core.CompleteCanonicalWebAuthnLogin
+  participant App as AuthApplicationService
+  participant Decision as Shared Decision Service
+  participant Authority
+  participant Anchor as SessionAnchor
+  participant CeremonyStore as Typed ceremony store
+  participant FlowStore as Redis Flow Store
+
+  Browser->>JS: Click WebAuthn login
+  JS->>Frontend: GET /login/webauthn/begin
+  Frontend->>App: Look up exact identity/backend context
+  critical Active generation-backed policy evaluation
+    App->>Decision: Admit shared identity checkpoint
+    Decision-->>App: Admitted checkpoint session
+  end
+  App->>Authority: Resolve factor identity and credential state
+  Authority-->>App: Detached backend identity result
+  critical Active generation-backed policy evaluation
+    App->>Decision: Complete identity checkpoint
+    Decision-->>App: Terminal identity decision
+  end
+  App-->>Frontend: Detached identity/backend outcome
+  Frontend->>CeremonyStore: Store bound single-use challenge
+  Frontend-->>JS: PublicKeyCredentialRequestOptions
+  JS->>Browser: navigator.credentials.get()
+  Browser-->>JS: Signed assertion
+
+  JS->>Frontend: POST /login/webauthn/finish JSON assertion + CSRF header
+  Frontend->>Core: CompleteLoginWebAuthn(ctx, deps)
+  Core->>CeremonyStore: Atomically take bound challenge
+  Core->>Anchor: Load factor identity and backend affinity
+  Core->>Authority: Load/update credential and sign count
+  Authority-->>Core: Credential update persisted
+  Core->>Anchor: Commit completed MFA assurance
+  Core-->>Frontend: Success
+
+  Frontend->>Frontend: Compute continuation target
+  alt device-code flow
+    Frontend->>FlowStore: Complete device-code verification
+    Frontend-->>JS: JSON completion result
+  else required-MFA registration still missing
+    Frontend->>FlowStore: Start require-MFA sub-flow
+    Frontend-->>JS: JSON {"redirect":"/mfa/<method>/register"}
+    JS->>Browser: location.href = redirect
+  else OIDC/SAML can resume
+    Frontend->>FlowStore: Resolve parent flow resume target
+    Frontend-->>JS: JSON {"redirect":"/oidc/authorize?..."} or SAML target
+    JS->>Browser: location.href = redirect
+  end
+```
+
+Required invariant for this handler:
+
+- The core WebAuthn verifier may consume the request body.
+- Any later backend-data, cache-purge, or MFA-availability check must use an
+  explicit internal lookup profile and typed input; it must not decode the
+  WebAuthn JSON assertion as a structured auth request.
+- The `SessionAnchor` and typed enrollment state preserve proven availability
+  for TOTP, WebAuthn, and recovery codes so `require_mfa` does not reinterpret a
+  proven factor as missing after temporary operation state is cleaned.
+- The handler must not write a second response after an internal lookup already
+  aborted the request.
+- The continuation redirect must be derived server-side from flow state; the
+  browser must only follow a safe relative redirect returned by the server.
+
+### WebAuthn ceremony restart contract
+
+The active browser runtime stores each ceremony only as an anchor-indexed typed
+Redis record. The begin response gives JavaScript a high-entropy opaque ceremony
+handle, which the finish request returns as a local query parameter. That handle
+has no authority without the matching canonical envelope, live
+`SessionAnchor`, parent flow, identity, protocol, ceremony kind, expiry, and
+revision bindings. Neither `nauthilus_secure_data` nor the retired
+`nauthilus_webauthn_ceremony` cookie carries ceremony state; the canonical
+runtime rejects and purges the retired representation.
+
+A finish operation atomically takes the bound record before verification, so
+replay, stale handles, and binding mismatches cannot reuse a challenge. A
+missing, malformed, expired, kind-mismatched, or binding-mismatched handle fails
+closed. The page may call the matching begin endpoint to create a fresh record,
+but it never retries the rejected assertion or attestation. Targeted ceremony
+cleanup preserves a still-valid parent OIDC or SAML flow and its server-side
+identity, allowing a safe fresh begin without accepting old ceremony state.
+
+The canonical runtime has no legacy-cookie fallback and must be deployed by
+controlled replacement. Browser traffic must not alternate between binaries
+that disagree on the canonical envelope and typed ceremony contract.
+
+## Required-MFA Registration
+
+`require_mfa` is about factor enrollment, not about the current login method
+alone. A client can require all of `totp`, `webauthn`, and `recovery_codes`, so
+after a successful password or MFA step the flow must prove that every required
+method is already registered.
+
+```mermaid
+flowchart TD
+  Start["After successful first factor or second factor"] --> HasFlow{"IDP flow id exists?"}
+  HasFlow -- "no" --> Resume["Resume normal page/session"]
+  HasFlow -- "yes" --> Required["Read client require_mfa"]
+  Required --> Empty{"require_mfa empty?"}
+  Empty -- "yes" --> Clear["Clear required-MFA state"] --> ResumeIDP["Resume OIDC/SAML/device flow"]
+  Empty -- "no" --> Identity["Resolve final subject and factor/backend context"]
+  Identity --> RequiredPolicy["Evaluate require_mfa registration policy"]
+  RequiredPolicy --> CheckTOTP{"TOTP registered?"}
+  CheckTOTP -- "no" --> RegisterTOTP["Start require-MFA sub-flow to /mfa/totp/register"]
+  CheckTOTP -- "yes" --> CheckWebAuthn{"WebAuthn registered?"}
+  CheckWebAuthn -- "no" --> RegisterWebAuthn["Start require-MFA sub-flow to /mfa/webauthn/register"]
+  CheckWebAuthn -- "yes" --> CheckRecovery{"Recovery codes registered?"}
+  CheckRecovery -- "no" --> RegisterRecovery["Start require-MFA sub-flow to /mfa/recovery/register"]
+  CheckRecovery -- "yes" --> Clear --> ResumeIDP
+```
+
+Required invariant for split edge/authority deployments:
+
+- The check must use the same final subject, factor identity, backend name, and
+  backend reference that were selected during first-factor authentication.
+- Explicit `supported_mfa` is the configured allow-list. If it is unset, the
+  challenge method set is not narrowed by `require_mfa`; normal SSO accepts any
+  fresh MFA proof and the required-MFA registration check still follows
+  `require_mfa` directly.
+- An internal lookup must use the exact application-service profile and preserve
+  the canonical session handle, typed identity, protocol context, and existing
+  backend affinity. It must not reconstruct them from browser input.
+- The anchor/enrollment availability snapshot may satisfy a method only when
+  that method was already proven by backend lookup, registration, or a completed
+  challenge; it must not invent factor enrollment state.
+- The MFA select page may merge previously proven anchor/enrollment state with
+  fresh backend data so the UI does not hide a factor already observed in the
+  same canonical session. The explicit `supported_mfa` allow-list is still
+  applied after that merge.
+- A failed or incomplete lookup must fail closed for security, but it should be
+  observable as a lookup failure, not silently downgraded to "factor missing"
+  when the factor was proven earlier in the same flow.
+
+## Roundcube After Existing SSO
+
+Roundcube is a normal OIDC Authorization-Code client. If the browser already
+has a fresh MFA-backed SSO session from another client, for example after a
+WebAuthn login to Heimdal, Roundcube must not immediately force another MFA
+challenge only because its `require_mfa` list contains `totp` and
+`recovery_codes`. A Roundcube-like client that configures `required_mfa_level`
+must still satisfy that explicit level gate.
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Nauthilus
+  participant Anchor as SessionAnchor
+  participant FlowStore as Redis Flow Store
+  participant Roundcube
+
+  Browser->>Nauthilus: Completed Heimdal login with WebAuthn
+  Nauthilus->>Anchor: Commit WebAuthn assurance method, time, scope, and level
+
+  Browser->>Roundcube: GET /
+  Roundcube-->>Browser: Redirect /oidc/authorize client_id=roundcube-client
+  Browser->>Nauthilus: GET /oidc/authorize with existing account session
+  Nauthilus->>FlowStore: Store fresh Roundcube authorize flow
+  Nauthilus->>Anchor: Index fresh Roundcube flow
+  Nauthilus->>Nauthilus: Check SSO-level MFA freshness or required_mfa_level
+
+  alt browser-session MFA satisfies client policy
+    Nauthilus->>Nauthilus: Check require_mfa registration exists
+    Nauthilus-->>Browser: Redirect Roundcube callback with code
+  else no fresh browser-session MFA
+    Nauthilus->>FlowStore: Create bound StepUp record
+    Nauthilus-->>Browser: /login/mfa
+  end
+```
+
+Important distinction:
+
+- Browser SSO uses `sessionSatisfiesIDPSSOMFAAssurance`, which accepts a fresh
+  same-session MFA proof even when the proof came from a different OIDC client.
+- Device-code approval and self-service mutations keep stricter freshness gates.
+- Required registration is still enforced. Missing TOTP or recovery-code
+  enrollment redirects to `/mfa/<method>/register`, not to `/login/mfa`.
+- The select page should offer every registered method allowed by
+  `supported_mfa`. When `supported_mfa` is unset, it must not hide WebAuthn just
+  because `require_mfa` lists TOTP and recovery codes.
+
+## Expected Required-MFA Flow For `split-e2e-mfa`
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Edge
+  participant App as AuthApplicationService
+  participant Decision as Shared Decision Service
+  participant Anchor as SessionAnchor
+  participant Authority
+  participant FlowStore
+
+  Browser->>Edge: Initial OIDC login for split-e2e-mfa
+  Edge->>App: Authenticate with exact OIDC internal profile
+  critical Active generation-backed policy evaluation
+    App->>Decision: Admit and run shared authn checkpoints
+  end
+  App->>Authority: Verify password and resolve factor availability
+  Authority-->>App: Password OK; factors missing
+  critical Active generation-backed policy evaluation
+    App->>Decision: Complete final checkpoint
+    Decision-->>App: Terminal auth decision
+  end
+  App-->>Edge: Detached identity and backend-affinity outcome
+  Edge->>FlowStore: Start require-MFA sub-flow
+  Edge-->>Browser: /mfa/totp/register
+  Browser->>Edge: Complete TOTP registration
+  Edge->>Authority: Save TOTP
+  Edge->>FlowStore: Mark TOTP enrollment proven
+  Edge-->>Browser: /mfa/webauthn/register
+  Browser->>Edge: Complete WebAuthn registration
+  Edge->>Authority: Save WebAuthn credential
+  Edge-->>Browser: /mfa/recovery/register
+  Browser->>Edge: Generate recovery codes
+  Edge->>Authority: Save recovery codes
+  Edge->>FlowStore: Required-MFA complete, resume parent flow
+  Edge-->>Browser: OIDC callback
+
+  Browser->>Edge: Later login for same client
+  Edge->>App: Authenticate with preserved backend affinity
+  critical Active generation-backed policy evaluation
+    App->>Decision: Admit shared authn checkpoints
+  end
+  App->>Authority: Verify password on the selected backend
+  Authority-->>App: Password OK; all factors available
+  critical Active generation-backed policy evaluation
+    App->>Decision: Complete final checkpoint
+    Decision-->>App: Terminal auth decision
+  end
+  App-->>Edge: Detached outcome with same backend ref
+  Edge->>Anchor: Preserve identity, backend affinity, and factor availability
+  Edge-->>Browser: MFA challenge selection or preferred method
+  Browser->>Edge: Complete WebAuthn login
+  Edge->>Authority: Persist sign-count update
+  Edge->>Anchor: Commit completed MFA assurance
+  Edge->>FlowStore: Required-MFA check sees all required methods present
+  Edge-->>Browser: OIDC callback
+```
+
+If the last step redirects to `/mfa/totp/register`, the code has contradicted
+state it had already established earlier in the same test profile. The likely
+places to audit are:
+
+- loss of typed enrollment, backend-affinity, or identity fields during MFA
+  cleanup or anchor transition;
+- using the WebAuthn JSON finish request as a structured auth request in an
+  internal lookup;
+- using final subject identity where factor identity is required, or the
+  reverse, especially for Master-User logins;
+- treating backend-data lookup failure as "factor missing" without logging the
+  difference;
+- `supported_mfa` filtering that removes a registered method before the
+  `require_mfa` comparison.
+
+Regression tests should cover two separate outcomes:
+
+- A normal browser SSO request with a fresh WebAuthn proof from another client
+  reaches the OIDC callback for Roundcube without visiting `/login/mfa`.
+- When a challenge is actually needed, the select page still contains every
+  registered and supported method, including WebAuthn when `supported_mfa` is
+  unset.
+
+## Code Map
+
+| Area | Current files |
+| --- | --- |
+| Route registration and browser handlers | `server/handler/frontend/idp/frontend.go` and `canonical_*.go` |
+| Required-MFA and step-up decisions | `server/handler/frontend/idp/canonical_mfa_selection.go` and `server/sessionstate/contracts.go` |
+| OIDC/SAML flow state | `server/idp/flow/` and `server/sessionstate/` |
+| Authentication and identity boundary | `server/core/auth_application_service.go` and `server/core/authn_application_adapter.go` |
+| Backend-data/MFA lookup adapter | `server/handler/frontend/idp/backend_data.go` |
+| WebAuthn ceremony and sign-count handling | `server/handler/frontend/idp/canonical_webauthn.go`, `server/core/canonical_webauthn_ceremony_store.go`, and `server/core/webauthn.go` |
+| Login completion and assurance | `server/core/cookie/login_completion.go` and `server/core/cookie/composition.go` |
+| Server-side identity and backend affinity | `server/sessionstate/contracts.go` and `server/core/cookie/composition.go` |
+| Browser E2E profile | `contrib/identity-proxy-e2e/scripts/browser-e2e.js` |
+| Split edge/authority config | `contrib/identity-proxy-e2e/config/edge-a.yml` and `edge-b.yml` |

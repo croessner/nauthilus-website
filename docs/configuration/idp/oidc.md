@@ -553,6 +553,53 @@ An explicit `form-action 'none'` is left unchanged. CSP host sources cannot cont
 `http://[::1]:<port>` after the consent form is still blocked by browsers. Native applications that show a consent page
 must use `127.0.0.1`.
 
+## Custom Scopes
+
+A custom scope declares a scope of the deployment: its name and the text shown on the consent page (`description`, and
+`description_<language>` for a translation). `claims` is optional and lists the custom claims the scope releases. A scope
+without claims only authorizes, for example at a resource server that checks the `scope` claim of the access token.
+
+```yaml
+identity:
+  oidc:
+    custom_scopes:
+      # Declares the scope and its consent text; releases no claim.
+      - name: "mail:diagnose"
+        description: "Read mail store diagnostics (read-only)"
+
+      # Additionally releases the tenant_id claim to clients that map it.
+      - name: "tenant"
+        description: "Tenant information"
+        claims:
+          - name: "tenant_id"
+            type: "string"
+```
+
+Global custom scopes under `identity.oidc.custom_scopes` are the base. A client can add or replace definitions under
+`identity.oidc.clients[].custom_scopes`; a client scope with the same name fully replaces the global one. Discovery
+(`scopes_supported`) lists the global custom scopes only.
+
+Declaring a scope does not allow any client to request it. A client may request the scopes listed in its own `scopes`;
+the custom scope supplies the consent text and, when it lists claims, the claim release.
+
+A mapped claim is only written to a token when a requested scope releases it: its standard scope (for example `groups`
+for the `groups` claim) or a custom scope that lists the claim. A client that requests only resource scopes, as MCP
+clients do, therefore gets `groups` in its access token only if one of those scopes lists `groups` under `claims`.
+
+### Scope Consistency Warnings
+
+When the OIDC issuer is enabled, Nauthilus checks the configuration for three inconsistencies at load. Each is logged
+as a warning and never fails the load, because a scope may be defined by a component the configuration does not
+describe:
+
+| Warning | Meaning and remedy |
+|---|---|
+| `OIDC claim mapping is never released: no scope allowed for the client releases the claim` | A claim in `id_token_claims` or `access_token_claims` has no releasing scope among the scopes of that client, so the mapping is skipped for every request that names a scope. Add the claim to a custom scope the client may request, or allow its standard scope. |
+| `OIDC custom scope is not allowed for any client` | No client lists the scope in `scopes`, and dynamic client registration does not offer it. Without `client_id` the warning names a global custom scope, otherwise a custom scope of that client. |
+| `OIDC client scope is neither built in nor declared in custom_scopes or by a hook` | A scope in `scopes` or `implied_scopes` of the client is defined nowhere: it is not built in, not a custom scope, and not required by a Lua hook or a native plugin hook. This is usually a typing error. Declare the scope as a custom scope when another component defines it. |
+
+The warnings carry the attributes `client_id`, `scope`, and `claim` as far as they apply.
+
 ## Token and Claim Boundaries
 
 UserInfo requires an access token whose granted scopes contain `openid`. ID tokens are identity assertions, not API

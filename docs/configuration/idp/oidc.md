@@ -556,7 +556,8 @@ must use `127.0.0.1`.
 ## Custom Scopes
 
 A custom scope declares a scope of the deployment: its name and the text shown on the consent page (`description`, and
-`description_<language>` for a translation). `claims` is optional and lists the custom claims the scope releases. A scope
+`description_<language>` for a translation). `claims` is optional since 4.1.0 and lists the custom claims the scope
+releases. A scope
 without claims only authorizes, for example at a resource server that checks the `scope` claim of the access token.
 
 ```yaml
@@ -588,7 +589,7 @@ clients do, therefore gets `groups` in its access token only if one of those sco
 
 ### Scope Consistency Warnings
 
-When the OIDC issuer is enabled, Nauthilus checks the configuration for three inconsistencies at load. Each is logged
+When the OIDC issuer is enabled, Nauthilus checks the configuration for three inconsistencies at load (since 4.1.0). Each is logged
 as a warning and never fails the load, because a scope may be defined by a component the configuration does not
 describe:
 
@@ -751,8 +752,8 @@ The reserved `nauthilus:*` scopes are used for backchannel administration, autho
 | --- | --- |
 | `nauthilus:admin` | Full administrative access to backchannel API surfaces that accept the admin scope: every HTTP management route that asks for a security, MFA, or WebAuthn scope, and administrative hooks. It does not open the authentication routes and grants no support access. |
 | `nauthilus:security` | Read and write access to the security controls: brute-force listings and flushes, cache flushes, and OIDC session administration. Includes `nauthilus:security_read` and `nauthilus:security_write`. |
-| `nauthilus:security_read` | Read-only security state: brute-force listings, OIDC session listings, and the status of asynchronous security jobs. |
-| `nauthilus:security_write` | Mutations of security state: cache and brute-force flushes, OIDC session deletion, and the status of the asynchronous jobs these start. |
+| `nauthilus:security_read` | Since 4.1.0. Read-only security state: brute-force listings, OIDC session listings, and the status of asynchronous security jobs. |
+| `nauthilus:security_write` | Since 4.1.0. Mutations of security state: cache and brute-force flushes, OIDC session deletion, and the status of the asynchronous jobs these start. |
 | `nauthilus:authenticate` | Password authentication through backchannel or gRPC authority APIs, and the management OpenAPI documents. |
 | `nauthilus:lookup_identity` | Trusted identity lookup and remote user resolution. |
 | `nauthilus:list_accounts` | Account listing. |

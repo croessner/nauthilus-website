@@ -94,7 +94,8 @@ plugin.Open("/usr/local/lib/nauthilus/plugins/customer.so"): plugin was built wi
 Pass the host's profile to every plugin build:
 
 - `-pgo=/path/to/nauthilus/server/default.pgo` when the host revision contains the file;
-- `-pgo=off` when it does not. Releases up to and including `v4.0.9` ship no profile.
+- `-pgo=off` when it does not. Releases up to and including `v4.0.9` ship no profile; `v4.1.0` is the
+  first release that ships one.
 
 Checkouts that contain `scripts/native-pgo-flag.sh` print the matching flag with `sh scripts/native-pgo-flag.sh`; the
 container builds, the `geoip` Makefile, and `make native-plugins-build-check` use it. In those revisions the native

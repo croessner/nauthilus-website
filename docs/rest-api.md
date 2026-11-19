@@ -250,8 +250,8 @@ The current route scopes are:
 | Support history (`/api/v1/support/authentication-attempts/search`, `.../detail`, `/api/v1/support/bruteforce-bans/search`) | `nauthilus:history_read` or `nauthilus:history_detail` only; see [Support Authentication History](guides/support-authentication-history.md). |
 | Operational diagnostics (`POST /api/v1/support/operations/diagnostics`) | `nauthilus:operations_read` only; see [Read-only Support Access over MCP](guides/support-mcp-access.md#operational-diagnostics). |
 
-No route asks for a scope of another family. In particular, `nauthilus:authenticate` is no longer a base scope of every
-`/api/v1` route: a client that only lists brute-force entries needs `nauthilus:security_read` and nothing else, and a
+No route asks for a scope of another family. Since 4.1.0 `nauthilus:authenticate` is no longer a base scope of every
+`/api/v1` route, and `nauthilus:security_read` and `nauthilus:security_write` exist: a client that only lists brute-force entries needs `nauthilus:security_read` and nothing else, and a
 support console needs only its support scopes. `nauthilus:security` and `nauthilus:admin` do not open the
 authentication routes or the OpenAPI documents. Tokens issued for earlier releases keep working, because nothing they
 could do before is refused now.
@@ -293,7 +293,7 @@ auth:
 - The **unrestricted credential** is the top-level `username` and `password`. It passes every management scope check,
   holds no scope itself, and gets no access to `/api/v1/support/*` (`403`). On hooks that declare scopes it is refused
   with `403`.
-- A **scoped credential** is an entry of `users`. It holds exactly the listed scopes and is authorized exactly like a
+- A **scoped credential** (since 4.1.0) is an entry of `users`. It holds exactly the listed scopes and is authorized exactly like a
   Bearer token carrying those scopes: on the HTTP API, on the gRPC authority listener with its per-RPC scopes, and on
   custom hooks that declare scopes. It cannot open a hook that declares neither `scopes` nor `public: true`.
 

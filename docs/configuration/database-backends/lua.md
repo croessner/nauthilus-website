@@ -152,7 +152,8 @@ For the full migration workflow, see [Policy Configuration Guide](../../guides/a
 
 ## Hook Authorization
 
-Lua hooks are fail-closed unless their access model is explicit. `public` and `scopes` have the following semantics:
+Lua hooks are fail-closed unless their access model is explicit. `public` and `scopes` have the following semantics;
+scoped Basic credentials count as callers since 4.1.0:
 
 | Hook configuration | Accepted authentication |
 | --- | --- |

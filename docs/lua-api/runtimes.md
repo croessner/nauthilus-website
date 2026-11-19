@@ -115,7 +115,7 @@ The status values mean:
 | `backend-runtime` | A Lua backend script. It runs with the full API when a Lua backend is configured. |
 | `process-owned` | An init script or custom hook. It runs with the full API. |
 
-In Nauthilus 4.0 the supported policy callbacks are `subject/idp_policy.lua` and `actions/bruteforce_header.lua`. The
+Since Nauthilus 4.0 the supported policy callbacks are `subject/idp_policy.lua` and `actions/bruteforce_header.lua`. The
 bundled environment sources, the other subject sources (including `geoip.lua` and `monitoring.lua`), and the other
 actions are `reference-only`. Their production replacements are the bundled native plugins `geoip`, `clickhouse`,
 `haveibeenpwnd`, and `reputation`, see [Reference plugins](../developer/go-plugins/reference-plugins/index.md).

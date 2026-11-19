@@ -101,7 +101,7 @@ authorization: Basic <base64(username:password)>
 authorization: Bearer <access-token>
 ```
 
-Scoped Basic credentials under `auth.backchannel.basic_auth.users` hold exactly the scopes configured for them and need
+Scoped Basic credentials under `auth.backchannel.basic_auth.users` (since 4.1.0) hold exactly the scopes configured for them and need
 the scopes of each RPC like a Bearer token. The optional top-level `username` and `password` form the unrestricted Basic
 credential, which passes every scope check of the listener and is announced with a warning at startup; see the [Authority Scope Matrix](#authority-scope-matrix) and
 [Backchannel Basic Credentials](rest-api.md#backchannel-basic-credentials).

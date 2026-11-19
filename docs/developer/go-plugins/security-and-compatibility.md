@@ -108,7 +108,7 @@ holding that scope is authorized like such a token, while the unrestricted Basic
 - keep bodies and outputs free of privileged configuration or secret material.
 
 Early v4 prereleases let a `HookAuthSession` descriptor with `HookScopeAdmin` pass with a Basic/session context and
-let configured `required_scopes` replace the administrative scope. In Nauthilus 4.0 both paths require administrative
+let configured `required_scopes` replace the administrative scope. Since Nauthilus 4.0 both paths require administrative
 authority.
 
 ## Scheduler limitations

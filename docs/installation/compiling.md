@@ -41,7 +41,7 @@ you intend to deploy:
 
 ```bash
 git fetch --tags
-git checkout v4.0.0
+git checkout v4.1.0
 ```
 
 For another release, replace the tag with the exact published version you intend to build.
@@ -119,7 +119,7 @@ directory. For Nauthilus that file is `server/default.pgo`. When the file is com
 `go build ./server` command above, release builds, and Docker builds consume it without extra flags. The profile is
 produced from the release end-to-end workload of one release and used by the next one; a release built without the file
 is an ordinary non-PGO build. Releases up to and including `v4.0.9` ship without `server/default.pgo`, so their
-binaries and images are non-PGO builds. Pass `-pgo=off` to disable the profile for a single build.
+binaries and images are non-PGO builds; `v4.1.0` is the first release built with the profile. Pass `-pgo=off` to disable the profile for a single build.
 
 Native Go plugins must be compiled with the same profile as the server; Go refuses to load a plugin built without it.
 See the [plugin PGO requirement](/docs/developer/go-plugins/build-test-debug#pgo-profile).

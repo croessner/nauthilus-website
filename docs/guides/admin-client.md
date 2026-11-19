@@ -28,8 +28,11 @@ line, process environment, env file, then built-in default.
 
 ### OIDC Client Credentials
 
-Create a confidential OIDC client with the `client_credentials` grant. Every protected backchannel request needs
-`nauthilus:authenticate`; add only the route-specific scopes the operator needs.
+Create a confidential OIDC client with the `client_credentials` grant. Each route family asks only for its own scopes
+(see [OIDC Bearer Access](../rest-api.md#oidc-bearer-access-for-apiv1)); grant only the scopes of the commands the
+operator uses. `nauthilus:authenticate` is needed for `auth` tests and the OpenAPI download, `nauthilus:security_read`
+for listings, and `nauthilus:security_write` for flushes and session deletion; the wider `nauthilus:security` and
+`nauthilus:admin` include both security scopes.
 
 Example `/etc/nauthilus/admin-client.env`:
 
@@ -83,8 +86,11 @@ NAUTHILUS_BASIC_USER=operator
 NAUTHILUS_BASIC_PASSWORD_FILE=/etc/nauthilus/secrets/admin-basic-password
 ```
 
-Backchannel Basic authentication is an administrative credential and is not restricted by Bearer scopes. Prefer a
-least-privilege OIDC client where scope separation is required.
+The server decides what the user may do. The unrestricted credential (`auth.backchannel.basic_auth.username`) is an
+administrative credential and is not restricted by scopes. A scoped credential (an entry of
+`auth.backchannel.basic_auth.users`) holds exactly the scopes configured for it and is authorized like a Bearer token
+with those scopes. Prefer a scoped credential or a least-privilege OIDC client where scope separation is required; see
+[Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials).
 
 ## TLS and Address Overrides
 
@@ -262,15 +268,18 @@ The `support` commands are read-only lookups in the recorded authentication and 
 [Support Authentication History](./support-authentication-history.md) API. Each command sends one `POST` with a JSON
 body below `/api/v1/support/`; logins, accounts, addresses, and filters never appear in the URL.
 
-They need a bearer token or OIDC client credentials with `nauthilus:history_read`. `nauthilus:history_detail` widens
-the projection, allows `attempts detail` without `--login` or `--account`, and allows `--login` or `--account` in
-`bans search`. The server rejects backchannel Basic credentials and tokens that carry only `nauthilus:admin`; the
-client refuses Basic-only credentials, and client credentials without `nauthilus:history_read` in the requested
-scopes, before sending anything:
+They need the `nauthilus:history_read` scope. `nauthilus:history_detail` widens the projection, allows
+`attempts detail` without `--login` or `--account`, and allows `--login` or `--account` in `bans search`. A bearer
+token, OIDC client credentials, or a scoped Basic credential (`auth.backchannel.basic_auth.users`) may hold these
+scopes; the server rejects the unrestricted Basic credential and callers that hold only `nauthilus:admin`. The client
+refuses client credentials without `nauthilus:history_read` in the requested scopes before sending anything:
 
 ```dotenv
-NAUTHILUS_SCOPES=nauthilus:authenticate nauthilus:history_read
+NAUTHILUS_SCOPES=nauthilus:history_read
 ```
+
+With `--basic-user` and `--basic-password` (or `NAUTHILUS_BASIC_USER` and `NAUTHILUS_BASIC_PASSWORD_FILE`), the scopes
+are the ones configured for that user on the server.
 
 ```bash
 # Attempts of one login during the last two hours.

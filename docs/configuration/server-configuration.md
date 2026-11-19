@@ -290,7 +290,7 @@ bounded.
 Size `max_concurrent_requests` for the combined peak of both transports, including backchannel callers such as a mail
 director that sends its load over gRPC.
 
-Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings. See [gRPC Authority APIs](../grpc-api.md) for the service contract and [Split Identity Proxy Configuration](identity-proxy.md) for the distributed deployment model.
+Backchannel caller authentication uses the existing `auth.backchannel.basic_auth` and `auth.backchannel.oidc_bearer` settings; scoped Basic credentials under `auth.backchannel.basic_auth.users` need the scopes of each RPC like a Bearer token (see [Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials)). See [gRPC Authority APIs](../grpc-api.md) for the service contract and [Split Identity Proxy Configuration](identity-proxy.md) for the distributed deployment model.
 
 ### MCP Support Listener
 

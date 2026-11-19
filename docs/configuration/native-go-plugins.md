@@ -308,10 +308,14 @@ plugins:
 ```
 
 `name` is the hook's registered local component name. `required_scopes` uses
-any-of semantics: a bearer token needs at least one listed scope.
+any-of semantics: a bearer token needs at least one listed scope. A scoped
+Basic credential (`auth.backchannel.basic_auth.users`) holding a listed scope
+is authorized like a bearer token; the unrestricted Basic credential holds no
+scope and is refused with `403`.
 
 An administrative descriptor (`HookScopeAdmin` or `HookAuthAdmin`) always
-requires a bearer token with `nauthilus:admin`, regardless of its auth mode.
+requires a bearer token or scoped Basic credential with `nauthilus:admin`,
+regardless of its auth mode.
 Configured scopes on such a hook narrow the requirement but never replace it:
 the caller needs `nauthilus:admin` and at least one listed scope. Values are
 trimmed, validated as RFC 6749 scope tokens, de-duplicated in declaration order,

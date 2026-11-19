@@ -36,7 +36,7 @@ never writes anything.
 | Current ClickHouse schema | `schema.sql` for new installations, or the additive migrations for existing tables. |
 | Dedicated read-only ClickHouse account | Bounded, provably read-only reader; see [Reader account](#reader-account). |
 | `storage.history.clickhouse` | Enables the API on the Nauthilus instance. |
-| OIDC bearer authentication for `/api/v1` and a client with history scopes | Callers; Basic credentials grant no history access. |
+| A caller with history scopes: an OIDC client with bearer authentication for `/api/v1`, or a scoped Basic credential | Callers; the unrestricted Basic credential grants no history access. |
 
 A login row exists only when the ClickHouse post-action runs for the request, either through a Policy rule obligation
 or through `terminal_post_actions` of the authn target; see
@@ -148,17 +148,26 @@ fallback.
 
 ## Access
 
-| Bearer scope | Projection | Grants |
+| Scope | Projection | Grants |
 | --- | --- | --- |
 | `nauthilus:history_read` | `support` | Attempt search and detail of a **named** subject; ban search with counts and distinct-name counts. |
 | `nauthilus:history_detail` | `detail` | Everything above, plus other people's claimed names, accounts, and client IPs behind shared addresses, operator IDs of ban releases, individual factor events of fail-latched flows, detail lookups without a subject, and a `subject` in the ban search. Implies `nauthilus:history_read`. |
 
-`nauthilus:admin`, `nauthilus:security`, and backchannel Basic credentials grant **no** history access and receive
-`403 FORBIDDEN`. Unlike other management routes, administrative Basic authentication is not a bypass here. The token
-must still satisfy the backchannel rules: OIDC bearer acceptance enabled, audience `nauthilus:backchannel`, and the base
-scope `nauthilus:authenticate` (see [OIDC Bearer Access](../rest-api.md#oidc-bearer-access-for-apiv1)).
+`nauthilus:admin`, `nauthilus:security`, and the unrestricted backchannel Basic credential grant **no** history access
+and receive `403 FORBIDDEN`. Unlike other management routes, the unrestricted Basic credential is not a bypass here.
+The support routes ask for no other scope: a caller needs neither `nauthilus:authenticate` nor any management scope, so
+a support credential cannot call the authentication endpoints (see
+[OIDC Bearer Access](../rest-api.md#oidc-bearer-access-for-apiv1)).
 
-Register the support console as a confidential client with the Client Credentials Grant and only the scopes it needs:
+A caller proves the scopes in one of two equivalent ways:
+
+- **Bearer token.** The token must satisfy the backchannel rules: OIDC bearer acceptance enabled and audience
+  `nauthilus:backchannel`.
+- **Scoped Basic credential.** One entry per person or tool under `auth.backchannel.basic_auth.users` lists the history
+  scopes. The username is the audit identity, recorded with the method `basic_auth`.
+
+For a Bearer token, register the support console as a confidential client with the Client Credentials Grant and only
+the scopes it needs:
 
 ```yaml
 auth:
@@ -176,9 +185,28 @@ identity:
         token_endpoint_auth_method: "client_secret_basic"
         access_token_lifetime: 5m
         scopes:
-          - nauthilus:authenticate
           - nauthilus:history_read
 ```
+
+For a scoped Basic credential, add the user and its scopes:
+
+```yaml
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      users:
+        - username: support-console
+          password: "${NAUTHILUS_SUPPORT_CONSOLE_PASSWORD}"   # at least 16 characters
+          scopes:
+            - nauthilus:history_read
+            - nauthilus:operations_read
+```
+
+A Basic password is a static secret: it has no lifetime, and it is not bound to a fresh login or a second factor the
+way a user token of the [MCP endpoint](./support-mcp-access.md) is. Grant `nauthilus:history_detail` to a Basic
+credential only where that is acceptable, and prefer one credential per person so the audit record names who asked. See
+[Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials).
 
 Add `nauthilus:history_detail` only for operators who may see other people's identities. Authorization is checked
 before any data access, including the Redis account-mapping read and the reader self-check, and again for every page
@@ -322,7 +350,7 @@ the search cannot be used to test whether a name was involved. Claimed names are
 Telephone support asks one question: why was this attempt rejected, and whose recorded attempts fed the ban? An attempt
 search answers it without internal IDs when the request sets `include_ban_context: true`. `response_mode` is a separate
 field that only changes how much of the answer is returned. Neither field changes rights; the projection always follows
-the token's scopes, and both are available over HTTP, the MCP tool, and the Admin Client. A request without them gets the
+the caller's scopes, and both are available over HTTP, the MCP tool, and the Admin Client. A request without them gets the
 unchanged answer.
 
 ```json
@@ -513,8 +541,8 @@ code; do not parse it or show it as the explanation of a login.
 | Status | Code | Meaning and action |
 | --- | --- | --- |
 | 400 | `INVALID_REQUEST`, `WINDOW_TOO_LARGE`, `INVALID_CURSOR`, `INVALID_ATTEMPT_ID` | Fix the request. A cursor is bound to the same query and projection. |
-| 401 | none | Missing or invalid backchannel token; the body is the middleware's `{"error": …}`. |
-| 403 | `FORBIDDEN` | Missing history scope, Basic or admin-only credential, or a ban-search `subject` without the detail projection. |
+| 401 | none | Missing or invalid backchannel credentials; the body is the middleware's `{"error": …}`. |
+| 403 | `FORBIDDEN` | Missing history scope, unrestricted Basic or admin-only credential, or a ban-search `subject` without the detail projection. |
 | 422 | `QUERY_TOO_BROAD` | A read or response budget was exceeded even with the smallest scan slice. Narrow the window, add filters, or lower `page.limit`. |
 | 429 | `HISTORY_BUSY` | The concurrency gate is full: four operations per process and two per caller. Retry later. |
 | 503 | `HISTORY_NOT_CONFIGURED`, `HISTORY_SOURCE_UNAVAILABLE`, `HISTORY_READER_UNSAFE`, `HISTORY_TIMEOUT` | History unavailable. A failed or truncated `logins` read is always 503, never "no attempts". |
@@ -584,8 +612,7 @@ diagnostics operation over current runtime state and is not part of the history;
 | `503 HISTORY_NOT_CONFIGURED` | `storage.history.clickhouse.url` is empty, or the reader was disabled at startup (`Support history reader disabled` in the log). |
 | `503 HISTORY_READER_UNSAFE` | The reader account is writable, an overflow mode is not `throw`, in `profile` mode a profile budget is missing or larger than configured, or in `query_settings` mode a profile `MAX` constraint is below a configured budget. |
 | `503 HISTORY_SOURCE_UNAVAILABLE` | ClickHouse is unreachable, a query failed, or the `logins` read was incomplete. |
-| `403 FORBIDDEN` with a valid token | The token lacks `nauthilus:history_read`; the caller used Basic credentials or an admin-only token; a detail lookup or ban `subject` needs `nauthilus:history_detail`. |
-| `403` with a plain `{"error": …}` body | The backchannel middleware rejected the token before the history service, usually because it lacks `nauthilus:authenticate`. |
+| `403 FORBIDDEN` with valid credentials | The token or scoped Basic credential lacks `nauthilus:history_read`; the caller used the unrestricted Basic credential or an admin-only token; a detail lookup or ban `subject` needs `nauthilus:history_detail`. |
 | `result_basis: source_without_rows` | `deployment` differs from the plugin's `deployment` label, the plugin does not write the stream, or the table holds no rows in retention. |
 | `second_factor: not_recorded` on every flow | `events_insert_url` is not configured, `auth_events` is missing, or it could not be read. |
 | Only `LEGACY_UNINTERPRETED` results | The window holds only rows written before the diagnostic data contract was deployed. |

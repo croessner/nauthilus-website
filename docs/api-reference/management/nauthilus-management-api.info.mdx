@@ -116,7 +116,7 @@ Contract for the stable protected machine-facing HTTP API subset. Dynamic custom
     >
 
 
-      Backchannel Basic authentication.
+      Backchannel Basic authentication. The unrestricted credential (auth.backchannel.basic_auth.username) passes every management scope check and holds no support scope. A scoped credential (auth.backchannel.basic_auth.users) is authorized like a bearer token carrying the scopes configured for it.
 
       <div>
         <table>
@@ -143,7 +143,7 @@ Contract for the stable protected machine-facing HTTP API subset. Dynamic custom
     >
 
 
-      Backchannel OIDC bearer token. Some admin endpoints require security or admin scope.
+      Backchannel OIDC bearer token. Every route family asks for its own scopes: nauthilus:authenticate for the authentication endpoints and these OpenAPI documents, nauthilus:security_read for brute-force and OIDC session listings, nauthilus:security_write for cache and brute-force flushes and OIDC session deletion (either of them for the status of an asynchronous job), the MFA and WebAuthn scopes for the MFA backchannel, and the support scopes for /api/v1/support. nauthilus:security includes both security scopes, and nauthilus:admin is accepted on the security and MFA routes as well; neither opens the authentication endpoints or the support routes.
 
       <div>
         <table>

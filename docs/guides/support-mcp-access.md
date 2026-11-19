@@ -850,11 +850,14 @@ only instance can hide the first increments. Prometheus evidence carries no firs
 ### Diagnostics over the Management API
 
 `POST /api/v1/support/operations/diagnostics` answers the same request with the same JSON. It requires a backchannel
-bearer service token (`client_credentials`) with `nauthilus:operations_read`; like every protected `/api/v1` route it
-also needs the base scope `nauthilus:authenticate`, see
-[OIDC Bearer Access for /api/v1](../rest-api.md#oidc-bearer-access-for-apiv1). Basic credentials and `nauthilus:admin`
-alone grant no access. Filters are accepted only in the JSON body; query parameters are refused. Answers carry
-`Cache-Control: no-store`.
+caller holding `nauthilus:operations_read`: a bearer service token (`client_credentials`) or a scoped Basic credential
+(`auth.backchannel.basic_auth.users`). No other scope is needed, in particular not `nauthilus:authenticate`; see
+[OIDC Bearer Access for /api/v1](../rest-api.md#oidc-bearer-access-for-apiv1). The unrestricted Basic credential and
+`nauthilus:admin` alone grant no access. Filters are accepted only in the JSON body; query parameters are refused.
+Answers carry `Cache-Control: no-store`.
+
+Unlike the management HTTP API, the MCP endpoint never accepts Basic credentials or service tokens: it requires an
+OAuth user token as described under [Token Acceptance](#token-acceptance).
 
 ```yaml
 auth:
@@ -871,8 +874,21 @@ identity:
         token_endpoint_auth_method: "client_secret_basic"
         grant_types: ["client_credentials"]
         scopes:
-          - "nauthilus:authenticate"
           - "nauthilus:operations_read"
+```
+
+The same access with a scoped Basic credential, one entry per person or tool:
+
+```yaml
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      users:
+        - username: "support-console"
+          password: "${NAUTHILUS_SUPPORT_CONSOLE_PASSWORD}"
+          scopes:
+            - "nauthilus:operations_read"
 ```
 
 ```http
@@ -923,7 +939,8 @@ Each service writes its own audit record, at `info` level, for every call over H
 | `audit=support_mcp` | `support mcp access` | `result`, `status`, `client_ip`, and when known `reason`, `tool`, `principal`, `code` |
 
 The caller of a user token is `<client>#<subject>`, for example `support-cli#<sub claim>`, and `caller_method` is
-`oauth_user`; a service token is identified by its client ID with `caller_method` `oidc_bearer`. The endpoint writes
+`oauth_user`; a service token is identified by its client ID with `caller_method` `oidc_bearer`, and a scoped Basic
+credential by its username with `caller_method` `basic_auth`. The endpoint writes
 `support_mcp` records for every refused request and every tool call; set `runtime.servers.mcp.audit.enabled: false` to
 turn them off. Tokens, arguments, results, and secrets are never logged.
 

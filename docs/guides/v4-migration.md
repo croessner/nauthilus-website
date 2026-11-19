@@ -132,6 +132,18 @@ before the upgrade:
 12. Admin client: repeated `--resolve` flags now replace `NAUTHILUS_RESOLVE` instead of adding to it, and
     `bruteforce list` requests a page of 100 entries by default; page further with `--offset`. See
     [Admin Client](admin-client.md).
+13. **Behavior change, backchannel scopes:** every `/api/v1` route family asks only for its own scopes, and
+    `nauthilus:authenticate` is no longer a base scope of all routes. Existing tokens keep working. Single-purpose
+    clients can drop scopes they no longer need, for example a brute-force dashboard to `nauthilus:security_read`
+    alone; `nauthilus:security_write` covers flushes and OIDC session deletion. See
+    [OIDC Bearer Access](../rest-api.md#oidc-bearer-access-for-apiv1).
+14. **Action, backchannel Basic authentication:** `auth.backchannel.basic_auth` is validated more strictly.
+    `enabled: true` requires the `username` and `password` pair or at least one entry under `users`, `username` and
+    `password` must be set together, and usernames must not contain a colon or a space. A configured `username` and
+    `password` pair is the unrestricted credential and is announced with a warning at startup; scoped credentials under
+    `users` hold only the scopes listed for them. A custom hook that declares scopes now refuses the unrestricted
+    credential with `403` instead of `401`. See
+    [Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials).
 
 The support history, MCP support access, and operational diagnostics are new and disabled by default; see
 [Support Authentication History](support-authentication-history.md) and

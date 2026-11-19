@@ -157,15 +157,16 @@ Lua hooks are fail-closed unless their access model is explicit. `public` and `s
 | Hook configuration | Accepted authentication |
 | --- | --- |
 | `public: true` and no `scopes` | No authentication is required. |
-| No `public` marker and no `scopes` | Valid configured backchannel Basic authentication is required. |
-| One or more `scopes` | A valid Bearer access token containing at least one configured scope is required. |
+| No `public` marker and no `scopes` | The unrestricted backchannel Basic credential (`auth.backchannel.basic_auth.username` and `password`) is required. A scoped Basic credential cannot open the hook. |
+| One or more `scopes` | A caller holding at least one configured scope is required: a valid Bearer access token, or a scoped Basic credential (`auth.backchannel.basic_auth.users`). Both are authorized alike. |
 
-For a scoped hook, Basic authentication does not satisfy the scope requirement. If OIDC Bearer validation is unavailable,
-the scoped hook remains inaccessible. Missing or invalid credentials return `401`; a valid Bearer token without any
-required scope returns `403`.
+For a scoped hook, the unrestricted Basic credential holds no scope and does not satisfy the scope requirement; it is
+refused with `403`. If OIDC Bearer authentication is not enabled, a scoped hook is open to scoped Basic credentials
+only. Missing or invalid credentials return `401`; a valid Bearer token or Basic credential without any required scope
+returns `403`.
 
 Do not set `public: true` merely to restore the pre-hardening behavior of an unscoped hook. Use it only when anonymous
-access to that script and its output is intentional. When `scopes` are present, the scoped Bearer policy takes
+access to that script and its output is intentional. When `scopes` are present, the scope requirement takes
 precedence; omit `public` to keep the configuration unambiguous.
 
 Backchannel Bearer acceptance is configured under:
@@ -174,7 +175,7 @@ Backchannel Bearer acceptance is configured under:
 
 Backchannel Basic credentials are configured under:
 
-- `auth.backchannel.basic_auth`
+- `auth.backchannel.basic_auth` (see [Backchannel Basic Credentials](../../rest-api.md#backchannel-basic-credentials))
 
 Example of an explicitly public hook:
 

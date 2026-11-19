@@ -316,11 +316,13 @@ Without an operator scope override, current coarse authentication behavior is:
 
 Every administrative descriptor, meaning `HookAuthAdmin` or `HookScopeAdmin` with any auth mode, always requires a bearer token with the backchannel `nauthilus:admin` scope. A Basic/session context never satisfies an administrative hook.
 
+Wherever a bearer scope is required, a scoped Basic credential (`auth.backchannel.basic_auth.users`) holding that scope is authorized like a bearer token. The unrestricted Basic credential holds no scope and is refused with `403` on such a hook.
+
 Operators can configure `plugins.modules[].hooks[].required_scopes` for a
 registered local hook. A non-empty list is injected into the effective
 descriptor and requires `HookAuthToken` on a non-public hook. For a
 non-administrative hook it replaces the coarse matrix above with any-of
-semantics: one matching bearer scope is enough. For an administrative hook the
+semantics: one matching scope is enough. For an administrative hook the
 list can only narrow access: the caller needs `nauthilus:admin` and, in
 addition, at least one listed scope. Plugins must leave `HookDescriptor.RequiredScopes` empty. Authorization
 runs before body reading and request construction; invalid, duplicate,

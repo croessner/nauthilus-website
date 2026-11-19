@@ -98,7 +98,8 @@ must enforce a strict bound before returning it.
 ## Hook authorization
 
 Every administrative hook descriptor, meaning `HookAuthAdmin` or `HookScopeAdmin` with any auth mode including
-`HookAuthSession`, requires a bearer token with the backchannel `nauthilus:admin` scope. Operator-configured
+`HookAuthSession`, requires a bearer token with the backchannel `nauthilus:admin` scope; a scoped Basic credential
+holding that scope is authorized like such a token, while the unrestricted Basic credential is not. Operator-configured
 `required_scopes` can narrow that requirement but never replace it. Nevertheless:
 
 - use `HookAuthAdmin` for administrative hooks so the descriptor states the requirement;

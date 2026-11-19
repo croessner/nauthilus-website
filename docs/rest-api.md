@@ -221,32 +221,89 @@ auth:
 ```
 
 Protected backchannel routes can use configured backchannel Basic authentication, OIDC Bearer authentication, or both.
-They have different authorization semantics:
+A caller holds scopes either in its Bearer token or as a
+[scoped Basic credential](#backchannel-basic-credentials); both are authorized alike:
 
-- A Bearer token must be an access token with `token_type=access_token`, audience `nauthilus:backchannel`, and the base
-  scope `nauthilus:authenticate` on every protected `/api/v1/*` request.
-- Routes with an additional scope check accept any one of the listed route scopes.
-- Configured backchannel Basic authentication is the administrative management credential. After it succeeds, it is not
-  subject to Bearer scope checks. Exception: the support routes under `/api/v1/support/*` map permissions only from
-  Bearer scopes; Basic credentials and `nauthilus:admin` receive `403 FORBIDDEN` there.
-- Missing or invalid authentication returns `401`. A valid Bearer token that lacks the base or route scope returns
-  `403`.
+- A Bearer token must be an access token with `token_type=access_token` and audience `nauthilus:backchannel`. There is
+  no base scope: each route family asks only for its own scopes.
+- A scoped Basic credential holds exactly the scopes configured for it and is authorized like a Bearer token carrying
+  those scopes.
+- A route accepts any one of its listed scopes.
+- The unrestricted Basic credential (`auth.backchannel.basic_auth.username` and `password`) is the administrative
+  management credential. It holds no scope itself and passes every management scope check. Exception: the support
+  routes under `/api/v1/support/*` map permissions only from scopes the caller really holds; the unrestricted Basic
+  credential, `nauthilus:security`, and `nauthilus:admin` receive `403 FORBIDDEN` there.
+- Missing or invalid authentication returns `401`. A valid Bearer token or scoped Basic credential that lacks the route
+  scope returns `403` with `missing required scope: ...`.
 
-The current route-specific Bearer requirements are:
+The current route scopes are:
 
-| Route family | Additional Bearer scope, any-of |
+| Route family | Scope, any-of |
 | --- | --- |
-| Authentication routes and management OpenAPI documents | None beyond `nauthilus:authenticate`. |
-| Cache flush, brute-force list/flush, and asynchronous job status | `nauthilus:security` or `nauthilus:admin`. |
-| OIDC session list/delete | `nauthilus:security` or `nauthilus:admin`. |
-| Add/delete TOTP or recovery-code state | `nauthilus:mfa_write` or `nauthilus:admin`. |
-| Read WebAuthn credential descriptors | `nauthilus:webauthn_read` or `nauthilus:admin`. |
-| Save/update/delete WebAuthn credentials | `nauthilus:webauthn_write` or `nauthilus:admin`. |
+| Authentication routes (`/api/v1/auth/*`) and management OpenAPI documents (`/api/v1/openapi.yaml`, `/api/v1/openapi.json`) | `nauthilus:authenticate`. |
+| Brute-force list (`GET` and `POST /api/v1/bruteforce/list`) and OIDC session list (`GET /api/v1/oidc/sessions/{user_id}`) | `nauthilus:security_read`; the wider `nauthilus:security` and `nauthilus:admin` include it. |
+| Cache flush, brute-force flush (synchronous and `/async`), and OIDC session deletion | `nauthilus:security_write`; the wider `nauthilus:security` and `nauthilus:admin` include it. |
+| Asynchronous job status (`GET /api/v1/async/jobs/{jobId}`) | `nauthilus:security_read` or `nauthilus:security_write`; the wider `nauthilus:security` and `nauthilus:admin` include both. |
+| Add/delete TOTP or recovery-code state (`/api/v1/mfa-backchannel/*`) | `nauthilus:mfa_write` or `nauthilus:admin`. |
+| Read WebAuthn credential descriptors (`/api/v1/mfa-backchannel/*`) | `nauthilus:webauthn_read` or `nauthilus:admin`. |
+| Save/update/delete WebAuthn credentials (`/api/v1/mfa-backchannel/*`) | `nauthilus:webauthn_write` or `nauthilus:admin`. |
 | Support history (`/api/v1/support/authentication-attempts/search`, `.../detail`, `/api/v1/support/bruteforce-bans/search`) | `nauthilus:history_read` or `nauthilus:history_detail` only; see [Support Authentication History](guides/support-authentication-history.md). |
 | Operational diagnostics (`POST /api/v1/support/operations/diagnostics`) | `nauthilus:operations_read` only; see [Read-only Support Access over MCP](guides/support-mcp-access.md#operational-diagnostics). |
 
+No route asks for a scope of another family. In particular, `nauthilus:authenticate` is no longer a base scope of every
+`/api/v1` route: a client that only lists brute-force entries needs `nauthilus:security_read` and nothing else, and a
+support console needs only its support scopes. `nauthilus:security` and `nauthilus:admin` do not open the
+authentication routes or the OpenAPI documents. Tokens issued for earlier releases keep working, because nothing they
+could do before is refused now.
+
 Grant only the route scopes the client needs. The built-in IdP issues suitable machine-to-machine tokens with the
 Client Credentials Grant; do not request `openid` for such clients.
+
+## Backchannel Basic Credentials
+
+`auth.backchannel.basic_auth` configures HTTP Basic caller authentication for the HTTP API under `/api/v1/*`, the
+[gRPC authority listener](grpc-api.md#caller-authentication), and [custom hooks](#custom-hooks). It knows two kinds of
+credentials:
+
+```yaml
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      username: "management"          # optional: the unrestricted credential
+      password: "${NAUTHILUS_BACKCHANNEL_PASSWORD}"
+      users:
+        - username: "support-console"
+          password: "${NAUTHILUS_SUPPORT_CONSOLE_PASSWORD}"
+          scopes:
+            - "nauthilus:history_read"
+            - "nauthilus:operations_read"
+```
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `false` | Enables Basic caller authentication. Requires the `username` and `password` pair or at least one `users` entry. |
+| `username` | string | `""` | Username of the unrestricted credential. Must not contain a colon or a space; set it together with `password`. |
+| `password` | secret | `""` | Password of the unrestricted credential: at least 16 characters, without whitespace or control characters. |
+| `users` | list | `[]` | Scoped credentials, one entry per person or tool. |
+| `users[].username` | string | required | Username of the scoped credential. Must not contain a colon or a space and must be unique across `username` and all `users` entries. |
+| `users[].password` | secret | required | Password of the scoped credential; the same rules as the top-level `password`. |
+| `users[].scopes` | list of strings | required | Scopes the credential holds: at least one entry, each a valid RFC 6749 scope token. |
+
+- The **unrestricted credential** is the top-level `username` and `password`. It passes every management scope check,
+  holds no scope itself, and gets no access to `/api/v1/support/*` (`403`). On hooks that declare scopes it is refused
+  with `403`.
+- A **scoped credential** is an entry of `users`. It holds exactly the listed scopes and is authorized exactly like a
+  Bearer token carrying those scopes: on the HTTP API, on the gRPC authority listener with its per-RPC scopes, and on
+  custom hooks that declare scopes. It cannot open a hook that declares neither `scopes` nor `public: true`.
+
+Startup validation rejects `enabled: true` without any usable credential, a `username` without `password` or the
+reverse, a username that is used twice, a username with a colon or a space, and a `users` entry without valid scopes.
+When the unrestricted credential is configured, Nauthilus logs a warning at configuration load, because that credential
+grants full management access; prefer scoped credentials and remove it where they or Bearer tokens suffice.
+
+A Basic password is a static secret without a lifetime. Use one scoped credential per person or tool, so that log and
+audit records name who asked.
 
 ## Backchannel Caller Rejections
 
@@ -263,7 +320,7 @@ IP, and a fixed reason, never with credentials, tokens, or usernames.
 | Caller authentication result | HTTP | gRPC | Delayed |
 |---|---|---|---|
 | Missing credentials, wrong Basic credentials, or an unknown, expired, revoked, denylisted, or wrongly signed token | `401` | `UNAUTHENTICATED` | yes |
-| Valid token without the required scope | `403` | `PERMISSION_DENIED` | no |
+| Valid token or scoped Basic credential without the required scope | `403` | `PERMISSION_DENIED` | no |
 | Valid token that is not a backchannel access token | `401` | `UNAUTHENTICATED` | gRPC only |
 | Missing token on a custom hook route | `401` | - | no |
 | Token state or signing keys unreachable, or (gRPC only) the token validator is not configured | `503` with `Retry-After` | `UNAVAILABLE` | no |
@@ -285,8 +342,8 @@ the other routes behind `auth.backchannel`.
 - Requests whose Basic or Bearer caller authentication succeeds never consume the budget, because a few proxy or load
   balancer addresses usually carry all backchannel traffic. `auth.pipeline.max_concurrent_requests` remains the
   process-wide bound for these callers.
-- Every failed caller authentication (missing or wrong credentials, a token without the required scope, missing
-  `auth.backchannel` configuration) and every request to `/api/v1/auth/basic` consumes one token of the client
+- Every failed caller authentication (missing or wrong credentials, a caller without `nauthilus:authenticate` on the
+  routes that require it, missing `auth.backchannel` configuration) and every request to `/api/v1/auth/basic` consumes one token of the client
   address. An undecided token validation (`503`) does not.
 - Within the budget a failure is answered with `401` or `403` after the rejection delay. Once the address has no token
   left, every request from it, including requests with valid credentials, is answered with `429` immediately and
@@ -397,7 +454,7 @@ auth:
 | `script_path` | Lua script that defines `nauthilus_run_hook`. Required. |
 | `http_alias_location` | Optional absolute path that serves the same hook outside `/api/v1/custom/`. |
 | `content_type` | Optional response content type. |
-| `scopes` | Bearer token scopes; any one of them authorizes the request. |
+| `scopes` | Scopes of a Bearer token or a scoped Basic credential; any one of them authorizes the request. |
 | `public` | `true` allows anonymous access when no `scopes` are set. |
 
 The script defines one entry function:
@@ -421,11 +478,11 @@ A returned Lua table is sent as JSON with the current response status. A script 
 | :--- | :--- |
 | `200 OK` | Hook executed (unless the script sets another status) |
 | `401 Unauthorized` | Missing or invalid credentials |
-| `403 Forbidden` | Valid Bearer token without a required scope |
+| `403 Forbidden` | Valid Bearer token or Basic credential without a required scope |
 | `404 Not Found` | No hook is configured for this location and method, or `custom_hooks` is disabled |
 | `500 Internal Server Error` | Hook execution failed |
 
-A hook without `public` and without `scopes` requires the configured backchannel Basic authentication. See
+A hook without `public` and without `scopes` requires the unrestricted backchannel Basic credential. See
 [Hook Authorization](configuration/database-backends/lua.md#hook-authorization) for the complete access model and
 [Lua runtimes and capabilities](lua-api/runtimes.md) for what a hook script can use. The endpoint group is switched
 off with `runtime.servers.http.disabled_endpoints.custom_hooks`.

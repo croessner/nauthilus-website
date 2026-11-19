@@ -649,8 +649,9 @@ The reader enforces its boundaries in application code
 | `nauthilus:history_read` | `support` | Attempts of a named subject (events of other identities are redacted); the answered status text only together with the identity; ban search with counts and distinct-name counts; redacted contributions; no claimants. |
 | `nauthilus:history_detail` | `detail` | Additionally other people's claimed names, accounts, and client IPs behind shared addresses, claimants, operator IDs of releases, factor events of fail-latched flows, and detail lookups without a subject. |
 
-`nauthilus:admin`, `nauthilus:security`, and Basic credentials grant no
-history access. With `include_ban_context`, the attempt search also links
+`nauthilus:admin`, `nauthilus:security`, and the unrestricted Basic credential
+grant no history access; a Bearer token or a scoped Basic credential may hold
+the two scopes. With `include_ban_context`, the attempt search also links
 brute-force-rejected subject requests to recorded ban instances and returns
 attribution counts (`ban_context.go`, `ban_attribution.go`); identities stay
 redacted outside the detail projection.

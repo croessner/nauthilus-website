@@ -429,6 +429,7 @@ auth:
       enabled: false
       username: ""
       password: ""
+      users: []
 
     oidc_bearer:
       enabled: false
@@ -785,6 +786,10 @@ identity:
 `storage.history.clickhouse` are disabled or empty in the reference example; unset limits use the values shown. They
 configure the optional read-only [Support Authentication History](../guides/support-authentication-history.md), the
 [Read-only Support Access over MCP](../guides/support-mcp-access.md), and the operational diagnostics described there.
+
+`auth.backchannel.basic_auth.users` is empty in the reference example. Each entry is a scoped Basic credential with
+`username`, `password`, and `scopes`; the top-level `username` and `password` form the unrestricted credential. See
+[Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials).
 
 The values under `identity.mfa_policy.levels` are the built-in assurance defaults. OIDC clients and SAML service
 providers can add `require_mfa`, `supported_mfa`, `required_mfa_level`, and local `mfa_policy.levels` overrides. See

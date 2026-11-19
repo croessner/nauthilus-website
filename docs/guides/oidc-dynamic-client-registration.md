@@ -623,8 +623,9 @@ Operators can use the protected management API:
 | `DELETE /api/v1/oidc/sessions/{user_id}/{token}` | Deletes the selected access-token session; pass the list response `id` as the historical `{token}` parameter. |
 | `DELETE /api/v1/oidc/sessions/{user_id}` | Revokes all static and dynamic access and refresh state for the user. |
 
-Bearer-authenticated management calls require `nauthilus:authenticate` plus `nauthilus:security` or
-`nauthilus:admin`. See [OIDC Session Administration](../rest-api.md#oidc-session-administration) and the
+The list operation requires `nauthilus:security_read` and the delete operations `nauthilus:security_write`, held by a
+Bearer token or a scoped Basic credential; the wider `nauthilus:security` and `nauthilus:admin` include both. See
+[OIDC Session Administration](../rest-api.md#oidc-session-administration) and the
 [Admin Client](./admin-client.md#oidc-sessions) guide.
 
 Upgrading from an earlier v4 prerelease removes all existing dynamic client registrations and all dynamic access and refresh

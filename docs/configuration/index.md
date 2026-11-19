@@ -78,6 +78,7 @@ Examples of canonical paths:
 - [Backend Health Checks](backend-server-monitoring.md): `auth.services.backend_health_checks`
 - [Brute Force Protection](brute-force.md): `auth.controls.brute_force`
 - [Authentication Pipeline](auth-pipeline.md): `auth.pipeline`
+- [Backchannel Caller Authentication](../rest-api.md#oidc-bearer-access-for-apiv1): `auth.backchannel`
 - [Policy Configuration](auth-policy.md): top-level `policy`
 - [Native Go Plugins](native-go-plugins.md): trusted `.so` modules, verification, capabilities, and reload boundaries
 - [Password Nonce](password-nonce.md): `storage.redis.password_nonce`

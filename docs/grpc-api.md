@@ -98,6 +98,11 @@ authorization: Basic <base64(username:password)>
 authorization: Bearer <access-token>
 ```
 
+The top-level `username` and `password` form the unrestricted Basic credential, which passes every scope check of the
+listener. Scoped Basic credentials under `auth.backchannel.basic_auth.users` hold exactly the scopes configured for them
+and need the scopes of each RPC like a Bearer token; see the [Authority Scope Matrix](#authority-scope-matrix) and
+[Backchannel Basic Credentials](rest-api.md#backchannel-basic-credentials).
+
 Caller-auth failures are transport errors such as `Unauthenticated` or `PermissionDenied`. User authentication failures are domain decisions inside successful RPC responses.
 
 Callers are never locked out. A rejected caller receives `UNAUTHENTICATED` after a fixed 300 ms delay. Unlike the HTTP
@@ -327,7 +332,7 @@ Earlier releases answered admission limits on `AuthService` with `INTERNAL`. Onl
 
 ## Authority Scope Matrix
 
-When caller auth uses OIDC bearer tokens, the authority checks scopes independently from the edge's local `allowed_operations` list.
+When caller auth uses OIDC bearer tokens or scoped Basic credentials, the authority checks scopes independently from the edge's local `allowed_operations` list. The unrestricted Basic credential holds all of them.
 
 | Scope | Typical RPCs |
 | --- | --- |
@@ -341,7 +346,7 @@ When caller auth uses OIDC bearer tokens, the authority checks scopes independen
 | `nauthilus:webauthn_write` | `SaveWebAuthnCredential`, `UpdateWebAuthnCredential`, `DeleteWebAuthnCredential` |
 | `nauthilus:attribute_read` | Attribute release through `ResolveUser` |
 
-Scope requirements are cumulative. The authority checks every scope required for an RPC, so listing an RPC in more than one row means AND semantics, not alternatives. In particular, `IdentityBackendService.UseRecoveryCode` requires both `nauthilus:mfa_verify` and `nauthilus:mfa_write`: it verifies the submitted code and consumes persistent recovery-code state. A token carrying only one of these scopes is denied.
+Scope requirements are cumulative. The authority checks every scope required for an RPC, so listing an RPC in more than one row means AND semantics, not alternatives. In particular, `IdentityBackendService.UseRecoveryCode` requires both `nauthilus:mfa_verify` and `nauthilus:mfa_write`: it verifies the submitted code and consumes persistent recovery-code state. A caller holding only one of these scopes is denied with `PERMISSION_DENIED` and `missing required scope: ...`.
 
 Grant only the scopes the caller needs. For a split edge, keep the local remote backend `allowed_operations` list aligned with the authority scopes.
 

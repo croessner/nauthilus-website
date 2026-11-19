@@ -174,7 +174,8 @@ Behavior:
 
 Validation also reports warnings that keep a configuration loadable, for example a `cache` entry before a native
 backend plugin that has not opted into the positive password cache (see
-[Native Go Plugins](native-go-plugins.md#positive-password-cache-for-backend-modules)).
+[Native Go Plugins](native-go-plugins.md#positive-password-cache-for-backend-modules)), or a configured unrestricted
+backchannel Basic credential (see [Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials)).
 
 Validation errors are reported with canonical config-v2 paths. Unknown keys are not translated from Go field names anymore; the message points directly to the documented YAML surface.
 
@@ -249,6 +250,8 @@ Examples of values redacted by default:
 - `storage.redis.encryption_secret`
 - `storage.history.clickhouse.password`
 - `observability.metrics.endpoint_auth.basic.password`
+- `auth.backchannel.basic_auth.password`
+- `auth.backchannel.basic_auth.users[].password`
 - `runtime.clients.grpc.nauthilus_authorities.<name>.caller_auth.basic_auth.password`
 - `runtime.clients.grpc.nauthilus_authorities.<name>.caller_auth.oidc_bearer.client_secret`
 - `auth.request.headers.password`

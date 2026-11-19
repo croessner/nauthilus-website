@@ -690,9 +690,11 @@ Related request-header propagation for subject sources/logging lives at:
 
 Clients that validate opaque OIDC bearer tokens through `/oidc/introspect` can authenticate with client secrets or `private_key_jwt`. For `private_key_jwt`, use the introspection endpoint URL as the client-assertion audience.
 
-Every Bearer-authenticated backchannel request also needs `nauthilus:authenticate`, even when the route has an
-additional administrative scope. See [REST API](../../rest-api.md#oidc-bearer-access-for-apiv1) for the route matrix and
-Basic-authentication behavior.
+Each route family asks only for its own scopes. `nauthilus:authenticate` opens the authentication routes and the
+management OpenAPI documents; it is no longer a base scope of every `/api/v1` route. See
+[REST API](../../rest-api.md#oidc-bearer-access-for-apiv1) for the route matrix and
+[Backchannel Basic Credentials](../../rest-api.md#backchannel-basic-credentials) for Basic authentication, including
+scoped Basic credentials that hold the same scopes without a token.
 
 ## Built-in Scope Families
 
@@ -700,9 +702,11 @@ The reserved `nauthilus:*` scopes are used for backchannel administration, autho
 
 | Scope | Purpose |
 | --- | --- |
-| `nauthilus:admin` | Full administrative access to backchannel API surfaces that accept admin bearer tokens. |
-| `nauthilus:security` | Security-related backchannel access such as brute-force and metrics controls. |
-| `nauthilus:authenticate` | Password authentication through backchannel or gRPC authority APIs. |
+| `nauthilus:admin` | Full administrative access to backchannel API surfaces that accept the admin scope: every HTTP management route that asks for a security, MFA, or WebAuthn scope, and administrative hooks. It does not open the authentication routes and grants no support access. |
+| `nauthilus:security` | Read and write access to the security controls: brute-force listings and flushes, cache flushes, and OIDC session administration. Includes `nauthilus:security_read` and `nauthilus:security_write`. |
+| `nauthilus:security_read` | Read-only security state: brute-force listings, OIDC session listings, and the status of asynchronous security jobs. |
+| `nauthilus:security_write` | Mutations of security state: cache and brute-force flushes, OIDC session deletion, and the status of the asynchronous jobs these start. |
+| `nauthilus:authenticate` | Password authentication through backchannel or gRPC authority APIs, and the management OpenAPI documents. |
 | `nauthilus:lookup_identity` | Trusted identity lookup and remote user resolution. |
 | `nauthilus:list_accounts` | Account listing. |
 | `nauthilus:mfa_read` | Read public MFA state. |
@@ -717,8 +721,8 @@ The reserved `nauthilus:*` scopes are used for backchannel administration, autho
 
 For split edge/authority deployments, configure the edge service-principal client with only the scopes needed by its remote backend `allowed_operations`.
 
-The three support scopes are accepted from backchannel service tokens on the `/api/v1/support/*` routes and from user
-tokens of a hosted resource. They are the only scopes a hosted resource may gate. `nauthilus:admin`,
-`nauthilus:security`, and Basic credentials grant no support access. See
+The three support scopes are accepted from backchannel service tokens and scoped Basic credentials on the
+`/api/v1/support/*` routes and from user tokens of a hosted resource. They are the only scopes a hosted resource may
+gate. `nauthilus:admin`, `nauthilus:security`, and the unrestricted Basic credential grant no support access. See
 [Read-only Support Access over MCP](../../guides/support-mcp-access.md) and
 [Support Authentication History](../../guides/support-authentication-history.md).

@@ -33,7 +33,7 @@ type HookAuth string
 | Constant | Value | Meaning |
 | --- | --- | --- |
 | `HookAuthNone` | `"none"` | No hook-specific authentication. Allowed only with public scope. |
-| `HookAuthToken` | `"token"` | Valid bearer token plus the scope mapped from `HookScope`, unless exact operator scopes replace that mapping. |
+| `HookAuthToken` | `"token"` | Valid bearer token plus the scope mapped from `HookScope`, unless exact operator scopes replace that mapping. Where a scope is required, a scoped Basic credential holding it is accepted like a bearer token. |
 | `HookAuthSession` | `"session"` | Requires the validated Basic/session marker for public and internal scope. Combined with `HookScopeAdmin`, it requires an administrative bearer token instead. |
 | `HookAuthAdmin` | `"admin"` | Always requires an administrative bearer token, regardless of scope. |
 
@@ -52,6 +52,11 @@ Any administrative descriptor, meaning `HookAuthAdmin` or `HookScopeAdmin` with 
 with the `nauthilus:admin` scope before any other check. A Basic/session context never satisfies it. Prefer
 `HookAuthAdmin` for administrative hooks so that the descriptor states the requirement explicitly.
 
+Wherever this matrix or an exact `required_scopes` list asks for a bearer scope, a scoped Basic credential
+(`auth.backchannel.basic_auth.users`) holding that scope is authorized like a bearer token. The unrestricted Basic
+credential (`auth.backchannel.basic_auth.username`) holds no scope and is refused with `403` on such a hook. See
+[Backchannel Basic Credentials](../../../rest-api.md#backchannel-basic-credentials).
+
 ### Exact operator-owned scopes
 
 An operator can replace the coarse scope mapping for one registered local hook:
@@ -69,7 +74,7 @@ plugins:
 ```
 
 The list has **any-of** semantics: for a non-administrative hook, a valid
-bearer token containing either scope is accepted, and exact scopes take
+bearer token or scoped Basic credential holding either scope is accepted, and exact scopes take
 precedence over the descriptor's coarse `Scope`/`Auth` mapping at request time.
 For an administrative descriptor (`HookScopeAdmin` or `HookAuthAdmin`) the list
 can only narrow access: the caller must hold `nauthilus:admin` **and**, when
@@ -108,7 +113,7 @@ type HookDescriptor struct {
 
 | Field | Validation, default, and current behavior |
 | --- | --- |
-| `RequiredScopes` | Host-injected copy of `plugins.modules[].hooks[].required_scopes`. Plugin descriptors must leave it empty. A non-empty effective list requires any one listed bearer scope and replaces coarse scope/auth evaluation. |
+| `RequiredScopes` | Host-injected copy of `plugins.modules[].hooks[].required_scopes`. Plugin descriptors must leave it empty. A non-empty effective list requires any one listed scope, held by a bearer token or a scoped Basic credential, and replaces coarse scope/auth evaluation. |
 | `Timeout` | Must be non-negative. Zero adds no hook-specific deadline; the inbound request context still applies. Positive values bound `Serve`. |
 | `Name` | Required valid component name, qualified as `<module>.<name>`. |
 | `Method` | Required non-blank text. Routing normalizes it with trim + uppercase. Registration does not otherwise enforce an HTTP-token grammar. |
@@ -161,7 +166,8 @@ The production custom-hook builder currently populates only these `RequestSnapsh
 - `Username` from authenticated bearer `sub`;
 - `ClientIP`, `ClientPort`, and `ClientHost` from the request;
 - `OIDCCID` from the first non-empty bearer claim `client_id`, `azp`, then `sub`;
-- `Runtime.Authenticated` when bearer claims exist or the Basic/session marker is validated.
+- `Runtime.Authenticated` when a backchannel caller was authenticated, by a bearer token or a Basic credential. A Basic
+  caller carries no bearer claims, so `Username` and `OIDCCID` stay empty for it.
 
 The builder currently leaves `ExternalSessionID`, account/identity fields, `ClientID`, `ClientNet`, local endpoint fields, SAML and login-attempt data, TLS, health-check, diagnostics, IdP scope/group/client metadata, MFA data, `Authorized`, debug/repeating/RWP flags, and stage flags at zero values. These fields remain public surface and generic hook request builders can populate them, but current HTTP routing does not.
 

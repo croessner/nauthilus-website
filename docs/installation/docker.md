@@ -131,9 +131,13 @@ environment:
   NAUTHILUS_RUNTIME_SERVERS_HTTP_ADDRESS: "0.0.0.0:9080"
   NAUTHILUS_STORAGE_REDIS_PRIMARY_ADDRESS: "redis:6379"
   NAUTHILUS_STORAGE_REDIS_PASSWORD_NONCE: "${PASSWORD_NONCE}"
-  NAUTHILUS_AUTH_BACKCHANNEL_BASIC_AUTH_USERNAME: "${BASIC_AUTH_USERNAME}"
-  NAUTHILUS_AUTH_BACKCHANNEL_BASIC_AUTH_PASSWORD: "${BASIC_AUTH_PASSWORD}"
+  NAUTHILUS_STORAGE_REDIS_ENCRYPTION_SECRET: "${ENCRYPTION_SECRET}"
 ```
+
+List settings such as the scoped backchannel Basic credentials (`auth.backchannel.basic_auth.users`) belong in the
+configuration file. Keep their secrets out of the file with placeholders, for example
+`password: "${NAUTHILUS_SUPPORT_CONSOLE_PASSWORD}"`, and pass the value through the container environment. See
+[Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials).
 
 ## TLS
 

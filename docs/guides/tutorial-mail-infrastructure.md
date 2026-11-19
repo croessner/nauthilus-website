@@ -283,8 +283,15 @@ auth:
   backchannel:
     basic_auth:
       enabled: true
-      username: "workshop-backchannel"
-      password: "workshop-backchannel-secret"
+      # A scoped credential holds only the scopes listed here: Dovecot and the
+      # Postfix bridge authenticate users (nauthilus:authenticate), and the
+      # bridge calls the two Postfix hooks (workshop:postfix).
+      users:
+        - username: "workshop-backchannel"
+          password: "workshop-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+            - "workshop:postfix"
 
   pipeline:
     max_concurrent_requests: 100
@@ -320,13 +327,19 @@ auth:
 
     lua:
       hooks:
+        # A hook that names scopes is open to callers holding one of them.
+        # Without scopes it would need the unrestricted Basic credential.
         - http_location: "postfix/socket-map"
           http_method: "POST"
           script_path: "/etc/nauthilus/lua/postfix_socket_map.lua"
+          scopes:
+            - "workshop:postfix"
 
         - http_location: "postfix/policy"
           http_method: "POST"
           script_path: "/etc/nauthilus/lua/postfix_policy.lua"
+          scopes:
+            - "workshop:postfix"
 
   policy:
     attribute_sources:

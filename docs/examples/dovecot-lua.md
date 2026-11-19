@@ -17,10 +17,11 @@ some extra fields are returned for the userdb backend.
 The matching Nauthilus configuration is shown in [Nauthilus configuration](#nauthilus-configuration) below.
 
 Nauthilus is TLS encrypted and requires HTTP basic authentication. The credentials are read from a file. You can create
-one like this:
+one like this, using the username and password of the scoped credential from the
+[Nauthilus configuration](#nauthilus-configuration):
 
 ```shell
-echo -n "username:password" | base64 > http-auth.secret
+echo -n "dovecot:replace-with-a-long-random-secret" | base64 > http-auth.secret
 chmod 640 http-auth.secret
 chown root:vmail http-auth.secret
 ```
@@ -327,9 +328,17 @@ auth:
   backchannel:
     basic_auth:
       enabled: true
-      # The same credentials as in /etc/dovecot/http-auth.secret
-      username: "username"
-      password: "password"
+      # The same credentials as in /etc/dovecot/http-auth.secret. A scoped
+      # credential holds only the scopes listed here; the password needs at
+      # least 16 characters.
+      users:
+        - username: "dovecot"
+          password: "replace-with-a-long-random-secret"
+          scopes:
+            # Password checks and ?mode=no-auth
+            - "nauthilus:authenticate"
+            # ?mode=list-accounts
+            - "nauthilus:list_accounts"
 
   backends:
     order:
@@ -394,4 +403,5 @@ at all.
 
 #### ?mode=list-accounts
 
-This mode returns the full list of known accounts.
+This mode returns the full list of known accounts. The caller needs the `nauthilus:list_accounts` scope in addition to
+`nauthilus:authenticate`.

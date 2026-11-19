@@ -85,8 +85,11 @@ auth:
   backchannel:
     basic_auth:
       enabled: true
-      username: "backchannel"
-      password: "change-me"
+      users:
+        - username: "backchannel"
+          password: "replace-with-a-long-random-secret"
+          scopes:
+            - "nauthilus:authenticate"
     oidc_bearer:
       enabled: true
 ```
@@ -98,9 +101,9 @@ authorization: Basic <base64(username:password)>
 authorization: Bearer <access-token>
 ```
 
-The top-level `username` and `password` form the unrestricted Basic credential, which passes every scope check of the
-listener. Scoped Basic credentials under `auth.backchannel.basic_auth.users` hold exactly the scopes configured for them
-and need the scopes of each RPC like a Bearer token; see the [Authority Scope Matrix](#authority-scope-matrix) and
+Scoped Basic credentials under `auth.backchannel.basic_auth.users` hold exactly the scopes configured for them and need
+the scopes of each RPC like a Bearer token. The optional top-level `username` and `password` form the unrestricted Basic
+credential, which passes every scope check of the listener and is announced with a warning at startup; see the [Authority Scope Matrix](#authority-scope-matrix) and
 [Backchannel Basic Credentials](rest-api.md#backchannel-basic-credentials).
 
 Caller-auth failures are transport errors such as `Unauthenticated` or `PermissionDenied`. User authentication failures are domain decisions inside successful RPC responses.
@@ -357,7 +360,7 @@ Plaintext loopback listener with Basic backchannel authentication:
 ```bash
 grpcurl \
   -plaintext \
-  -H "authorization: Basic $(printf 'backchannel:change-me' | base64)" \
+  -H "authorization: Basic $(printf 'backchannel:replace-with-a-long-random-secret' | base64)" \
   -d '{
     "username": "alice@example.test",
     "password": "secret",

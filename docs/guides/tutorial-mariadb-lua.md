@@ -169,8 +169,13 @@ auth:
   backchannel:
     basic_auth:
       enabled: true
-      username: "workshop-backchannel"
-      password: "workshop-backchannel-secret"
+      # A scoped credential holds only the scopes listed here. The direct API
+      # check below calls /api/v1/auth/json, which needs nauthilus:authenticate.
+      users:
+        - username: "workshop-backchannel"
+          password: "workshop-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
 
   backends:
     order:

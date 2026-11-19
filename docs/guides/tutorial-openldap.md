@@ -170,8 +170,13 @@ auth:
   backchannel:
     basic_auth:
       enabled: true
-      username: "workshop-backchannel"
-      password: "workshop-backchannel-secret"
+      # A scoped credential holds only the scopes listed here. The direct API
+      # check below calls /api/v1/auth/json, which needs nauthilus:authenticate.
+      users:
+        - username: "workshop-backchannel"
+          password: "workshop-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
 
   backends:
     order:
@@ -271,7 +276,7 @@ After this tutorial, you should be able to explain:
 
 - why Valkey is present even in a small setup
 - how Nauthilus finds the LDAP server
-- how backchannel basic auth protects the direct API check
+- how a scoped backchannel Basic credential protects the direct API check
 - where LDAP attributes are mapped into the authentication response
 
 Continue with [Tutorial: MariaDB + Lua](tutorial-mariadb-lua.md) when you want to see the same idea without LDAP.

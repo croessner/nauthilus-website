@@ -1,0 +1,8 @@
+{
+  "label": "Native Go Plugins",
+  "position": 1,
+  "link": {
+    "type": "doc",
+    "id": "developer/go-plugins/index"
+  }
+}

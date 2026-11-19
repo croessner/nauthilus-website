@@ -144,6 +144,16 @@ before the upgrade:
     `users` hold only the scopes listed for them. A custom hook that declares scopes now refuses the unrestricted
     credential with `403` instead of `401`. See
     [Backchannel Basic Credentials](../rest-api.md#backchannel-basic-credentials).
+15. **Upgrade effect, browser sessions:** session payloads in Redis are sealed with `storage.redis.encryption_secret`
+    and plaintext records are discarded. Every live browser session ends once and stored OIDC consents are requested
+    once more. Each edge replica also fetches its authority token once more, because the cached token is now stored
+    encrypted.
+16. **Behavior change, OIDC signing keys:** generated signing keys follow `identity.oidc.key_max_age` (default 7 days)
+    instead of a 365-day fallback, and inactive keys older than that age are removed. Set `key_max_age` explicitly if
+    relying parties cache keys for longer, and keep `key_rotation_interval` shorter than `key_max_age`.
+17. **Action, bundled Lua plugins on Redis Cluster:** delete the untagged and `{lua-nauthilus}`-renamed
+    `multilayer:global:current_metrics` hashes once. The plugins now keep the keys of one Redis script on one hash
+    tag; all other old keys expire.
 
 The support history, MCP support access, and operational diagnostics are new and disabled by default; see
 [Support Authentication History](support-authentication-history.md) and

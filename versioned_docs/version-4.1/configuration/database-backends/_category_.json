@@ -1,0 +1,8 @@
+{
+  "label": "Database Backends",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Configuration options for Nauthilus database backends including LDAP, Lua, and cache settings."
+  }
+}

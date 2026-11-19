@@ -1,0 +1,31 @@
+---
+id: bruteforceaccountresolution
+title: "BruteForceAccountResolution"
+description: "How one requested account filter name was resolved through the account mappings Nauthilus stores when a backend finds a login name. A mapping is not re-verified against the backend and can be stale; a name that was never used for a login has no mapping. The literal name is always checked as well."
+sidebar_label: "BruteForceAccountResolution"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"input":"string","status":"mapped","source":"string","accounts":["string"],"checked":["string"],"matched":["string"],"literal_match":true,"error":"string"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"BruteForceAccountResolution"}
+>
+</Heading>
+
+
+
+How one requested account filter name was resolved through the account mappings Nauthilus stores when a backend finds a login name. A mapping is not re-verified against the backend and can be stale; a name that was never used for a login has no mapping. The literal name is always checked as well.
+
+<Schema
+  {...require("./bruteforceaccountresolution.Schema.json")}
+>
+
+</Schema>

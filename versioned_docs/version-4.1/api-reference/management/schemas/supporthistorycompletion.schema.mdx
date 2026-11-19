@@ -1,0 +1,31 @@
+---
+id: supporthistorycompletion
+title: "SupportHistoryCompletion"
+description: "Recorded OIDC authorization-code completion of one flow. Nauthilus's part ends with the token response for the flow's code (state tokens_issued); a relying-party session after it is never observed. Only authorization-code flows carry this block; SAML, device-code, flows without grant evidence, and latched flows (decided by the latch) have none."
+sidebar_label: "SupportHistoryCompletion"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"code_issued_at":"2024-07-29T15:51:28.071Z","code_redeemable_until":"2024-07-29T15:51:28.071Z","redemption_observed_at":"2024-07-29T15:51:28.071Z","scope":"oidc_authorization_code","state":"tokens_issued","authentication":"authenticated_in_flow"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryCompletion"}
+>
+</Heading>
+
+
+
+Recorded OIDC authorization-code completion of one flow. Nauthilus's part ends with the token response for the flow's code (state tokens_issued); a relying-party session after it is never observed. Only authorization-code flows carry this block; SAML, device-code, flows without grant evidence, and latched flows (decided by the latch) have none.
+
+<Schema
+  {...require("./supporthistorycompletion.Schema.json")}
+>
+
+</Schema>

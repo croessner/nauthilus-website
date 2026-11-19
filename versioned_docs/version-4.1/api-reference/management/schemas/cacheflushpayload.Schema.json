@@ -1,0 +1,1 @@
+{"schema":{"type":"object","properties":{"user":{"type":"string"},"removed_keys":{"type":"array","items":{"type":"string"}},"status":{"type":"string"}},"title":"CacheFlushPayload"},"schemaType":"response"}

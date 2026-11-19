@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"properties":{"limit":{"type":"integer","minimum":1,"maximum":50},"cursor":{"type":"string","maxLength":512,"description":"Opaque position bound to the same query; never authorizing."}},"title":"SupportHistoryPageRequest"},"schemaType":"response"}

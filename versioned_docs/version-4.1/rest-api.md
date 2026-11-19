@@ -1,0 +1,507 @@
+---
+title: REST API
+description: REST API details and current configuration references
+keywords: [API, REST, JSON, CBOR, Authentication, MFA, OIDC, SAML2]
+sidebar_position: 10
+---
+
+# REST API
+
+Nauthilus exposes REST endpoints for authentication, administration, and the native identity flows.
+
+For generated endpoint references and raw OpenAPI downloads, see [API Reference](api-reference/index.md).
+
+For typed gRPC authentication, see [gRPC Auth API](grpc-api.md).
+
+## Authentication Endpoints
+
+The authentication API is available below `/api/v1/auth/`:
+
+- `/api/v1/auth/json` accepts JSON request bodies.
+- `/api/v1/auth/cbor` accepts CBOR request bodies.
+- `/api/v1/auth/header` and `/api/v1/auth/nginx` map request metadata from headers or NGINX-style form fields.
+- `/api/v1/auth/basic` maps end-user credentials from the HTTP Basic `Authorization` header. This endpoint exists only in binaries built with the Go build tag `auth_basic_endpoint`.
+
+The JSON and CBOR endpoints use the same logical request model. CBOR clients must send `Content-Type: application/cbor`; JSON clients must send `Content-Type: application/json`.
+
+When an auth policy selects `response_message.from: i18n`, the HTTP auth response renderer uses `Accept-Language` unless policy selected a `response_language`. The rendered status message is returned through the existing response field or status header for that endpoint. When localization selects a language, the response includes:
+
+```text
+Content-Language: de
+```
+
+If the translation key is missing, Nauthilus returns the configured policy fallback text. Existing policies without `response_message.from: i18n` keep their current response text behavior and do not gain localization headers.
+
+```json
+{
+  "username": "alice@example.test",
+  "password": "secret",
+  "client_ip": "198.51.100.10",
+  "client_port": "54321",
+  "client_hostname": "client.example.test",
+  "client_id": "imap-proxy-1",
+  "external_session_id": "upstream-session-id",
+  "user_agent": "imap-proxy/1.0",
+  "local_ip": "127.0.0.1",
+  "local_port": "143",
+  "protocol": "imap",
+  "method": "plain",
+  "ssl": "off",
+  "ssl_session_id": "",
+  "ssl_client_verify": "NONE",
+  "ssl_client_dn": "",
+  "ssl_client_cn": "",
+  "ssl_issuer": "",
+  "ssl_client_notbefore": "",
+  "ssl_client_notafter": "",
+  "ssl_subject_dn": "",
+  "ssl_issuer_dn": "",
+  "ssl_client_subject_dn": "",
+  "ssl_client_issuer_dn": "",
+  "ssl_protocol": "",
+  "ssl_cipher": "",
+  "ssl_serial": "",
+  "ssl_fingerprint": "",
+  "oidc_cid": "",
+  "auth_login_attempt": 1
+}
+```
+
+`username` is required. `password` is required for normal authentication requests, but may be omitted when `mode=no-auth` or `mode=list-accounts` is used.
+
+CBOR uses the same field names as JSON. The server decodes CBOR with a strict shared policy:
+
+- maximum request body size is 1 MiB;
+- indefinite length items and CBOR tags are rejected;
+- duplicate map keys are rejected;
+- unknown request fields are rejected;
+- maximum nesting depth is 32;
+- maximum array elements and map pairs are 4096 each.
+
+## CBOR Authentication Example
+
+```bash
+python3 contrib/auth-cbor-request.py \
+  --url http://127.0.0.1:8080/api/v1/auth/cbor \
+  --username alice@example.test \
+  --password secret \
+  --protocol imap \
+  --method plain
+```
+
+The helper sends `Content-Type: application/cbor` and prefers a CBOR response with:
+
+```text
+Accept: application/cbor, application/json;q=0.5, text/plain;q=0.1, */*;q=0.05
+```
+
+See [CBOR Auth Request Client](test-clients/cbor-auth-request.md) for the full script documentation.
+
+## CBOR Authentication Responses
+
+`/api/v1/auth/cbor` returns CBOR response bodies with `Content-Type: application/cbor`.
+
+Successful authentication returns the same logical response object as the JSON endpoint, encoded as a CBOR map:
+
+```json
+{
+  "ok": true,
+  "account_field": "uid",
+  "totp_secret_field": "totp_secret",
+  "backend": 1,
+  "attributes": {
+    "uid": ["alice@example.test"]
+  }
+}
+```
+
+Authentication denials are domain decisions, not decoder failures. They keep the normal auth-failure status code, set
+`Auth-Status` to the rendered status message, and return a CBOR `null` body.
+
+Temporary failures return the temporary-failure status code, set `Auth-Status` to the rendered status message, and
+encode the error payload as a CBOR map:
+
+```json
+{
+  "error": "Temporary server problem"
+}
+```
+
+An empty username or password value is answered as an ordinary failed login with `Invalid login or password`, not as a
+malformed request (since v4.0.3). A missing credential key and JSON or CBOR `null` still return `400 Bad Request`. The
+generic failure and temporary-failure texts can be overridden with
+[`auth.response`](configuration/auth-pipeline.md#response-texts).
+
+## No-Auth and List-Accounts Modes
+
+`/api/v1/auth/cbor` supports the same query modes as the JSON endpoint:
+
+- `mode=no-auth` runs a request without requiring a password. Since v4.0.6 it does not run the TLS-encryption and RBL
+  checks unless a domain plan binds them to `lookup_identity`; see
+  [Built-in authentication providers](configuration/auth-policy.md#built-in-authentication-providers).
+- `mode=list-accounts` returns the known account names for the current request context.
+
+With `storage.redis.identity_cache.enabled: true`, successful LDAP results of `mode=no-auth` requests can be served
+from the Redis identity lookup cache. See [Identity Lookup Cache](configuration/server-configuration.md#identity-lookup-cache).
+
+`list-accounts` uses HTTP content negotiation. The server supports these response media types, in server-preferred order:
+
+- `application/cbor`
+- `application/json`
+- `application/x-www-form-urlencoded`
+- `text/plain`
+
+If the `Accept` header is missing, wildcarded, or ties with equal quality values, `application/cbor` is selected first. A client can prefer JSON explicitly:
+
+```text
+Accept: application/json, application/cbor;q=0.4
+```
+
+Unsupported `Accept` combinations return `415 Unsupported Media Type`.
+
+When `mode=list-accounts` negotiates `application/cbor`, the response body is a single CBOR array containing the
+account names.
+
+## Current Configuration References
+
+The configurable request-header names for `/api/v1/auth/header`, `/api/v1/auth/basic`, and `/api/v1/auth/nginx` now live under:
+
+- `auth.request.headers`
+
+Examples:
+
+- `auth.request.headers.username`
+- `auth.request.headers.password`
+- `auth.request.headers.protocol`
+- `auth.request.headers.auth_method`
+- `auth.request.headers.login_attempt`
+- `auth.request.headers.password_encoded`
+- `auth.request.headers.oidc_cid`
+
+The examples below still use the default header names such as `Auth-User`, `Auth-Pass`, and `Auth-Protocol`.
+
+For header-based authentication, configured client-IP and client-port headers are accepted only when the immediate
+network peer belongs to `runtime.servers.http.trusted_proxies`. Requests from any other peer cannot override the
+connection-derived client address with those headers. Configure only proxy addresses or narrow proxy networks that you
+operate; do not trust a general client network.
+
+CBOR authentication can be disabled independently from the JSON endpoint:
+
+```yaml
+runtime:
+  servers:
+    http:
+      disabled_endpoints:
+        auth_cbor: true
+```
+
+The Basic authentication endpoint is different from `auth.backchannel.basic_auth`. Backchannel Basic auth protects management routes. `/api/v1/auth/basic` is an authentication protocol endpoint and is only present when the binary was built with `-tags auth_basic_endpoint`; `runtime.servers.http.disabled_endpoints.auth_basic` only has an effect for that tagged binary.
+
+## Header Authentication Example
+
+```text
+Auth-User: testuser
+Auth-Pass: testpassword
+Auth-Protocol: imap
+Auth-Method: plain
+Auth-Login-Attempt: 1
+Auth-Password-Encoded: 0
+X-OIDC-CID: demo-client
+```
+
+## OIDC Bearer Access for `/api/v1/*`
+
+Bearer-token acceptance for backchannel APIs is configured with:
+
+```yaml
+auth:
+  backchannel:
+    oidc_bearer:
+      enabled: true
+```
+
+Protected backchannel routes can use configured backchannel Basic authentication, OIDC Bearer authentication, or both.
+A caller holds scopes either in its Bearer token or as a
+[scoped Basic credential](#backchannel-basic-credentials); both are authorized alike:
+
+- A Bearer token must be an access token with `token_type=access_token` and audience `nauthilus:backchannel`. There is
+  no base scope: each route family asks only for its own scopes.
+- A scoped Basic credential holds exactly the scopes configured for it and is authorized like a Bearer token carrying
+  those scopes.
+- A route accepts any one of its listed scopes.
+- The unrestricted Basic credential (`auth.backchannel.basic_auth.username` and `password`) is the administrative
+  management credential. It holds no scope itself and passes every management scope check. Exception: the support
+  routes under `/api/v1/support/*` map permissions only from scopes the caller really holds; the unrestricted Basic
+  credential, `nauthilus:security`, and `nauthilus:admin` receive `403 FORBIDDEN` there.
+- Missing or invalid authentication returns `401`. A valid Bearer token or scoped Basic credential that lacks the route
+  scope returns `403` with `missing required scope: ...`.
+
+The current route scopes are:
+
+| Route family | Scope, any-of |
+| --- | --- |
+| Authentication routes (`/api/v1/auth/*`) and management OpenAPI documents (`/api/v1/openapi.yaml`, `/api/v1/openapi.json`) | `nauthilus:authenticate`. |
+| Brute-force list (`GET` and `POST /api/v1/bruteforce/list`) and OIDC session list (`GET /api/v1/oidc/sessions/{user_id}`) | `nauthilus:security_read`; the wider `nauthilus:security` and `nauthilus:admin` include it. |
+| Cache flush, brute-force flush (synchronous and `/async`), and OIDC session deletion | `nauthilus:security_write`; the wider `nauthilus:security` and `nauthilus:admin` include it. |
+| Asynchronous job status (`GET /api/v1/async/jobs/{jobId}`) | `nauthilus:security_read` or `nauthilus:security_write`; the wider `nauthilus:security` and `nauthilus:admin` include both. |
+| Add/delete TOTP or recovery-code state (`/api/v1/mfa-backchannel/*`) | `nauthilus:mfa_write` or `nauthilus:admin`. |
+| Read WebAuthn credential descriptors (`/api/v1/mfa-backchannel/*`) | `nauthilus:webauthn_read` or `nauthilus:admin`. |
+| Save/update/delete WebAuthn credentials (`/api/v1/mfa-backchannel/*`) | `nauthilus:webauthn_write` or `nauthilus:admin`. |
+| Support history (`/api/v1/support/authentication-attempts/search`, `.../detail`, `/api/v1/support/bruteforce-bans/search`) | `nauthilus:history_read` or `nauthilus:history_detail` only; see [Support Authentication History](guides/support-authentication-history.md). |
+| Operational diagnostics (`POST /api/v1/support/operations/diagnostics`) | `nauthilus:operations_read` only; see [Read-only Support Access over MCP](guides/support-mcp-access.md#operational-diagnostics). |
+
+No route asks for a scope of another family. Since 4.1.0 `nauthilus:authenticate` is no longer a base scope of every
+`/api/v1` route, and `nauthilus:security_read` and `nauthilus:security_write` exist: a client that only lists brute-force entries needs `nauthilus:security_read` and nothing else, and a
+support console needs only its support scopes. `nauthilus:security` and `nauthilus:admin` do not open the
+authentication routes or the OpenAPI documents. Tokens issued for earlier releases keep working, because nothing they
+could do before is refused now.
+
+Grant only the route scopes the client needs. The built-in IdP issues suitable machine-to-machine tokens with the
+Client Credentials Grant; do not request `openid` for such clients.
+
+## Backchannel Basic Credentials
+
+`auth.backchannel.basic_auth` configures HTTP Basic caller authentication for the HTTP API under `/api/v1/*`, the
+[gRPC authority listener](grpc-api.md#caller-authentication), and [custom hooks](#custom-hooks). It knows two kinds of
+credentials:
+
+```yaml
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      username: "management"          # optional: the unrestricted credential
+      password: "${NAUTHILUS_BACKCHANNEL_PASSWORD}"
+      users:
+        - username: "support-console"
+          password: "${NAUTHILUS_SUPPORT_CONSOLE_PASSWORD}"
+          scopes:
+            - "nauthilus:history_read"
+            - "nauthilus:operations_read"
+```
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `enabled` | boolean | `false` | Enables Basic caller authentication. Requires the `username` and `password` pair or at least one `users` entry. |
+| `username` | string | `""` | Username of the unrestricted credential. Must not contain a colon or a space; set it together with `password`. |
+| `password` | secret | `""` | Password of the unrestricted credential: at least 16 characters, without whitespace or control characters. |
+| `users` | list | `[]` | Scoped credentials, one entry per person or tool. |
+| `users[].username` | string | required | Username of the scoped credential. Must not contain a colon or a space and must be unique across `username` and all `users` entries. |
+| `users[].password` | secret | required | Password of the scoped credential; the same rules as the top-level `password`. |
+| `users[].scopes` | list of strings | required | Scopes the credential holds: at least one entry, each a valid RFC 6749 scope token. |
+
+- The **unrestricted credential** is the top-level `username` and `password`. It passes every management scope check,
+  holds no scope itself, and gets no access to `/api/v1/support/*` (`403`). On hooks that declare scopes it is refused
+  with `403`.
+- A **scoped credential** (since 4.1.0) is an entry of `users`. It holds exactly the listed scopes and is authorized exactly like a
+  Bearer token carrying those scopes: on the HTTP API, on the gRPC authority listener with its per-RPC scopes, and on
+  custom hooks that declare scopes. It cannot open a hook that declares neither `scopes` nor `public: true`.
+
+Startup validation rejects `enabled: true` without any usable credential, a `username` without `password` or the
+reverse, a username that is used twice, a username with a colon or a space, and a `users` entry without valid scopes.
+When the unrestricted credential is configured, Nauthilus logs a warning at configuration load, because that credential
+grants full management access; prefer scoped credentials and remove it where they or Bearer tokens suffice.
+
+A Basic password is a static secret without a lifetime. Use one scoped credential per person or tool, so that log and
+audit records name who asked.
+
+## Backchannel Caller Rejections
+
+The backchannel, meaning the HTTP API under `/api/v1/*` and the [gRPC authority listener](grpc-api.md), is a tunnel: the
+caller carries a payload whose user and client are authenticated, and the subject inside the payload is protected by
+the brute-force buckets. The caller itself is authenticated only by its Basic credentials or OIDC bearer token. Keep the
+backchannel reachable only from trusted networks.
+
+Backchannel callers are never locked out, neither per address nor per identity. Callers behind load balancers or
+sidecars share one address, so a lockout would turn one caller with a stale token into an outage for all of them.
+Instead, every genuine rejection is delayed by a fixed 300 ms and logged at warning level with the transport, client
+IP, and a fixed reason, never with credentials, tokens, or usernames.
+
+| Caller authentication result | HTTP | gRPC | Delayed |
+|---|---|---|---|
+| Missing credentials, wrong Basic credentials, or an unknown, expired, revoked, denylisted, or wrongly signed token | `401` | `UNAUTHENTICATED` | yes |
+| Valid token or scoped Basic credential without the required scope | `403` | `PERMISSION_DENIED` | no |
+| Valid token that is not a backchannel access token | `401` | `UNAUTHENTICATED` | gRPC only |
+| Missing token on a custom hook route | `401` | - | no |
+| Token state or signing keys unreachable, or (gRPC only) the token validator is not configured | `503` with `Retry-After` | `UNAVAILABLE` | no |
+| Caller request canceled or past its deadline while token state is read | `503` | `CANCELED` / `DEADLINE_EXCEEDED` | no |
+
+A token validation that cannot be decided for technical reasons is never reported as invalid credentials. Outcomes are
+counted in `backchannel_caller_auth_total` (see [Metrics](configuration/metrics.md#backchannel-caller-metrics)).
+
+Policy-Basic callers of the Policy API follow the same rule: a wrong password is delayed by 300 ms, nobody is locked
+out, and verification does not use Redis.
+
+### Failure Budget per Client IP
+
+The HTTP API has one bounded exception. With `runtime.servers.http.middlewares.rate` enabled, the per-client-IP rate
+limit (`runtime.servers.http.rate_limit.per_second` and `burst`) is a failure budget on the caller-authenticated
+backchannel routes: `/api/v1/auth/*`, `/api/v1/cache/*`, `/api/v1/bruteforce/*`, the management OpenAPI documents, and
+the other routes behind `auth.backchannel`.
+
+- Requests whose Basic or Bearer caller authentication succeeds never consume the budget, because a few proxy or load
+  balancer addresses usually carry all backchannel traffic. `auth.pipeline.max_concurrent_requests` remains the
+  process-wide bound for these callers.
+- Every failed caller authentication (missing or wrong credentials, a caller without `nauthilus:authenticate` on the
+  routes that require it, missing `auth.backchannel` configuration) and every request to `/api/v1/auth/basic` consumes one token of the client
+  address. An undecided token validation (`503`) does not.
+- Within the budget a failure is answered with `401` or `403` after the rejection delay. Once the address has no token
+  left, every request from it, including requests with valid credentials, is answered with `429` immediately and
+  without evaluating credentials, until the budget refills at `per_second`.
+
+Credential guessing is therefore bounded per address to `burst` attempts plus `per_second` attempts per second on
+average. Callers that share an address with a misconfigured or hostile client lose backchannel access while that client
+exhausts the budget. Watch `backchannel_caller_auth_total{outcome="rejected"}` and `429` answers on `/api/v1`, and fix
+failing callers promptly. Routes without backchannel caller authentication, such as the IdP, the frontend, the Policy
+API, custom hooks, and backchannel routes of a developer-mode server without `auth.backchannel`, keep the per-client-IP
+limit for every request. The gRPC authority listener has no such budget.
+
+:::note Behavior change from earlier v4 prereleases
+
+Earlier v4 prereleases blocked a backchannel caller address after repeated authentication failures and answered with HTTP
+`429` or gRPC `RESOURCE_EXHAUSTED`, and the Policy-Basic throttler blocked a username and source address for 5 minutes
+after 5 wrong passwords. Both lockouts are removed. The former `nauthilus:policy:basic:{...}` Redis keys are no longer
+used and expire on their own.
+
+:::
+
+`/oidc/token` and `/oidc/introspect` authenticate OIDC clients, not backchannel callers, and have no per-address brake
+for client-secret guessing. Limit their exposure with network controls and upstream rate limits.
+
+## OIDC Session Administration
+
+`GET /api/v1/oidc/sessions/{user_id}` returns token-safe metadata rather than stored token material:
+
+```json
+{
+  "sessions": [
+    {
+      "id": "a stable SHA-256-derived session identifier",
+      "client_id": "example-web",
+      "user_id": "alice",
+      "username": "alice@example.test",
+      "display_name": "Alice Example",
+      "redirect_uri": "https://app.example.com/callback",
+      "mfa_method": "webauthn",
+      "scopes": ["openid", "profile"],
+      "auth_time": "2026-07-10T08:30:00Z",
+      "mfa_completed": true
+    }
+  ]
+}
+```
+
+The `id` is derived from the stored access-token reference and is safe to display; it is not the access token. Pass this
+`id` to the single-session delete route as its historical `{token}` path parameter. Dynamic-client bearer material is
+never exposed by the list operation. The all-sessions delete route revokes both static and dynamic access and refresh
+state for the user and is the correct operation for complete user-wide revocation.
+
+## Request Decompression Boundary
+
+When `runtime.servers.http.middlewares.request_decompression` is enabled, Nauthilus accepts gzip, Brotli, and Zstandard
+request encodings. The expanded body is capped at 1 MiB before the handler parses it. This limit
+applies after decompression and prevents a small compressed request from expanding without a bound.
+
+## Sensitive Authentication Output
+
+Backend attributes may contain password, token, private-key, TOTP-secret, or recovery-code material needed internally.
+Nauthilus removes attributes classified as secret-bearing from JSON/CBOR authentication response objects and from
+generated authentication response headers. Configured deployment-specific TOTP secret and recovery fields are also
+filtered. Clients must not depend on receiving those fields from an authentication response.
+
+## OpenAPI Contracts and Runtime Validation
+
+Nauthilus serves its management OpenAPI contract at:
+
+- `/api/v1/openapi.yaml`
+- `/api/v1/openapi.json`
+
+The public IdP contract is served at:
+
+- `/.well-known/openapi.yaml`
+- `/.well-known/openapi.json`
+
+These documents are the stable machine-readable contracts used by the generated client checks and by the website API reference. Runtime request validation is optional and default-off. When enabled, it validates only selected management operation IDs such as cache flush and brute-force list/flush requests. See [Runtime, Observability, and Storage](configuration/server-configuration.md#openapi-runtime-request-validation) for the configuration block and the current operation allowlist.
+
+## Custom Hooks
+
+Custom hooks are HTTP endpoints that are implemented as Lua scripts or as native Go plugin hooks. They are available
+in Nauthilus 4 and are the intended place for management, reporting, and maintenance endpoints that need the full
+Lua API, including Redis writes and outbound HTTP.
+
+### `{method} /api/v1/custom/{http_location}`
+
+Each Lua hook binds one HTTP method to one location below `/api/v1/custom/`. The location may contain slashes.
+
+```yaml
+auth:
+  controls:
+    enabled:
+      - lua
+    lua:
+      hooks:
+        - http_location: "quota/report"
+          http_method: "GET"
+          script_path: "/etc/nauthilus/lua/hooks/quota-report.lua"
+          scopes:
+            - "nauthilus:admin"
+```
+
+| Key | Meaning |
+|---|---|
+| `http_location` | Path below `/api/v1/custom/`. Required. |
+| `http_method` | One of `HEAD`, `GET`, `POST`, `PUT`, `DELETE`, `PATCH`. Required. |
+| `script_path` | Lua script that defines `nauthilus_run_hook`. Required. |
+| `http_alias_location` | Optional absolute path that serves the same hook outside `/api/v1/custom/`. |
+| `content_type` | Optional response content type. |
+| `scopes` | Scopes of a Bearer token or a scoped Basic credential; any one of them authorizes the request. |
+| `public` | `true` allows anonymous access when no `scopes` are set. |
+
+The script defines one entry function:
+
+```lua
+local nauthilus_http_request = require("nauthilus_http_request")
+local nauthilus_redis = require("nauthilus_redis")
+
+function nauthilus_run_hook(request)
+    local account = nauthilus_http_request.get_http_request_header("X-Account")[1]
+    local used, err = nauthilus_redis.redis_get("default", "quota:" .. tostring(account))
+
+    return { account = account, used = used, error = err }
+end
+```
+
+A returned Lua table is sent as JSON with the current response status. A script that writes its own body with
+[`nauthilus_http_response`](lua-api/http-response.md) can return any content type.
+
+| Status Code | Description |
+| :--- | :--- |
+| `200 OK` | Hook executed (unless the script sets another status) |
+| `401 Unauthorized` | Missing or invalid credentials |
+| `403 Forbidden` | Valid Bearer token or Basic credential without a required scope |
+| `404 Not Found` | No hook is configured for this location and method, or `custom_hooks` is disabled |
+| `500 Internal Server Error` | Hook execution failed |
+
+A hook without `public` and without `scopes` requires the unrestricted backchannel Basic credential. See
+[Hook Authorization](configuration/database-backends/lua.md#hook-authorization) for the complete access model and
+[Lua runtimes and capabilities](lua-api/runtimes.md) for what a hook script can use. The endpoint group is switched
+off with `runtime.servers.http.disabled_endpoints.custom_hooks`.
+
+Native Go plugins register hooks below the same prefix, for example the
+[reputation management API](guides/reputation-operations.md). See
+[Hooks](developer/go-plugins/api-reference/hooks.md) for the plugin side.
+
+## Identity Endpoints
+
+Current browser-facing endpoints remain:
+
+- `/login`
+- `/logout`
+- `/mfa/*`
+- `/oidc/*`
+- `/saml/*`
+
+See the dedicated configuration pages for endpoint-specific configuration:
+
+- [OIDC](/docs/configuration/idp/oidc)
+- [SAML](/docs/configuration/idp/saml2)

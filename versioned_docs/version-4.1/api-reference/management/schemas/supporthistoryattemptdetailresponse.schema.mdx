@@ -1,0 +1,31 @@
+---
+id: supporthistoryattemptdetailresponse
+title: "SupportHistoryAttemptDetailResponse"
+description: ""
+sidebar_label: "SupportHistoryAttemptDetailResponse"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"queried_at":"2024-07-29T15:51:28.071Z","attempt":{"started_at":"2024-07-29T15:51:28.071Z","last_observed_at":"2024-07-29T15:51:28.071Z","completion":{"code_issued_at":"2024-07-29T15:51:28.071Z","code_redeemable_until":"2024-07-29T15:51:28.071Z","redemption_observed_at":"2024-07-29T15:51:28.071Z","scope":"oidc_authorization_code","state":"tokens_issued","authentication":"authenticated_in_flow"},"findings":[{"event_id":"string","uncertainty":["string"],"code":"string","category":"success","certainty":"observed"}],"events":[{"occurred_at":"2024-07-29T15:51:28.071Z","event_id":"string","factor_role":"string","method":"string","decision":{"brute_force_bucket":"string","brute_force_tolerated":true,"answered_status_code":0,"answered_status_message":"string","decision_sources":["string"],"operation":"string","outcome":"string","outcome_stage":"string","outcome_marker":"string","response_marker":"string","policy_rule":"string","tempfail_reason":"string","tempfail_checkpoint":"string","policy_status":"string","fsm_state":"string"},"factor":{"result":"string","reason":"string","flow_effect":"string","fail_latched":true},"reputation":{"assessments":[{"risk_score":0,"trust_score":0,"confidence":0,"samples":0,"source_diversity":0,"age_seconds":0,"fact":"string","role":"string","kind":"string","state":"string","profile":"string","band":"string","override":"string"}],"state":"recorded","truncated":true},"identity":{"supplied_login":"string","canonical_account":"string","account_found_at_capture":true,"matched_by":"string","subject_match":true,"redacted":true},"context":{"client_ip":"string","protocol":"string","service":"string","oidc_client_id":"string","saml_entity_id":"string","grant_type":"string","transport":"string","transport_status":0},"source":"logins","request_id":"string","instance":"string","stage":"primary_authentication","result":"string","code":"string","category":"string","sequence":0,"record_version":0}],"recording":{"known_gaps":["string"],"replayed_rows_merged":0,"legacy_rows":0,"events_truncated":true,"events_withheld":true},"steps":{"primary":"recorded","second_factor":"recorded","code_issuance":"recorded","code_redemption":"recorded"},"attempt_id":"string","kind":"flow","projection":"support","outcome":"succeeded","outcome_basis":"request_terminal_answer","progress":"none","final_outcome_observed":true},"subject_resolution":{"supplied_login":"string","supplied_account":"string","accounts":[{"account":"string","provenance":"supplied_account"}],"current_mapping":"resolved"},"history":{"contract_rows_since":"2024-07-29T15:51:28.071Z","oidc_completion_events_since":"2024-07-29T15:51:28.071Z","sources":[{"source":"logins","state":"read","window_coverage":"within_retention","retention_days":0}],"conditions":["string"],"known_limits":["string"],"availability":"available","deployment":"string","delivery_completeness":"not_guaranteed","late_events_possible":true},"schema_version":"string","result_basis":"matches_found"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryAttemptDetailResponse"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./supporthistoryattemptdetailresponse.Schema.json")}
+>
+
+</Schema>

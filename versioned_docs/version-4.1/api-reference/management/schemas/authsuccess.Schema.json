@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["ok","account_field","backend","attributes"],"properties":{"ok":{"type":"boolean"},"account_field":{"type":"string"},"totp_secret_field":{"type":"string"},"backend":{"type":"integer"},"attributes":{"type":"object","additionalProperties":{"type":"array","items":{}},"title":"AttributeMapping"}},"title":"AuthSuccess"},"schemaType":"response"}

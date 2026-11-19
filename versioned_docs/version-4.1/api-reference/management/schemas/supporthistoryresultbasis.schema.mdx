@@ -1,0 +1,31 @@
+---
+id: supporthistoryresultbasis
+title: "SupportHistoryResultBasis"
+description: "Match state of an answer. matches_found wins over every condition; an answer without matches names the state of its primary source (logins for attempts, bruteforce_lifecycle for bans: missing table, no rows, failed read, expired or partially expired window), then truncated evidence, then an unresolved identity, then no_matches. Secondary sources only appear in history.conditions. Never read as 'nothing happened'."
+sidebar_label: "SupportHistoryResultBasis"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: "matches_found"
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryResultBasis"}
+>
+</Heading>
+
+
+
+Match state of an answer. matches_found wins over every condition; an answer without matches names the state of its primary source (logins for attempts, bruteforce_lifecycle for bans: missing table, no rows, failed read, expired or partially expired window), then truncated evidence, then an unresolved identity, then no_matches. Secondary sources only appear in history.conditions. Never read as "nothing happened".
+
+<Schema
+  {...require("./supporthistoryresultbasis.Schema.json")}
+>
+
+</Schema>

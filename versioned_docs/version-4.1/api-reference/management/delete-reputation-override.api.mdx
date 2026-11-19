@@ -1,0 +1,64 @@
+---
+id: delete-reputation-override
+title: "Remove one selected operator override revision."
+description: "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history."
+sidebar_label: "Remove one selected operator override revision."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "delete api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Remove one selected operator override revision."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/api/v1/custom/reputation/override"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./delete-reputation-override.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./delete-reputation-override.StatusCodes.json")}
+>
+
+</StatusCodes>

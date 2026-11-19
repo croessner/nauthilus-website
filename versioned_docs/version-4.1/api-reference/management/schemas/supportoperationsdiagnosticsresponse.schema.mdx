@@ -1,0 +1,31 @@
+---
+id: supportoperationsdiagnosticsresponse
+title: "SupportOperationsDiagnosticsResponse"
+description: ""
+sidebar_label: "SupportOperationsDiagnosticsResponse"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"schema_version":"string","scope":{"window":{"from":"2024-07-29T15:51:28.071Z","until":"2024-07-29T15:51:28.071Z"},"queried_at":"2024-07-29T15:51:28.071Z","deployment":"string","instance":"string"},"sources":[{"coverage":{"from":"2024-07-29T15:51:28.071Z","until":"2024-07-29T15:51:28.071Z","instances":["string"],"view":"local_instance"},"name":"nauthilus_runtime","kind":"local_current","status":"ok","code":"string","truncated":true}],"findings":[{"id":"string","component":"ldap","source":"nauthilus_runtime","status":"failing","scope":{"kind":"instance","instance":"string"},"labels":{},"observed":{"at":"2024-07-29T15:51:28.071Z","from":"2024-07-29T15:51:28.071Z","until":"2024-07-29T15:51:28.071Z"},"freshness":{"observed_at":"2024-07-29T15:51:28.071Z","counting_since":"2024-07-29T15:51:28.071Z","basis":"current_state","age_seconds":0},"symptoms":[{"code":"string","count":0}]}],"hypotheses":[{"code":"string","confidence":"low","basis":"string","finding_ids":["string"],"caveats":["string"]}],"notes":["string"]}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportOperationsDiagnosticsResponse"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./supportoperationsdiagnosticsresponse.Schema.json")}
+>
+
+</Schema>

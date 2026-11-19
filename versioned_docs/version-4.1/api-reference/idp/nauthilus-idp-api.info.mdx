@@ -1,0 +1,169 @@
+---
+id: nauthilus-idp-api
+title: "Nauthilus IdP API"
+description: "Public contract for stable Nauthilus IdP routes. It covers OIDC, SAML, and browser flow endpoints that are intentionally reachable outside the protected backchannel API."
+sidebar_label: Introduction
+sidebar_position: 0
+hide_title: true
+custom_edit_url: null
+---
+
+import ApiLogo from "@theme/ApiLogo";
+import Heading from "@theme/Heading";
+import SchemaTabs from "@theme/SchemaTabs";
+import TabItem from "@theme/TabItem";
+import Export from "@theme/ApiExplorer/Export";
+
+<span
+  className={"theme-doc-version-badge badge badge--secondary"}
+  children={"Version: v1"}
+>
+</span>
+
+<Export
+  url={"/openapi/idp.yaml"}
+>
+
+</Export>
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Nauthilus IdP API"}
+>
+</Heading>
+
+
+
+Public contract for stable Nauthilus IdP routes. It covers OIDC, SAML, and browser flow endpoints that are intentionally reachable outside the protected backchannel API.
+
+
+<div
+  style={{"marginBottom":"2rem"}}
+>
+  <Heading
+    id={"authentication"}
+    as={"h2"}
+    className={"openapi-tabs__heading"}
+    children={"Authentication"}
+  >
+  </Heading><SchemaTabs
+    className={"openapi-tabs__security-schemes"}
+  >
+    <TabItem
+      label={"HTTP: Bearer Auth"}
+      value={"bearerToken"}
+    >
+
+
+
+
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <th>
+                Security Scheme Type:
+              </th><td>
+                http
+              </td>
+            </tr><tr>
+              <th>
+                HTTP Authorization Scheme:
+              </th><td>
+                bearer
+              </td>
+            </tr><tr>
+              <th>
+                Bearer format:
+              </th><td>
+                JWT
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </TabItem><TabItem
+      label={"HTTP: Basic Auth"}
+      value={"clientBasic"}
+    >
+
+
+      OIDC client authentication with HTTP Basic.
+
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <th>
+                Security Scheme Type:
+              </th><td>
+                http
+              </td>
+            </tr><tr>
+              <th>
+                HTTP Authorization Scheme:
+              </th><td>
+                basic
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </TabItem><TabItem
+      label={"API Key: clientPost"}
+      value={"clientPost"}
+    >
+
+
+      OIDC client authentication through form parameters.
+
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <th>
+                Security Scheme Type:
+              </th><td>
+                apiKey
+              </td>
+            </tr><tr>
+              <th>
+                Query parameter name:
+              </th><td>
+                client_secret
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </TabItem><TabItem
+      label={"API Key: sessionCookie"}
+      value={"sessionCookie"}
+    >
+
+
+      Encrypted browser session cookie.
+
+      <div>
+        <table>
+          <tbody>
+            <tr>
+              <th>
+                Security Scheme Type:
+              </th><td>
+                apiKey
+              </td>
+            </tr><tr>
+              <th>
+                Cookie parameter name:
+              </th><td>
+                nauthilus_secure_data
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </TabItem>
+  </SchemaTabs>
+</div>

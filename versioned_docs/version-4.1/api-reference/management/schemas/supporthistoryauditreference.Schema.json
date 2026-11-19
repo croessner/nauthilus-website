@@ -1,0 +1,1 @@
+{"schema":{"type":"string","pattern":"^[A-Za-z0-9._:/-]{1,64}$","description":"Unverified ticket-like annotation recorded in the audit log only.","title":"SupportHistoryAuditReference"},"schemaType":"response"}

@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["result","reason","flow_effect","fail_latched"],"properties":{"result":{"type":"string"},"reason":{"type":"string"},"flow_effect":{"type":"string"},"fail_latched":{"type":"boolean"}},"title":"SupportHistoryFactor"},"schemaType":"response"}

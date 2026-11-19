@@ -1,0 +1,66 @@
+---
+id: delete-oidc-session
+title: "Delete one OIDC session for a user."
+description: "Delete one OIDC session for a user."
+sidebar_label: "Delete one OIDC session for a user."
+hide_title: true
+hide_table_of_contents: true
+api: eJzVV01vGzcQ/SvEnmJAWdltelFPSuygLpLGcGzk4BoGl0tZtLnkluRaUQT9974hudIK636kKIr0Yq/4MXzzZuYNuSkCv/fF7Kb4cH765qP0Xlnji9tJYVvpeMCv87qYFbXUMsjBmmJSeCk6p8IauzdFxcWjWHJjpH7NvRIYvN1ODscld9LFCdhvueMNbDof9xv8wDmdl+5O1bCuDH62PCzx7eRvnXISQILrJE4WS9nwYrYpwrqlbT44Ze6LLZ2YLQX7KM0/tnNLi30LLqSn+e+OX9G/WnrhVEu0YHWmgq24Z4mguiy2k+LV8fF48Zlz1rHeaAk0wpogTaClvG21EpHu6YOn9ZsxOFs9SBEO3LgpJJmleLWOIhZUwpuGnyOoCCpo2QO6zHgws43IT8bI511YAmfGx5RnjYLj5p7BIWWeuFb1N+vP92N/LnGc9IEc4XvXZM2qLjCNfPUMo6xHxbwAkm/UwR/+p6mGyUPMp7F+mDWSkcown2trAU84I1kgPyAYS7vXo2KSKntWTHmrpk8nU6tqMc17/XST5WQ73UQ52EbVck+96HROY++m4l5eO02zh6B+ofxQuqPybrVdN+CQ0Wp2ffmO8Dxxp3ilExHZTIrHgncafBfLEFo/m05Nb6qUn3nTalkK24wOnFfe6g489Icwu4jJ+CySYJngWpfE6O1ejz9SNBOk1iLW6yzIuwgRpiKrH/2u4vw4InWui4tohQmt6FSBdKCa4dr/yIwEmazhht/LiCmeNVwTFTHjyA3gj4GkBZP88da6hhOJP3+6GsFLoF4iy23nhGTJOItxZisVlmxH+SwdfychVR086isawMZt6ytZer03kH3nB3JZsiuErzPAiboQROeeHPaCFpcDEGU85S4OU/JSMztiLffIaUZcr4dkRz8YAIpHxk3NllbXnhnLfNe21uUFJZunj6872h/1Cmmd+oLNWj1K1GI1JFpw59bUCihJ4yGeQWwW6r4j6aTqVWHE9L+ZB8MAROUY4ivZWeTMWSqqBW+UXjPuofAJmWd2ZTLu2SBhhn0hLiX3DgPLpKlbqwxsEPWYQsV+aKWZX5yz2oqOIuQnA6N9fd45yRM1lQOsl/hC/pKRA+XTygcw+7yJFf4mZIKLZdo9tLbAaiAaW43CSR8vJGoEPCWBaXZe+sADZAbD3ICqtRFLZ43F0IOtjiZxzfu382j5k6zoctAzuLNB84N4T3qGDvMyre+VO0+Vz3iLS4bQHcLOKou63g0nK8n6IHZ1o+IthQshWyo4eBsP7/fReoIYswLrPFtJrUnMMiWIov/zkPdkZX+SpTI2PWUWNuZ2bn576X6/r1wkCbUPVFnK4qeTUWK/Qc92XIRhZNBqGLpvkFFIGoReGYScCyrBn66uLsgwUFVegsnTNeSD1LjzwTZQBwuZ0IqTljg0fNDkOnjXyF3NZs266CooJjuvL+JxVlidU8yuIA075pzcpTrdn9YRZ7vfLLIP5a8mtQEfIF/ETr6l/722f0DMTjWC/BymrYYbZLtLnTfdB25wzVFEMNFKd4LY+PPjZlLM9s+MWXonoH0uAY52bnb3gS0N467o6Ilzu+/28e5QK0/fuIws0OXkCOTuylW8uMyXqCOGA58Fnwe5WcdLhe7oFz4f5XrwKKLXzX94bGJmi2dcsYRixafbJs/NY20Ndo2ulXQj2V3XTs/enV2dYTnVwiCEfU+t8pNx8zykGBIlSGuuc1Pcbg/oielE/PzV/gu00pV19WB/m4fI1e32d68LUK8=
+sidebar_class_name: "delete api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Delete one OIDC session for a user."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"delete"}
+  path={"/api/v1/oidc/sessions/{user_id}/{token}"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Delete one OIDC session for a user.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./delete-oidc-session.ParamsDetails.json")}
+>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./delete-oidc-session.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./delete-oidc-session.StatusCodes.json")}
+>
+
+</StatusCodes>

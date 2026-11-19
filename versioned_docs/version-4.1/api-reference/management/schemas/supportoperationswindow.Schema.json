@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["from","until"],"properties":{"from":{"type":"string","format":"date-time","description":"Inclusive lower bound."},"until":{"type":"string","format":"date-time","description":"Exclusive upper bound; not in the future."}},"title":"SupportOperationsWindow"},"schemaType":"response"}

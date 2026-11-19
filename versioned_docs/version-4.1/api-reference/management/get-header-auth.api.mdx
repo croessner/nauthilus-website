@@ -1,0 +1,67 @@
+---
+id: get-header-auth
+title: "Authenticate using configured HTTP request headers."
+description: "Reads credentials and connection metadata from configured request headers. The default header names are documented as parameters; they can be changed through the Nauthilus runtime configuration."
+sidebar_label: "Authenticate using configured HTTP request headers."
+hide_title: true
+hide_table_of_contents: true
+api: eJzdW91v2zgS/1cIPW0PtpPc9u4hfUqTdutFPowmvS7QCwpaomM2EqkjqaS+IP/7zZDUhyXZlm15sbiXbSxRM7/55HA4+xIY+qCD02/BWWbmTBgeUsOlCO4HgUyZsj/GUXAaPDDzidGIKVwYDIKI6VDx1C4+DT7DK01CxSKkQWNNqIhIKIVgIS4hCTM0ooaSmZIJvpjxhwyWE8X+kzFtyNwS1yNyN2ckYjOaxflDImjCgKKCFzLMEmABH1JNUqrgjYHP3hFAvyAhFWTKSDin4gGWmLmS2cMc35FrCrh5nGmiMoCYsAKElXH0bwFCaRZmipsFKOQlmNLwESkJFr+nmofw8P51sPycAShlX4DCSjj2e0QNqklkxIA0RzWBqGoBP1BoDtIHpzPQFQPG4ZwlNDh9Ccwixa+0UVw8wFImsgTtI+SQOs3HXJshDUMJcugAINVscWP/oDGhSyYlhT0JQhoFKIvHyMUwYYm02PYFetwC6YJrOo0ZKfgABMGNxE/JTCqwENeFKzwDaqKZIUaS4yWcIQX2B8ZoeeyID2Nj+EWDS3iMzoG3AdnAheSQvA+GEfnsSVlgNRtnImZaWwMTQOydhsDCJa9pgp5QrXcHPQgAS0INPEmB0LNUUVOQiX9TCIKRXskEPtitohP5hAJirsDgzTVPZwZXGLeIRkty/DEsJEE2ww8iBDVE+0iV+8tJi7/cOgc4ce5QsAb/UYpDuvry+XKo6YyRKdXsn28Jc3BIriAyXRjWZgkljQxl3AdunZgU6SQU/0ll+muLIFeUxyT1XImcWY1nKRBjNKk7GDWGJalpwr5iZi73UHYD1vKGBBsI5lyuE6KzcI7Z//Lmt/E1uvbk8mx83UR0KR8g35w5wDsA47DNPNi1CRc8QY0eN5OtYEM0cERiZJfrh8zh69J/QxrH4PFViOcxB+mG40mPKnM0iZaZChkZTwiNIgX5oBYmnvVEql3U0o353fmEpMCgnfX4okfGxX5X+GzooHBbjMx4TfMFik9S96mAlTjmwAd511B8+Gkws8fDWzARfHlorWjHBlKuUix2UbVSRZcSfLZf77Qk7T7EBGTxle7psmC/zlnjvcI7b8YX58Pzw5gBaTcdE/KYliGnWNA+czOv7nY1cLe3lz3iAmpHd5e3RBvgvTlbWfaHcVQgXLjmSndE7j5q/8UUny36T1whU8g6RH08IY9850EVZXUnrQC6uD4sGJ1Nf8Apilxcr8ZwfmAMoUygIiYtWQxBjLXOeq15WxBwy2O1Bq6lec+gCmUH9gwa8whOiOgVjfyxDOcMi9U/CQ0T9VrYxqvznH491Mard8kIEiosyrieQwJb6x39g3Ae0Q2Dt8pBFLImZLfBdgg1rYyjjsh4Ou/VhXHHCS1RUBE3bTz3P/60ci3ON5DacatpHhfcBqc47ZN1m29YHgROaNNaPitgfARaTKVA8gAFehXLrGQESO6Ruk6lgO0Y6f39+Bj/WabimoBD22GonQ3h4yw2I3KbhSFs6LMszksZPK2bTIm8y1ec4ZzIdoMdkKJ7MiB/DIt+XV51DGxLMVqAsni4tOBveOpSfJoZVrQRbTvP/0AhKozw50qlgdbKJs6GhVUMV7atNTy3Dao135Vn808cjXsF8Qhn8ho1L/J6APjR2zYTjYXdF8jvtzf2fJx3T+xTZ6oZnPkzBfE3CEIJ51xwNCBD0zT2xjz6oev8pWA3M9vZ9EikTXJLPvktYEpJhe1jiLgUXc35knvcqkbDTYyPPuCSz94BbVxs5KNXMNIVTlQpastFOJhXnxdUl7+H4jOOWqMpAaPQB7ZeiI/4uZUkeG1/Xkp4n9vwpGnDWveDa5KAp2A7EgzKnYG3st6fYjMvz69bpY3cF20/ME9AZCqjBYptnVhkcfyumiyKLhueV1yBTrx9RvsF/lfKzTaB3y1UtzcUilwo9G1ToaB012l5ptjnheObzMRf1SX+0Zam7MLC4H9J5DbqbV/TXoBhsqBmDj+OaMqPnk6O0A2Oir0Z9oyn/PYnUzGse8He4BcVvzZuzMr7qIilsVzgrZZtFWPjGJXxRKFOmMYOvSfjlGjvxrAmMCbVp0dHIic1Yj9pksZsBMe1BsOzqZYxbpE5k7zV24rESNsGGKEa7suLsVs0gYOUSjDQwt+MFWpFTIEvSvD31L5v3LWwyBYgEZlYKnljpHKB+I4IBsokCRUQ1BaT5VVdg9VTjsPfxK0G4hYM/B8f8/uK37/eNeA5UEOVh5gjDjp5ZMK1aQqVnzr23xlk5MyWdyF4nQXWvD/cUkvvSwJe9uXM6TJmJgAnOHOI6iyVQ37BxaMKiJHl8t0+zvyl0ht7HQF5FHW9qCrbykEAYPhoC6+5jCNMNFC6pdg684KSM/fHdqz1G0zt+FMq/l9snvNH2BfItKpoTPEL3PFsjkcmunpdhLdf3DQ03acfVA1g+3dVfCPywepMSQyqGVSl8QJK2kftkWkin4XHfVpxmIoNmb9bbGyJcJxPJRTl7hodXkHE3qRMnE3GxRU4FMwl0Tw+v+OtmKU6VQBrCH+B/yIRiz/vs8Xu9NdO4hn+65C5q1D8ukptBqvnTDepRixmFv4vDGIE9OQSTFJI6TdqeEwFqGohwrmSQsKjH3L6ZmDXXH08s5S/sinux7kGCxr4vmLvQa6hZb906/Ms7V+NWqSFWiqMMzA7FBwQ18VjR8VRr9guSrgtxiiccFIMOJDWMs+/w/UI0XqFxiPOM8PaReQqASvq9SbPleXlcZRGdqfiYiatb/sdq0zdV2XkgpPg9uHOubDo6aTh2Oew0Soamqpl8O4bT8nMJpIETM8FmJyGGIKf7u4mSBg7G5qBJi/8OSzMtJEJZAcJaSLmFHOJgl0a1NQ+Z0Em2RQyJhlHk/JQ7lxMPkNqKDS3PO0xXVicaflx6GXAo57dBrSB9IXaqRyni0DLbO1cSR9WovrwSV1RL2VJ8v8y4uLTomE/zVEag51QeZkrLVxx8w2KL44ehH7jZ058iQOVAF5m4ZqXorR5xcduGAMLn8jNUZQNipUa7TqosgL0IwOG+XgNbr+4xJ4bu0PYazBlLa7qSM2e4LaeSFkLLJ+hKUHdl8Wmm3HKzb2dOQ8zqLJWluq8zY5KPshUymbQft5mR9B9zZ6sxbl6nmZH1LsNmnTQZdky3hHZ1rMmm0EV8zA7QtpusGQznvo0zI6wVo+YrIVQnXbphXN5g7/Bh5eHXXY1RpcRk25A7N153zDKCZNuIPzkS28wNo2WbEDVPgmzI7o1YyYbYFRmXvrh3dlJqyMv+xpll0GTDfAqczG7blgdxk02gHDzL7vzbx0y2cyzF5/sOmLSAU59CqY/RNU5k+5A7H11fyCWBk26ozjvF0U+bNIBQDH70qNr1GZMuquhOgRzADxMbKptV83A7BO2a2YpuoRvdeRjDxhr5iY6e0nfwbKnatqGYvqOoT2x9aC35sxJF/b55MseTJsjJx0Y73+W2TxysvmwsDQL0x+OpXGTbiiWR2GWoPiVthNbede4OcT+RnGL99uHu7yrVd4R5NcvU/+/eZWzA6K6xdqWFw8RW97reMWLPQckv1KpTi6s/D4/VFe+L//HGZwL+B9lTkWN
+sidebar_class_name: "get api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Authenticate using configured HTTP request headers."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/api/v1/auth/header"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Reads credentials and connection metadata from configured request headers. The default header names are documented as parameters; they can be changed through the Nauthilus runtime configuration.
+
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  {...require("./get-header-auth.ParamsDetails.json")}
+>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./get-header-auth.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./get-header-auth.StatusCodes.json")}
+>
+
+</StatusCodes>

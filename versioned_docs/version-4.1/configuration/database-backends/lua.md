@@ -110,12 +110,11 @@ policy:
           execution: host_sync
 ```
 
-:::warning Policy callbacks run in the Policy VM
-Scripts configured as `lua_environment`, `lua_subject`, or `lua_action` cannot write to Redis or the cache and cannot
-use outbound HTTP, LDAP, DNS, or mail. A script that uses such a function is rejected when the configuration is loaded.
-Most bundled `lua-plugins.d` environment, subject, and action scripts are therefore reference material and cannot be
-configured here. Hooks, init scripts, and backend scripts are not restricted. See
-[Lua runtimes and capabilities](../../lua-api/runtimes.md).
+:::note Policy callbacks use the full Lua API since Nauthilus 4.1.1
+Scripts configured as `lua_environment`, `lua_subject`, or `lua_action` can write to Redis and the cache and can use
+outbound HTTP, LDAP, DNS, and mail, like hooks, init scripts, and backend scripts. Every bundled `lua-plugins.d`
+environment, subject, and action script can be configured here. Nauthilus 4.0.0 to 4.1.0 rejected such scripts when
+the configuration was loaded. See [Lua runtimes and capabilities](../../lua-api/runtimes.md).
 :::
 
 The effect entries define reusable scripts. Request-time dispatch is selected by the active policy decision, not by the effect definition itself. Synchronous actions use `auth.obligation.lua_action.dispatch` with `action_type` set to `brute_force`, `lua`, `tls_encryption`, `relay_domains`, or `rbl`; Lua POST-Actions use `auth.obligation.lua_post_action.enqueue` with `action_type: post` and `execution: host_post_action`.

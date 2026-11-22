@@ -363,10 +363,10 @@ local servers = backend.get_backend_servers()
 backend.select_backend_server(servers[1].host, servers[1].port)
 ```
 
-:::warning
-The test framework mocks the full Lua API. `get_backend_servers` and `select_backend_server` are not available to
-subject sources in the Nauthilus 4 Policy VM, and the same applies to Redis writes and other restricted functions. A
-passing test does not show that a script loads under top-level `policy`; see
+:::note
+The test framework mocks the Lua API. Since Nauthilus 4.1.1 subject sources can call `get_backend_servers` and
+`select_backend_server` in the server as well; Nauthilus 4.0.0 to 4.1.0 rejected them and other functions such as
+Redis writes. A passing test shows that the script logic works against the mocks. See
 [Lua runtimes and capabilities](../lua-api/runtimes.md).
 :::
 

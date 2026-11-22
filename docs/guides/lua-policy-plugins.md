@@ -48,12 +48,11 @@ policy_facts.status_message("geoip", "Policy violation")
 
 All attributes below are registered by `lua-plugins.d/policy/registry.lua`.
 
-:::warning Most bundled emitters are reference-only in Nauthilus 4
-The registry lists the attributes of every bundled script, but only `subject/idp_policy.lua` and
-`actions/bruteforce_header.lua` load in the Policy VM that runs environment sources, subject sources, and actions. The
-other scripts in the tables below need Redis writes, outbound HTTP, or backend selection and are rejected when they are
-configured under top-level `policy`. They remain in the repository as migration and design material; use the bundled
-native plugins (`geoip`, `reputation`, `clickhouse`, `haveibeenpwnd`) or your own native plugin for those tasks. See
+:::note Bundled emitters and Nauthilus 4.0.0 to 4.1.0
+Since Nauthilus 4.1.1 every script in the tables below can be configured under top-level `policy`. The releases 4.0.0
+to 4.1.0 accepted only `subject/idp_policy.lua` and `actions/bruteforce_header.lua` and rejected the others, because
+they use Redis writes, outbound HTTP, or backend selection. The bundled native plugins (`geoip`, `reputation`,
+`clickhouse`, `haveibeenpwnd`) remain maintained alternatives. See
 [Lua runtimes and capabilities](../lua-api/runtimes.md).
 :::
 

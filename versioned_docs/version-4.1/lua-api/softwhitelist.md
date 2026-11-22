@@ -7,7 +7,7 @@ sidebar_position: 13
 # Soft whitelisting
 
 :::note Availability
-`nauthilus_soft_whitelist` is available in init scripts, custom hooks, and Lua backends. It cannot be loaded by environment sources, subject sources, or actions, which run in the Policy VM. See [Lua runtimes and capabilities](runtimes.md).
+`nauthilus_soft_whitelist` is available in every Lua runtime. Nauthilus 4.0.0 to 4.1.0 did not provide it in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 Environment controls like **brute\_force**, **relay\_domains** and **rbl** support soft whitelists. You can dynamically adjust

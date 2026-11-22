@@ -7,7 +7,7 @@ sidebar_position: 12
 # Redis
 
 :::note Availability
-Write commands, pipelines, scripts, and custom pools are available in init scripts, custom hooks, and Lua backends. Environment sources, subject sources, and actions run in the Policy VM, which provides only the read commands on the `"default"` handle; a policy callback that uses a write command is rejected when the configuration is loaded. See [Lua runtimes and capabilities](runtimes.md).
+Read and write commands, pipelines, scripts, and custom pools are available in every Lua runtime. Nauthilus 4.0.0 to 4.1.0 provided only the read commands on the `"default"` handle in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 There is basic Redis support in Nauthilus. Most of the time it should be enough to use simple Redis keys and string values

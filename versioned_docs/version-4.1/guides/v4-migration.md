@@ -72,6 +72,13 @@ in a non-production environment before rollout. Operators who already run 4.0.x 
     Resource servers that read `aud` must accept an array once resources are granted.
 22. Validate the entire candidate in a non-production environment before any production rollout.
 
+:::important Lua environment sources, subject sources, and actions
+Migrate to Nauthilus 4.1.1 or later when you bring Lua callbacks from Nauthilus 3. These callbacks keep the Lua API
+they had on Nauthilus 3, including Redis writes, outbound HTTP, LDAP, DNS, mail, and backend server selection. The
+releases 4.0.0 to 4.1.0 rejected such callbacks when the configuration was loaded. See
+[Lua runtimes and capabilities](../lua-api/runtimes.md).
+:::
+
 ## Upgrading from 4.0.x to 4.1
 
 Nauthilus 4.1 keeps the v4 module path, `pluginapi.APIVersion`, and the configuration roots. Review these points
@@ -154,6 +161,10 @@ before the upgrade:
 17. **Action, bundled Lua plugins on Redis Cluster:** delete the untagged and `{lua-nauthilus}`-renamed
     `multilayer:global:current_metrics` hashes once. The plugins now keep the keys of one Redis script on one hash
     tag; all other old keys expire.
+18. **Fixed in 4.1.1, Lua callbacks:** environment sources, subject sources, and actions run with the full Lua API
+    again. A configuration that 4.0.x or 4.1.0 rejected because a callback writes to Redis, opens an outbound
+    connection, or selects a backend server loads on 4.1.1. No configuration change is needed; see
+    [Nauthilus 4.1 Patch Releases](../release-notes/4.1-patch-releases.md).
 
 The support history, MCP support access, and operational diagnostics are new and disabled by default; see
 [Support Authentication History](support-authentication-history.md) and

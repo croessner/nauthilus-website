@@ -7,7 +7,7 @@ sidebar_position: 10
 # Prometheus
 
 :::note Availability
-Create collectors (`create_*_vec`) in an init script. Policy callbacks (environment sources, subject sources, and actions) can update existing collectors but cannot create them. See [Lua runtimes and capabilities](runtimes.md).
+Every Lua runtime can create and update collectors. Nauthilus 4.0.0 to 4.1.0 did not provide `create_*_vec` in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 Nauthilus has basic support for some Prometheus metrics.

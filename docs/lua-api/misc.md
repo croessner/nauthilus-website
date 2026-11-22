@@ -8,7 +8,7 @@ sidebar_position: 9
 # nauthilus_misc
 
 :::note Availability
-`wait_random` is not available to environment sources, subject sources, or actions, which run in the Policy VM. See [Lua runtimes and capabilities](runtimes.md).
+All functions are available in every Lua runtime. Nauthilus 4.0.0 to 4.1.0 did not provide `wait_random` in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 The `nauthilus_misc` module exposes small helper functions for Lua scripts.

@@ -7,7 +7,7 @@ sidebar_position: 11
 # PS net
 
 :::note Availability
-Register connection targets (`register_connection_target`) in an init script. Policy callbacks (environment sources, subject sources, and actions) can only look up registered targets. See [Lua runtimes and capabilities](runtimes.md).
+Every Lua runtime can register and look up connection targets. Nauthilus 4.0.0 to 4.1.0 did not provide `register_connection_target` in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 Register connections and count established connections.

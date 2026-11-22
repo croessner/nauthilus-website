@@ -7,7 +7,7 @@ sidebar_position: 6
 # HTTP response
 
 :::note Availability
-`nauthilus_http_response` is available in custom hooks and in synchronous response actions. Environment sources, subject sources, and POST-Actions cannot load it. See [Lua runtimes and capabilities](runtimes.md).
+`nauthilus_http_response` is available in custom hooks, environment sources, subject sources, and actions. A custom hook controls its complete response. On an authentication request the response headers a script sets reach the client, while status and body stay with the server. A POST-Action runs after the response left the server, so its calls have no effect there. Nauthilus 4.0.0 to 4.1.0 provided the module only in custom hooks and synchronous response actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 The `nauthilus_http_response` module allows Lua code to set or modify HTTP response headers,

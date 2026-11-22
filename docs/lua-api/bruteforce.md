@@ -7,7 +7,7 @@ sidebar_position: 15
 # Brute Force
 
 :::note Availability
-Policy callbacks (environment sources, subject sources, and actions) can only use the read functions. `set_custom_tolerations`, `set_custom_toleration`, and `delete_custom_toleration` are available in init scripts, custom hooks, and Lua backends. See [Lua runtimes and capabilities](runtimes.md).
+All functions are available in every Lua runtime. Nauthilus 4.0.0 to 4.1.0 provided only the read functions in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 The `nauthilus_brute_force` module allows Lua scripts to interact with the brute force protection system, manage custom tolerations, and check if an IP is currently blocked.

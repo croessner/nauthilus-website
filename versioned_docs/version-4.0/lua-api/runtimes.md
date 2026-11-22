@@ -6,7 +6,14 @@ sidebar_position: 1.5
 ---
 # Lua runtimes and capabilities
 
-Nauthilus 4 does not run every Lua script with the same host API. A script runs in one of three runtimes, and the
+:::important Removed in Nauthilus 4.1.1
+The restrictions on this page apply to Nauthilus 4.0.0 to 4.1.0. They were not intended, and Nauthilus 4.1.1 removed
+them: environment sources, subject sources, and actions run with the full Lua API again. No 4.0.x release contains
+that change. Upgrade to 4.1.1 or later if your configuration is rejected because of a Lua callback; see the current
+[Lua runtimes and capabilities](/docs/lua-api/runtimes) page.
+:::
+
+Nauthilus 4.0 does not run every Lua script with the same host API. A script runs in one of three runtimes, and the
 runtime decides which modules can be loaded and which functions exist. The module pages of this reference describe the
 full API; this page says where each part of it can be used.
 

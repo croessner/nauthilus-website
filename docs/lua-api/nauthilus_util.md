@@ -7,7 +7,7 @@ sidebar_position: 20
 # Utilities
 
 :::note Availability
-`nauthilus_util` reads environment variables and writes to the cache, so it cannot be required by environment sources, subject sources, or actions, which run in the Policy VM. It is available in init scripts, custom hooks, and Lua backends. See [Lua runtimes and capabilities](runtimes.md).
+`nauthilus_util` can be required in every Lua runtime. Nauthilus 4.0.0 to 4.1.0 rejected it in environment sources, subject sources, and actions; 4.1.1 removed that limit. See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 The `nauthilus_util` module provides several helper functions for Lua scripts in Nauthilus.

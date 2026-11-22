@@ -12,18 +12,15 @@ The `nauthilus_backend` module is available in **subject sources**:
 local nauthilus_backend = require("nauthilus_backend")
 ```
 
-:::warning Availability in Nauthilus 4
-Subject sources run in the Policy VM. It provides the backend-result functions
+:::note Availability
+Subject sources provide the complete module: the backend-result functions
 [`apply_backend_result`](#nauthilus_backendapply_backend_result) and
-[`remove_from_backend_result`](#nauthilus_backendremove_from_backend_result), but not the server-selection functions.
-A subject source that uses `get_backend_servers`, `select_backend_server`, or `check_backend_connection` is rejected when
-the configuration is loaded.
+[`remove_from_backend_result`](#nauthilus_backendremove_from_backend_result), and the server-selection functions
+`get_backend_servers`, `select_backend_server`, `get_selected_backend_server`, and `check_backend_connection`. A
+selected server sets the nginx `Auth-Server` and `Auth-Port` response headers.
 
-These three functions are documented here because the [Lua test framework](../guides/lua-test-framework.md) still
-mocks them and scripts from Nauthilus 3 use them. To select the backend server for the nginx `Auth-Server` and
-`Auth-Port` headers in Nauthilus 4, use a native Go subject source that returns `SelectedBackend`; see
-[Result types](../developer/go-plugins/api-reference/results.md) and
-[Lua runtimes and capabilities](runtimes.md).
+Nauthilus 4.0.0 to 4.1.0 rejected a subject source that used a server-selection function; 4.1.1 removed that limit.
+See [Lua runtimes and capabilities](runtimes.md).
 :::
 
 ## nauthilus\_backend.get\_backend\_servers

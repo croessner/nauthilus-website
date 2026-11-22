@@ -74,10 +74,17 @@ because of a function or module name it mentions.
 
 ## Global variables and pooled VMs
 
-Each configured callback has its own pool of Lua VMs, and a VM is reused for later requests. A global variable that a
-script sets stays in that VM and is visible to later requests of the same callback, as in custom hooks and in
-Nauthilus 3. Nauthilus 4.0.0 to 4.1.0 rebuilt the global table for every request. Keep request data in local variables
-or in `nauthilus_context`.
+Each configured callback has its own pool of pre-built Lua VMs, and a VM is reused for later requests. For every
+request Nauthilus puts a fresh request environment on top of the VM's base environment and maps the request-bound
+modules into it. The callback script runs in that environment:
+
+- A global variable that the script assigns, including its entry function, lives only for that request.
+- State outside the request environment stays in the VM and is visible to later requests of the same callback, as in
+  custom hooks and in Nauthilus 3. This applies to explicit writes to `_G`, to changes of shared tables such as
+  `string`, and to globals assigned by a module that is loaded with `require`. Do not keep request data there.
+- A module loaded with `require` is executed again for every request.
+
+Nauthilus 4.0.0 to 4.1.0 also rebuilt the base global table for every request.
 
 ## Restrictions in Nauthilus 4.0.0 to 4.1.0
 

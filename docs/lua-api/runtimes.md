@@ -82,7 +82,8 @@ modules into it. The callback script runs in that environment:
 - State outside the request environment stays in the VM and is visible to later requests of the same callback, as in
   custom hooks and in Nauthilus 3. This applies to explicit writes to `_G`, to changes of shared tables such as
   `string`, and to globals assigned by a module that is loaded with `require`. Do not keep request data there.
-- A module loaded with `require` is executed again for every request.
+- A module loaded with `require` is compiled once when the configuration is loaded (since 4.1.2; earlier releases
+  compiled it for every request) and is executed again for every request.
 
 Nauthilus 4.0.0 to 4.1.0 also rebuilt the base global table for every request.
 

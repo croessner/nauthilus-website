@@ -172,6 +172,11 @@ Behavior:
 - exit code `0`: configuration is valid
 - exit code `1`: configuration is invalid
 
+The check also loads the configured native plugins and compiles the policy catalog exactly like the server start,
+including the Lua registry scripts, providers, and actions. A configuration whose rules reference unknown facts or
+undeclared response details therefore fails the check instead of the server start. The check does not contact Redis,
+so caller credentials and Lua init scripts are only verified when the server starts.
+
 Validation also reports warnings that keep a configuration loadable, for example a `cache` entry before a native
 backend plugin that has not opted into the positive password cache (see
 [Native Go Plugins](native-go-plugins.md#positive-password-cache-for-backend-modules)), or a configured unrestricted

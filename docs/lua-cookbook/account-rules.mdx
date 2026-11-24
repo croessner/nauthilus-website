@@ -67,14 +67,15 @@ Remove the lock early with `docker compose exec valkey valkey-cli DEL cookbook:l
 - **`subject_vm_pool_size`** sizes the pool of prepared Lua VMs for subject sources.
 - **`providers`** define the two subject sources (`kind: lua_subject`).
 - **`domain_plans.account_rules`** runs them at the `subject_analysis` checkpoint, after `auth_backend`.
-- **The rules run at `auth_decision`**, the last checkpoint, where the attributes of every subject source are known.
-  Each rule answers with `deny` and its own `response_message`, so users and helpdesk see why a login failed.
-- The target binds the rules with `plans.auth_decision.policy_sets`.
+- **The rules run at `subject_analysis`**, the checkpoint of the subject sources. `require_providers` makes each rule
+  wait for the subject source that emits its attribute. Each rule answers with `deny` and its own `response_message`,
+  so users and helpdesk see why a login failed.
+- The target binds the rules with `plans.subject_analysis.policy_sets`.
 
-:::note Where subject rules belong
-In Nauthilus 4.1.2 a configured rule at the `subject_analysis` checkpoint does not see attributes that a subject
-source emitted there. Put such rules at `auth_decision`, as this recipe does. `require_providers` refers to providers of
-the rule's own checkpoint, so the rules here do without it.
+:::note Since Nauthilus 4.1.3
+Rules at `subject_analysis` see the attributes that subject sources emit there since 4.1.3. In earlier releases put
+such rules at `auth_decision` and leave out `require_providers`, which only names providers of the rule's own
+checkpoint.
 :::
 
 ## The account data
@@ -98,10 +99,10 @@ A subject source defines `nauthilus_call_subject(request)` and returns an action
   typed. Rules about an account should use the account.
 - `SUBJECT_REJECT` refuses the login on its own. The emitted attribute adds the rule with the clear message.
 
-:::warning Known issue in Nauthilus 4.1.2
-`nauthilus_backend.get_current_backend_result()` in a subject source does not contain the attributes that the
-password backend returned, so a subject source cannot read `allowed_protocols` from there. This recipe reads the
-account data from the shared module instead.
+:::note Backend attributes in subject sources
+`nauthilus_backend.get_current_backend_result()` in a subject source returns the attributes that earlier subject
+sources applied, not the attributes of the password backend. A subject source therefore cannot read
+`allowed_protocols` from there; this recipe reads the account data from the shared module instead.
 :::
 
 ## Account lock

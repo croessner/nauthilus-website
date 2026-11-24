@@ -37,13 +37,8 @@ hook GET maintenance
 expect_body_contains 'Mail server upgrade until 22:00' "GET shows the stored message"
 
 auth alice alice-secret imap 192.0.2.10
-case "$(header Auth-Status)" in
-    "Maintenance in progress, please try again later"|"Temporary server problem, try again later")
-        pass "a login from the internet gets a temporary failure" ;;
-    *) fail "a login from the internet gets a temporary failure" ;;
-esac
-[ "$(header Auth-Status)" = "Maintenance in progress, please try again later" ]
-known_issue "the temporary failure carries the text of the policy rule (tempfail ignores response_message)" $?
+expect_status 500 "a login from the internet gets a temporary failure"
+expect_auth_status "Mail server upgrade until 22:00" "the client sees the message stored by the administrator"
 
 auth alice alice-secret imap 10.20.30.40
 expect_auth_status "OK" "a login from the admin network 10.0.0.0/8 still works"

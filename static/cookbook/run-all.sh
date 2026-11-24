@@ -3,7 +3,7 @@
 #
 #   ./run-all.sh                                   # the released image named in the compose files
 #   NAUTHILUS_IMAGE=nauthilus:dev ./run-all.sh     # a local build
-#   NAUTHILUS_LUA_JIT=false ./run-all.sh           # Lua interpreter instead of the JIT (releases after 4.1.2)
+#   NAUTHILUS_LUA_JIT=false ./run-all.sh           # Lua interpreter instead of the JIT (Nauthilus 4.2 and later)
 #   ./run-all.sh admin-toolkit login-journal       # only some recipes
 #
 # Exit code 0 means every check of every recipe passed. Known issues are reported but do not fail the run.

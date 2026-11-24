@@ -99,14 +99,15 @@ policy:
             auth_decision:
               providers: []
 
-      # The rules run at auth_decision, the last checkpoint, where the attributes of all subject sources are known.
+      # The rules run at subject_analysis, right after the subject source that emits their attribute.
       policy_sets:
         account_rules:
           visibility: private
           rules:
             - name: protocol_not_allowed
-              checkpoint: auth_decision
+              checkpoint: subject_analysis
               actions: [authenticate]
+              require_providers: [protocol_access]
               if:
                 attribute: lua.plugin.cookbook.protocol.denied
                 is: true
@@ -117,8 +118,9 @@ policy:
                   from: literal
                   text: "This account may not use this service"
             - name: account_locked
-              checkpoint: auth_decision
+              checkpoint: subject_analysis
               actions: [authenticate]
+              require_providers: [account_lock]
               if:
                 attribute: lua.plugin.cookbook.lock.active
                 is: true
@@ -137,5 +139,5 @@ policy:
       default_policy: authn/standard_auth
       domain_plan: authn/account_rules
       plans:
-        auth_decision:
+        subject_analysis:
           policy_sets: [authn/account_rules]

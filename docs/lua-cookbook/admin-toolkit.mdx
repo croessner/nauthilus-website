@@ -74,8 +74,8 @@ curl -i -u mailserver:mailserver-backchannel-secret -H 'Content-Type: applicatio
   http://127.0.0.1:28083/api/v1/auth/json
 ```
 
-The login gets a temporary failure. The same login from `10.20.30.40`, an address in the administrator network, still
-works. Switch maintenance off again with `{"enabled": false}`.
+The login gets a temporary failure with `Auth-Status: Mail server upgrade until 22:00`. The same login from
+`10.20.30.40`, an address in the administrator network, still works. Switch maintenance off again with `{"enabled": false}`.
 
 Block a network:
 
@@ -114,8 +114,9 @@ What is new:
     of `auth.backends.order`; `auth_decision` is the last checkpoint. A domain plan lists every checkpoint it uses, so
     `auth_backend` must be there, or no password would ever be checked.
   - `policy_sets.toolkit` holds the two rules. `maintenance_tempfail` answers with `tempfail` while the maintenance
-    attribute is true; `blocklist_deny` answers with `deny` and its own text. `require_providers` makes a rule wait
-    for the provider that emits its attribute.
+    attribute is true, with the message from the attribute's `status_message` detail (`from: attribute_detail`), so
+    clients see the text that the administrator stored; `blocklist_deny` answers with `deny` and its own text.
+    `require_providers` makes a rule wait for the provider that emits its attribute.
 - **`policy.targets`** activates all of this for `authenticate` requests. `default_policy: authn/standard_auth` keeps the
   built-in rules for everything the recipe does not decide.
 
@@ -128,8 +129,8 @@ What is new:
 - `ipv4_to_number` and `parse_network` turn addresses and networks such as `198.51.100.0/24` into number ranges, so
   `contains` only compares numbers. A network is valid only if it parses; the hook refuses anything else. The module
   handles IPv4; extend `parse_network` for IPv6 the same way.
-- `reply_error` writes an error answer with a JSON body. A hook that changes the HTTP status must write its body itself:
-  if it only returns a table after setting the status, Nauthilus 4.1.2 sends an empty body.
+- `reply_error` sets an HTTP error status and returns the body; the hook returns it, and Nauthilus sends it as JSON with
+  that status. Before Nauthilus 4.1.3 such an answer had an empty body.
 
 ## The custom hooks
 
@@ -167,11 +168,10 @@ yet whether the password is right.
 - Module-level code such as `ADMIN_NETWORKS = ...` runs for every request, because Nauthilus executes the script anew
   in a fresh request environment. Keep it cheap.
 
-:::warning Known issue in Nauthilus 4.1.2
-Returning `ENVIRONMENT_TRIGGER_YES` alone does not reject a login, although the built-in rules are meant to deny a
-triggered environment source. Emit an attribute and add a rule, as this recipe does. In addition, a `tempfail` rule
-answers with the generic text "Temporary server problem, try again later" instead of its `response_message`; the test
-reports that check as `known`.
+:::note Triggers are facts
+Returning `ENVIRONMENT_TRIGGER_YES` makes the fact `nauthilus.auth.lua.environment.<name>.triggered` true, and the
+built-in rules of `authn/standard_auth` deny it unless a configured rule decides first. `ip_blocklist.lua` returns it as
+well; its own rule only adds the clear message. Nauthilus 4.0.0 to 4.1.2 ignored such a trigger, so use 4.1.3 or later.
 :::
 
 ## The policy registry script

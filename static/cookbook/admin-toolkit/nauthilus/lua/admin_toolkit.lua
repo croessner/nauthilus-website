@@ -2,7 +2,6 @@
 -- Shared module of the "Admin toolkit" recipe. The hooks write the state, the environment sources read it, and
 -- both use the key names and the IPv4 network matching from this one place.
 
-local json = require("json")
 local nauthilus_http_response = require("nauthilus_http_response")
 
 local M = {}
@@ -84,12 +83,12 @@ function M.split_list(value)
     return list
 end
 
--- reply_error answers a hook request with an HTTP error status and a JSON body. A hook that changes the status
--- writes its body itself; returning a table only works for 200 answers.
+-- reply_error sets an HTTP error status and returns the body, so a hook can answer with
+-- `return toolkit.reply_error(400, { error = "..." })`. Nauthilus sends the returned table as JSON with that status.
 function M.reply_error(status, body)
     nauthilus_http_response.set_http_status(status)
-    nauthilus_http_response.set_http_content_type("application/json")
-    nauthilus_http_response.write_http_response_body(json.encode(body))
+
+    return body
 end
 
 return M

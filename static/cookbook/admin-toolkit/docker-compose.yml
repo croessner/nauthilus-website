@@ -13,12 +13,12 @@ services:
       retries: 20
 
   nauthilus:
-    image: ${NAUTHILUS_IMAGE:-ghcr.io/croessner/nauthilus:v4.1.2}
+    image: ${NAUTHILUS_IMAGE:-ghcr.io/croessner/nauthilus:v4.2.0}
     depends_on:
       valkey:
         condition: service_healthy
     environment:
-      # Optional switch for the Lua JIT of releases after 4.1.2; 4.1.2 and earlier ignore it.
+      # Optional switch for the Lua JIT (Nauthilus 4.2 and later; earlier releases ignore it).
       NAUTHILUS_AUTH_BACKENDS_LUA_BACKEND_DEFAULT_JIT: ${NAUTHILUS_LUA_JIT:-true}
       # Logins from these networks still work during maintenance (read by environment/maintenance.lua).
       COOKBOOK_ADMIN_NETWORKS: "10.0.0.0/8"

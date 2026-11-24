@@ -137,8 +137,8 @@ policy:
         toolkit:
           visibility: private
           rules:
-            # Maintenance answers with a temporary failure and a fixed text. Mail clients retry later and do not
-            # ask the user for a new password.
+            # Maintenance answers with a temporary failure and the message the administrator stored with the hook.
+            # Mail clients retry later and do not ask the user for a new password.
             - name: maintenance_tempfail
               checkpoint: pre_auth
               actions: [authenticate]
@@ -150,8 +150,10 @@ policy:
                 decision: tempfail
                 reason: maintenance
                 response_message:
-                  from: literal
-                  text: "Maintenance in progress, please try again later"
+                  from: attribute_detail
+                  attribute: lua.plugin.cookbook.maintenance.active
+                  detail: status_message
+                  fallback: "Maintenance in progress, please try again later"
 
             # Blocked addresses are rejected before the password is checked.
             - name: blocklist_deny

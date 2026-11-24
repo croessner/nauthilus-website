@@ -52,8 +52,7 @@ expect_equal "0" "$(sql 'SELECT COUNT(*) FROM recovery_codes')" "nauthilus_backe
 
 mfa POST /totp '{"backend":"lua","username":"bob@example.test","totp_secret":"JBSWY3DPEHPK3PXP"}'
 expect_status 200 "a TOTP secret is accepted"
-[ "$(sql "SELECT totp_secret FROM accounts WHERE username = 'bob'")" = "JBSWY3DPEHPK3PXP" ]
-known_issue "nauthilus_backend_add_totp stores the secret (request.totp_secret is not passed to Lua)" $?
+expect_equal "JBSWY3DPEHPK3PXP" "$(sql "SELECT totp_secret FROM accounts WHERE username = 'bob'")" "nauthilus_backend_add_totp stored the secret"
 
 sql "UPDATE accounts SET totp_secret = 'JBSWY3DPEHPK3PXP' WHERE username = 'bob'"
 mfa DELETE /totp '{"backend":"lua","username":"bob@example.test"}'

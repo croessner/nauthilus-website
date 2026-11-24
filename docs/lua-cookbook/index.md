@@ -98,12 +98,13 @@ docker compose down -v
 
 ## Choose the Nauthilus image
 
-The compose files use the released image `ghcr.io/croessner/nauthilus:v4.1.2`. Two environment variables change that:
+The compose files use the released image `ghcr.io/croessner/nauthilus:v4.2.0`. The recipes need Nauthilus 4.1.3 or
+later. Two environment variables change the image:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `NAUTHILUS_IMAGE` | `ghcr.io/croessner/nauthilus:v4.1.2` | Image to start, for example a local build |
-| `NAUTHILUS_LUA_JIT` | `true` | Switches the Lua JIT compiler of releases after 4.1.2 on or off; 4.1.2 and earlier ignore it |
+| `NAUTHILUS_IMAGE` | `ghcr.io/croessner/nauthilus:v4.2.0` | Image to start, for example a local build |
+| `NAUTHILUS_LUA_JIT` | `true` | Switches the Lua JIT compiler of Nauthilus 4.2 and later on or off; earlier releases ignore it |
 
 ```bash
 NAUTHILUS_IMAGE=nauthilus:dev NAUTHILUS_LUA_JIT=false docker compose up -d --wait
@@ -128,19 +129,20 @@ NAUTHILUS_IMAGE=nauthilus:dev NAUTHILUS_LUA_JIT=false ./run-all.sh
 - **Shared code lives in modules.** When two scripts need the same logic, it lives in one module that both load with
   `require`. `package_path` in `nauthilus.yml` tells Nauthilus where to find it.
 
-## Known issues found with these recipes
+## Problems these recipes found
 
-Building the cookbook found several Nauthilus problems. The recipes work around them; where a recipe still depends on
-a fix, its test reports the check as `known`:
+Building the cookbook found several Nauthilus defects. All of them are fixed in Nauthilus 4.1.3 and 4.2.0, which is
+why the recipes need 4.1.3 or later. See the [4.1.3 release notes](../release-notes/4.1-patch-releases.md):
 
-- A Lua environment source that returns `ENVIRONMENT_TRIGGER_YES` does not reject the login by itself in Nauthilus
-  4.1.2. Emit a registered attribute and decide with a rule, as the [Admin toolkit](admin-toolkit.mdx) does.
-- A `tempfail` rule answers with the generic temporary-failure text instead of its `response_message`.
-- A rule whose `response_message` uses `from: attribute_detail` stops Nauthilus from starting, although
-  `--config-check` accepts the configuration.
-- A custom hook that sets the HTTP status and returns a Lua table sends an empty body. Write the body yourself, as
-  the [Admin toolkit](admin-toolkit.mdx) hooks do.
-- `nauthilus_backend_add_totp` does not receive `request.totp_secret`.
-- In a subject source, `nauthilus_backend.get_current_backend_result()` does not contain the attributes of the password
-  backend.
+- A Lua environment source that returned `ENVIRONMENT_TRIGGER_YES` did not reject the login (security fix).
+- A `tempfail` rule answered with the generic temporary-failure text instead of its `response_message`.
+- A rule whose `response_message` used `from: attribute_detail` stopped Nauthilus from starting, although
+  `--config-check` accepted the configuration.
+- Configured rules at `subject_analysis` did not see the attributes of subject sources.
+- A custom hook that set the HTTP status and returned a Lua table sent an empty body.
+- `nauthilus_backend_add_totp` did not receive `request.totp_secret`.
+- `mode=list-accounts` with `Accept: text/plain` returned only one account.
+
+When a future release breaks a recipe, its test prints a failing check, and a check that waits for a reported fix is
+printed as `known`.
 - `mode=list-accounts` with `Accept: text/plain` returns only one account; use `application/json`.

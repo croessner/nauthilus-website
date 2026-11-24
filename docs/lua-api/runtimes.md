@@ -35,6 +35,37 @@ is rejected because of a Lua callback, upgrade to 4.1.1 or later; see
 library, and the complete Lua 5.1 standard library including `os`, `io`, `debug`, `coroutine`, `load`, `loadstring`,
 `dofile`, and `loadfile`.
 
+## Lua engine and JIT compiler
+
+Since Nauthilus 4.2.0 Lua code runs on [gopher-lua-jit](https://github.com/croessner/gopher-lua-jit), a
+GopherLua-compatible Lua 5.1 engine with a native just-in-time compiler for hot loops. The pooled VMs that run Lua
+backends, custom hooks, actions, environment sources, and subject sources compile numeric loops and loops over number
+arrays to machine code on Linux and macOS (amd64 and arm64). Everything else, and every other platform, runs in the
+interpreter with identical results. Short-lived states, such as generic `kind: lua` policy providers and registry
+scripts, always use the interpreter.
+
+The compiler is enabled by default. `jit: false` in `auth.backends.lua.backend.default` runs the interpreter only; a
+change takes effect after a restart:
+
+```yaml
+auth:
+  backends:
+    lua:
+      backend:
+        default:
+          jit: false
+```
+
+Scripts need no changes. Two details differ from Nauthilus 4.1:
+
+- `pairs` visits the array part first, then string keys in insertion order, then all other keys in insertion order.
+  Scripts must still not rely on a particular order.
+- Compiler defects of the previous engine are fixed. For example, `goto` no longer detaches closures from the local
+  variables of the surrounding function, and `v = t.x and y` assigns `nil` or `false` when `t.x` is falsy instead of
+  leaving `v` unchanged.
+
+When you analyse a Lua problem, compare the behaviour with `jit: false`, and report any difference between both modes.
+
 ## Differences between the runtimes
 
 The runtimes differ only where the request itself differs:

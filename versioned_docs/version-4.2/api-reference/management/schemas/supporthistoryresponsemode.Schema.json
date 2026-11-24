@@ -1,0 +1,1 @@
+{"schema":{"type":"string","enum":["detailed","compact"],"x-enum-varnames":["SupportHistoryResponseModeDetailed","SupportHistoryResponseModeCompact"],"title":"SupportHistoryResponseMode"},"schemaType":"response"}

@@ -1,0 +1,1 @@
+{"schema":{"type":"object","properties":{"network":{"type":"string"},"bucket":{"type":"string"},"ban_time":{"type":"integer","format":"int64"},"ttl":{"type":"integer","format":"int64"},"banned_at":{"type":"string","format":"date-time"}},"title":"BruteForceBanEntry"},"schemaType":"response"}

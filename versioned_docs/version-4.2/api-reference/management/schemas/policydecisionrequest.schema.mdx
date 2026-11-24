@@ -1,0 +1,31 @@
+---
+id: policydecisionrequest
+title: "PolicyDecisionRequest"
+description: ""
+sidebar_label: "PolicyDecisionRequest"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"version":"1","request_id":"string","target":{"namespace":"string","action":"string"},"subject":{"type":"string","id":"string","attributes":{}},"resource":{"type":"string","id":"string","attributes":{}},"environment":{"service":"string","instance":"string","protocol":"string","attributes":{}},"attributes":{},"options":{"include_diagnostics":true}}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"PolicyDecisionRequest"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./policydecisionrequest.Schema.json")}
+>
+
+</Schema>

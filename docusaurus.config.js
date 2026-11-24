@@ -22,7 +22,7 @@ const latestProductVersion =
       return undefined;
     }
   })() ||
-  '4.1.3';
+  '4.2.0';
 
 // The docs dropdown should display major.minor only.
 const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');
@@ -186,15 +186,19 @@ const config = {
           editUrl:
             'https://github.com/croessner/nauthilus-website/tree/main',
           // `lastVersion` must reference an existing docs snapshot id from `versions.json`.
-          // The latest snapshot on disk is `4.1`; the navbar badge reflects the full product release, for example `4.1.2`.
-          lastVersion: '4.1',
+          // The latest snapshot on disk is `4.2`; the navbar badge reflects the full product release, for example `4.2.0`.
+          lastVersion: '4.2',
           versions: {
             current: {
               label: 'Next',
               banner: 'unreleased',
             },
-            '4.1': {
+            '4.2': {
               label: latestDocsVersionLabel,
+              banner: 'none',
+            },
+            '4.1': {
+              label: '4.1',
               banner: 'none',
             },
             '4.0': {

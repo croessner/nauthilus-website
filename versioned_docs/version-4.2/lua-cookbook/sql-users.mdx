@@ -1,0 +1,126 @@
+---
+title: "Recipe: SQL users"
+description: Authenticate against a MariaDB account table with a Lua backend, including account listing and TOTP callbacks
+keywords: [Lua, Cookbook, Lua backend, MariaDB, MySQL, SQL, TOTP, MFA]
+sidebar_label: "SQL users"
+sidebar_position: 3
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import compose from '@site/static/cookbook/sql-users/docker-compose.yml?raw';
+import config from '@site/static/cookbook/sql-users/nauthilus/nauthilus.yml?raw';
+import schema from '@site/static/cookbook/sql-users/mariadb/initdb/01-schema.sql?raw';
+import backendLua from '@site/static/cookbook/sql-users/nauthilus/lua/backend.lua?raw';
+import testSh from '@site/static/cookbook/sql-users/test.sh?raw';
+
+# Recipe: SQL users
+
+Many installations already have their accounts in a database: a hosting panel, a CRM, or a self-written user
+administration. This recipe lets Nauthilus authenticate against such a table without copying the accounts anywhere.
+It also stores TOTP secrets and recovery codes in the same database when users enrol a second factor.
+
+**Interfaces:** Lua backend with password check, account listing, and MFA callbacks.<br />
+**Download:** [sql-users.tar.gz](pathname:///cookbook/sql-users.tar.gz)
+
+Read [Flat-file users](flatfile-users.mdx) first; this page only explains what is new.
+
+## What happens
+
+1. MariaDB creates the tables and three demo accounts on its first start.
+2. For a login, the Lua backend looks the user up by login name or mail address, with a **read-only** database user,
+   and compares the password hash.
+3. Disabled accounts are treated as unknown, and the account listing leaves them out.
+4. When a user enrols TOTP or recovery codes, Nauthilus calls the MFA callbacks of the backend, which write with a
+   second database user that may change only those columns.
+
+## Start and test
+
+```bash
+docker compose up -d --wait
+./test.sh
+```
+
+MariaDB keeps its data in the volume `mariadb_data`. `docker compose down -v` removes it, and the next start imports
+the demo data again.
+
+## The stack
+
+<CodeBlock language="yaml" title="docker-compose.yml">{compose}</CodeBlock>
+
+MariaDB runs every file in `/docker-entrypoint-initdb.d` once, when its data volume is new. Nauthilus waits until the
+database health check reports InnoDB as ready.
+
+## The database
+
+<CodeBlock language="sql" title="mariadb/initdb/01-schema.sql">{schema}</CodeBlock>
+
+- `accounts` has a login name (`username`), the canonical account name (`account`, here the mail address), the
+  password hash, display data, an `enabled` flag, and a column for the TOTP secret.
+- `recovery_codes` holds the one-time recovery codes of an account.
+- Two database users separate the duties: `nauthilus_ro` can only read, `nauthilus_mfa` can only change the TOTP column
+  and the recovery codes. A mistake or an attack in the login path cannot change passwords.
+
+## The configuration
+
+<CodeBlock language="yaml" title="nauthilus/nauthilus.yml">{config}</CodeBlock>
+
+New compared with the flat-file recipe:
+
+- The `admin` credential holds `nauthilus:mfa_write`, the scope of the MFA backchannel API, instead of the cache-flush
+  scope.
+- `search` adds the protocol `idp`. Nauthilus looks the user up with this protocol before it changes MFA data, so the
+  backend must be responsible for it.
+
+## The Lua backend
+
+<CodeBlock language="lua" title="nauthilus/lua/backend.lua">{backendLua}</CodeBlock>
+
+How it works:
+
+- **`db.open`** comes from the bundled gopher-lua-libs. With `shared = true`, Nauthilus keeps one connection pool per
+  DSN for the whole process, so a login does not open a new database connection. `read_only = true` only marks
+  transactions as read-only; the real protection is the database user `nauthilus_ro`, which may only `SELECT`.
+- **`run`** is the only function that talks to the database. It prepares a statement, runs it with bound parameters,
+  and **closes it**. Bound parameters (`?`) keep user input out of the SQL text, so a username such as
+  `x' OR '1'='1` is only ever a value. Closing matters as well: MariaDB keeps every prepared statement until it is
+  closed, and after `max_prepared_stmt_count` (16382 by default) statements it refuses new ones, which would make every
+  login fail. The test checks that no statement stays open.
+- **`find_account`** accepts the login name or the mail address.
+- **`nauthilus_backend_verify_password`** treats a disabled account like an unknown one, so a disabled user learns
+  nothing from the answer. `totp_secret_field("totp_secret")` tells Nauthilus which attribute holds the TOTP secret,
+  so the identity provider can ask for a second factor.
+- **`nauthilus_backend_list_accounts`** returns the enabled accounts.
+- **The MFA callbacks** are called by the identity provider's MFA self-service and by the
+  [MFA backchannel API](../rest-api.md). Each returns `BACKEND_RESULT_OK` or `BACKEND_RESULT_FAIL`.
+  `nauthilus_backend_add_totp_recovery_codes` receives the codes as `request.totp_recovery_codes`, a Lua list.
+
+Try the MFA API by hand. Use the account name (the mail address), because Nauthilus checks that the user it looked up
+is the user named in the request:
+
+```bash
+curl -u admin:admin-backchannel-secret -H 'Content-Type: application/json' \
+  -d '{"backend":"lua","username":"bob@example.test","codes":["aaaa-1111","bbbb-2222"]}' \
+  http://127.0.0.1:28082/api/v1/mfa-backchannel/totp/recovery-codes
+
+docker compose exec mariadb mariadb -uroot -pcookbook-root cookbook -e 'SELECT * FROM recovery_codes'
+```
+
+:::note Since Nauthilus 4.1.3
+`nauthilus_backend_add_totp` receives `request.totp_secret` since 4.1.3. Earlier 4.x releases called it with an empty
+value, so the secret was not stored.
+:::
+
+WebAuthn credentials use four more callbacks (`nauthilus_backend_get_webauthn_credentials` and others), see
+[Backend plugins](../lua-api/backend.md#mfa--webauthn-support). They follow the same pattern.
+
+## What the test checks
+
+<CodeBlock language="bash" title="test.sh">{testSh}</CodeBlock>
+
+## Ideas for your own changes
+
+- Point `COOKBOOK_DB_READ_DSN` and `COOKBOOK_DB_MFA_DSN` (environment of the `nauthilus` service) at your own database
+  and adapt the column names in `find_account`.
+- Use PostgreSQL: `db.open("postgres", "postgres://user:pass@host/db?sslmode=disable", options)`; placeholders are
+  `$1`, `$2`, … instead of `?`.
+- Return more attributes, for example a quota or a mail store, for your mail server.

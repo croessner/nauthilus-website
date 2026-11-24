@@ -1,0 +1,1 @@
+{"schema":{"type":"object","properties":{"ip_address":{"type":"string"},"rule_name":{"type":"string"},"protocol":{"type":"string"},"oidc_cid":{"type":"string"},"removed_keys":{"type":"array","items":{"type":"string"}},"status":{"type":"string"}},"title":"BruteForceFlushPayload"},"schemaType":"response"}

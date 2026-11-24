@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["session","object","operation","result"],"properties":{"session":{"type":"string"},"object":{"type":"string"},"operation":{"type":"string"},"result":{}},"title":"ResultEnvelope"},"schemaType":"response"}

@@ -1,0 +1,1 @@
+{"responses":{"200":{"description":"Browser-facing HTML response.","content":{"text/html":{"schema":{"type":"string"}}}},"302":{"description":"Redirect response.","headers":{"Location":{"schema":{"type":"string"}}}}}}

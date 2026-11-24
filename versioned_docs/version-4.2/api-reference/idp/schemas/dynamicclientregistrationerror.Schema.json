@@ -1,0 +1,1 @@
+{"schema":{"type":"object","required":["error"],"properties":{"error":{"type":"string","enum":["invalid_redirect_uri","invalid_client_metadata","unapproved_software_statement"]},"error_description":{"type":"string"}},"additionalProperties":false,"title":"DynamicClientRegistrationError"},"schemaType":"response"}

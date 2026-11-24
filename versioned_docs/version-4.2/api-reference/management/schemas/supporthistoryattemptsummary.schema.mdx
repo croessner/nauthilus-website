@@ -1,0 +1,31 @@
+---
+id: supporthistoryattemptsummary
+title: "SupportHistoryAttemptSummary"
+description: "Compact form of one attempt, built from the same projection as the detailed attempt."
+sidebar_label: "SupportHistoryAttemptSummary"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"started_at":"2024-07-29T15:51:28.071Z","last_observed_at":"2024-07-29T15:51:28.071Z","reason":"string","detail":{"attempt_id":"string","around":"2024-07-29T15:51:28.071Z"},"finding_codes":["string"],"client_ips":["string"],"protocols":["string"],"request_ids":["string"],"known_gaps":["string"],"attempt_id":"string","kind":"flow","outcome":"string","outcome_basis":"string","progress":"string","final_outcome_observed":true,"events_truncated":true,"events_withheld":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryAttemptSummary"}
+>
+</Heading>
+
+
+
+Compact form of one attempt, built from the same projection as the detailed attempt.
+
+<Schema
+  {...require("./supporthistoryattemptsummary.Schema.json")}
+>
+
+</Schema>

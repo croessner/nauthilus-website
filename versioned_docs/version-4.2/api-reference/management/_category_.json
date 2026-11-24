@@ -1,0 +1,8 @@
+{
+  "label": "Management API",
+  "position": 1,
+  "link": {
+    "type": "doc",
+    "id": "api-reference/management/nauthilus-management-api"
+  }
+}

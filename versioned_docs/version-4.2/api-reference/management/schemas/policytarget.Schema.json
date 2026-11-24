@@ -1,0 +1,1 @@
+{"schema":{"type":"object","additionalProperties":false,"required":["namespace","action"],"properties":{"namespace":{"type":"string","maxLength":64},"action":{"type":"string","maxLength":64}},"title":"PolicyTarget"},"schemaType":"response"}

@@ -1,0 +1,1 @@
+{"title":"Body","body":{"required":true,"content":{"application/json":{"schema":{"type":"object","additionalProperties":false,"required":["kind","subject"],"properties":{"kind":{"type":"string","enum":["ip","network","asn","dns_domain","account","service"]},"subject":{"type":"string","minLength":1,"maxLength":512}},"title":"ReputationLookupRequest"}}}}}

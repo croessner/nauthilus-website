@@ -1,0 +1,1 @@
+{"schema":{"type":"array","description":"RFC 8707 resource indicators (absolute URIs without fragment). At the token endpoint they may only narrow the access token to a subset of the granted resources; client_credentials rejects them with invalid_target.","items":{"type":"string","format":"uri"},"title":"ResourceIndicators"},"schemaType":"response"}

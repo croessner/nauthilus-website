@@ -1,0 +1,64 @@
+---
+id: put-reputation-override
+title: "Create or replace one audited operator override."
+description: "Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history."
+sidebar_label: "Create or replace one audited operator override."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "put api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Create or replace one audited operator override."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"put"}
+  path={"/api/v1/custom/reputation/override"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Optional native reputation management endpoint. Requires a backchannel access token with nauthilus:admin, even when additional hook scopes are configured. Subjects are accepted only in the JSON body; enumeration and query parameters are prohibited. Actor identity is host-derived and cannot be supplied in the body. Reads use primary Redis and conservative active/previous key merging. Override changes target one named slot; they do not erase other slots or learned evidence. The latest per-slot operator receipt is retained for 90 days; this is not a complete audit history.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./put-reputation-override.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./put-reputation-override.StatusCodes.json")}
+>
+
+</StatusCodes>

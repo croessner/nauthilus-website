@@ -1,0 +1,1 @@
+{"parameters":[{"name":"issuerPath","in":"path","required":true,"description":"Path component of the configured issuer without the leading slash.","schema":{"type":"string"}}]}

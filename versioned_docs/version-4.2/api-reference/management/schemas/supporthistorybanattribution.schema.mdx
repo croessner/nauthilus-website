@@ -1,0 +1,31 @@
+---
+id: supporthistorybanattribution
+title: "SupportHistoryBanAttribution"
+description: "Under which accounts the listed contributions of one ban were recorded; never who caused the ban. Codes are computed on unredacted rows, so hidden identities never make an answer look exclusive."
+sidebar_label: "SupportHistoryBanAttribution"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"contributing_accounts":"Unknown Type: array,null","subject_contributions":[{"at":"2024-07-29T15:51:28.071Z","window_index":0,"window_current":0,"ban_active":true,"attempt_id":"string","event_id":"string","request_id":"string","count_source":"string","protocol":"string","matched_by":"recorded_account"}],"counts":{"listed":0,"subject_by_account":0,"subject_by_login_claim":0,"other_accounts":0,"distinct_other_accounts":0,"no_account":0,"unresolved":0,"counted_while_banned":0},"code":"SUBJECT_ACCOUNT","other_contributors":"observed","person_attribution":"NOT_ESTABLISHED","identities_redacted":true,"subject_contributions_truncated":true}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryBanAttribution"}
+>
+</Heading>
+
+
+
+Under which accounts the listed contributions of one ban were recorded; never who caused the ban. Codes are computed on unredacted rows, so hidden identities never make an answer look exclusive.
+
+<Schema
+  {...require("./supporthistorybanattribution.Schema.json")}
+>
+
+</Schema>

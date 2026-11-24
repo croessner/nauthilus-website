@@ -1,0 +1,31 @@
+---
+id: supporthistorybansearchresponse
+title: "SupportHistoryBanSearchResponse"
+description: ""
+sidebar_label: "SupportHistoryBanSearchResponse"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"queried_at":"2024-07-29T15:51:28.071Z","history":{"contract_rows_since":"2024-07-29T15:51:28.071Z","oidc_completion_events_since":"2024-07-29T15:51:28.071Z","sources":[{"source":"logins","state":"read","window_coverage":"within_retention","retention_days":0}],"conditions":["string"],"known_limits":["string"],"availability":"available","deployment":"string","delivery_completeness":"not_guaranteed","late_events_possible":true},"target":{"ip":"string","candidate_networks":["string"]},"bans":[{"activation":{"at":"2024-07-29T15:51:28.071Z","bucket_id":"string","window_index":0,"window_current":0,"window_previous":0,"total":0,"effective_limit":0,"planned_end":"2024-07-29T15:51:28.071Z","kind":"ban_activated","rule":"string","stored_rule":"string","rule_fingerprint":"string","instance":"string","activating_request":"NOT_A_CULPRIT","period_seconds":0,"ban_time_seconds":0,"failed_requests":0},"end":{"at":"2024-07-29T15:51:28.071Z","release_source":"string","reason":"released"},"contributions":{"crossing_candidate":{"at":"2024-07-29T15:51:28.071Z","window_current":0,"event_id":"string","basis":"heuristic_crossed_flag"},"distinct_claimed_names":0,"windows":[{"expected":0,"present":0,"window":"activation_window","status":"complete","evidence":"raw","window_index":0,"counts_are_upper_bounds":true,"summary_check_unreliable":true}],"items":[{"at":"2024-07-29T15:51:28.071Z","window_index":0,"window_current":0,"crossed":true,"account_known":true,"claimed_username":"string","account":"string","client_ip":"string","subject_match":true,"event_id":"string","request_id":"string","count_source":"string","protocol":"string","redacted":true}],"caveats":["string"],"status":"complete","truncated":true},"hits":{"by_source":{},"distinct_claimed_names":0,"subject_hits":0,"claimants":[{"claimed_username":"string","account":"string","hits":0}],"evidence":"raw","count":0,"count_is_upper_bound":true,"interval_approximate":true},"unknowns":["string"],"ban_ref":"string","network":"string"}],"orphan_hits":{"by_source":{},"distinct_claimed_names":0,"subject_hits":0,"claimants":[{"claimed_username":"string","account":"string","hits":0}],"evidence":"raw","count":0,"count_is_upper_bound":true,"interval_approximate":true},"threshold_tolerated":{"evidence":"raw","count":0,"count_is_upper_bound":true},"unconfirmed_activations":[{"at":"2024-07-29T15:51:28.071Z","bucket_id":"string","release_source":"string","operator_client_id":"string","keys_removed":0,"event_id":"string","kind":"ban_activation_unconfirmed","network":"string","rule":"string"}],"releases":[{"at":"2024-07-29T15:51:28.071Z","bucket_id":"string","release_source":"string","operator_client_id":"string","keys_removed":0,"event_id":"string","kind":"ban_activation_unconfirmed","network":"string","rule":"string"}],"counter_resets":[{"at":"2024-07-29T15:51:28.071Z","bucket_id":"string","release_source":"string","operator_client_id":"string","keys_removed":0,"event_id":"string","kind":"ban_activation_unconfirmed","network":"string","rule":"string"}],"page":{"next_cursor":"string","limit":0},"projection":"support","schema_version":"string","result_basis":"matches_found"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryBanSearchResponse"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./supporthistorybansearchresponse.Schema.json")}
+>
+
+</Schema>

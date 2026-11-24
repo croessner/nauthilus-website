@@ -42,6 +42,8 @@ auth:
           action_number_of_workers: 10
           queue_length: 100
           cache_flush_script_path: "/etc/nauthilus/lua/cache_flush.lua"
+          # Since 4.2.0: compile hot Lua loops to native code (default true; restart required).
+          jit: true
         named_backends:
           reporting:
             backend_script_path: "/etc/nauthilus/lua/reporting.lua"

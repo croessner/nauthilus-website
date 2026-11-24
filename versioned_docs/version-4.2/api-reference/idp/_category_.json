@@ -1,0 +1,8 @@
+{
+  "label": "IdP API",
+  "position": 2,
+  "link": {
+    "type": "doc",
+    "id": "api-reference/idp/nauthilus-idp-api"
+  }
+}

@@ -1,0 +1,31 @@
+---
+id: supporthistorybancontext
+title: "SupportHistoryBanContext"
+description: ""
+sidebar_label: "SupportHistoryBanContext"
+hide_title: true
+hide_table_of_contents: true
+schema: true
+sample: {"at":"2024-07-29T15:51:28.071Z","client_ip":"string","bans":[{"activated_at":"2024-07-29T15:51:28.071Z","planned_end":"2024-07-29T15:51:28.071Z","detail":{"activation":{"at":"2024-07-29T15:51:28.071Z","bucket_id":"string","window_index":0,"window_current":0,"window_previous":0,"total":0,"effective_limit":0,"planned_end":"2024-07-29T15:51:28.071Z","kind":"ban_activated","rule":"string","stored_rule":"string","rule_fingerprint":"string","instance":"string","activating_request":"NOT_A_CULPRIT","period_seconds":0,"ban_time_seconds":0,"failed_requests":0},"end":{"at":"2024-07-29T15:51:28.071Z","release_source":"string","reason":"released"},"contributions":{"crossing_candidate":{"at":"2024-07-29T15:51:28.071Z","window_current":0,"event_id":"string","basis":"heuristic_crossed_flag"},"distinct_claimed_names":0,"windows":[{"expected":0,"present":0,"window":"activation_window","status":"complete","evidence":"raw","window_index":0,"counts_are_upper_bounds":true,"summary_check_unreliable":true}],"items":[{"at":"2024-07-29T15:51:28.071Z","window_index":0,"window_current":0,"crossed":true,"account_known":true,"claimed_username":"string","account":"string","client_ip":"string","subject_match":true,"event_id":"string","request_id":"string","count_source":"string","protocol":"string","redacted":true}],"caveats":["string"],"status":"complete","truncated":true},"hits":{"by_source":{},"distinct_claimed_names":0,"subject_hits":0,"claimants":[{"claimed_username":"string","account":"string","hits":0}],"evidence":"raw","count":0,"count_is_upper_bound":true,"interval_approximate":true},"unknowns":["string"],"ban_ref":"string","network":"string"},"attribution":{"contributing_accounts":"Unknown Type: array,null","subject_contributions":[{"at":"2024-07-29T15:51:28.071Z","window_index":0,"window_current":0,"ban_active":true,"attempt_id":"string","event_id":"string","request_id":"string","count_source":"string","protocol":"string","matched_by":"recorded_account"}],"counts":{"listed":0,"subject_by_account":0,"subject_by_login_claim":0,"other_accounts":0,"distinct_other_accounts":0,"no_account":0,"unresolved":0,"counted_while_banned":0},"code":"SUBJECT_ACCOUNT","other_contributors":"observed","person_attribution":"NOT_ESTABLISHED","identities_redacted":true,"subject_contributions_truncated":true},"evidence":{"completeness":"complete","limitations":["string"]},"end":{"at":"2024-07-29T15:51:28.071Z","release_source":"string","reason":"released"},"ban_history":{"from":"2024-07-29T15:51:28.071Z","until":"2024-07-29T15:51:28.071Z","ban_ref":"string","network":"string"},"ban_ref":"string","network":"string","scope":"ip","rule":"string","activation_reason":"FAILURE_THRESHOLD_EXCEEDED","subject_relation":"ACTIVATING_REQUEST"}],"limitations":["string"],"attempt_id":"string","request_id":"string","reason":"REJECTED_BY_BRUTE_FORCE_PROTECTION","status":"matched"}
+custom_edit_url: null
+---
+
+import Schema from "@theme/Schema";
+import Heading from "@theme/Heading";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"SupportHistoryBanContext"}
+>
+</Heading>
+
+
+
+
+
+<Schema
+  {...require("./supporthistorybancontext.Schema.json")}
+>
+
+</Schema>

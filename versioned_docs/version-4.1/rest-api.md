@@ -241,6 +241,7 @@ The current route scopes are:
 | Route family | Scope, any-of |
 | --- | --- |
 | Authentication routes (`/api/v1/auth/*`) and management OpenAPI documents (`/api/v1/openapi.yaml`, `/api/v1/openapi.json`) | `nauthilus:authenticate`. |
+| Account listing (`mode=list-accounts` on the authentication routes) | `nauthilus:list_accounts` in addition to `nauthilus:authenticate`; a credential with only one of them receives `403`. |
 | Brute-force list (`GET` and `POST /api/v1/bruteforce/list`) and OIDC session list (`GET /api/v1/oidc/sessions/{user_id}`) | `nauthilus:security_read`; the wider `nauthilus:security` and `nauthilus:admin` include it. |
 | Cache flush, brute-force flush (synchronous and `/async`), and OIDC session deletion | `nauthilus:security_write`; the wider `nauthilus:security` and `nauthilus:admin` include it. |
 | Asynchronous job status (`GET /api/v1/async/jobs/{jobId}`) | `nauthilus:security_read` or `nauthilus:security_write`; the wider `nauthilus:security` and `nauthilus:admin` include both. |

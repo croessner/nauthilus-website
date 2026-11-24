@@ -55,7 +55,7 @@ sequenceDiagram
     end
     Nauthilus->>Policy: evaluate pre_auth rules
     Policy-->>Client: deny (password not checked)
-    Note over Nauthilus,Rep: For a login that reaches the password check, a rule at auth_decision<br/>hands the backend result to the plugin (learn_outcome); it learns in the background.
+    Note over Nauthilus,Rep: For a login that reaches the password check, a rule at auth_decision<br/>hands the backend result to the plugin (learn_outcome), which learns in the background.
 ```
 
 1. At `pre_auth` the plugin reads what it knows about the client address and reports its band. The Lua script

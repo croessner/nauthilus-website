@@ -7,6 +7,11 @@ sidebar_position: 12
 
 # Tutorial: MariaDB + Lua
 
+:::tip Tested recipe
+The [SQL users](../lua-cookbook/sql-users.mdx) recipe of the Lua Cookbook is a current, tested version of this
+tutorial for Nauthilus 4.1, including account listing and MFA callbacks.
+:::
+
 This tutorial shows how Nauthilus can authenticate users without LDAP. MariaDB stores the account data, while a Lua backend implements the lookup and password verification logic.
 
 Use this tutorial if your real deployment needs to connect Nauthilus to an existing application database or if you want to understand where custom backend logic belongs.
@@ -252,6 +257,9 @@ local function mysql_query(mysql, query, ...)
     nauthilus_util.if_error_raise(err_statement)
 
     local result, err_query = statement:query(...)
+    -- Close the statement: MariaDB keeps every prepared statement until it is closed and refuses new ones after
+    -- max_prepared_stmt_count, which would make every later login fail.
+    statement:close()
     nauthilus_util.if_error_raise(err_query)
 
     return result
@@ -340,7 +348,9 @@ The Lua backend does not replace Nauthilus. It only owns the part that is specif
 - request parsing
 - backend result handling
 
-The account lookup uses a prepared statement with bound parameters. Do not build SQL by quoting or concatenating `request.username`, account names, or any other request value. Read-only database credentials reduce impact, but they do not make string-built SQL safe.
+The account lookup uses a prepared statement with bound parameters and closes it after the query. Without
+`statement:close()`, MariaDB keeps one prepared statement per login and refuses new ones once
+`max_prepared_stmt_count` (16382 by default) is reached. Do not build SQL by quoting or concatenating `request.username`, account names, or any other request value. Read-only database credentials reduce impact, but they do not make string-built SQL safe.
 
 That split is the main design idea. YAML wires the system together; Lua contains the custom business logic.
 

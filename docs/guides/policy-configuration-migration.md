@@ -130,7 +130,10 @@ policy:
 
 `module` is the canonical lowercase Lua authority. The example's authored provider key resolves to the immutable
 internal identity `dkim2/lua.reputation.risk`, and the callback returns local `risk_score` for the host-qualified fact
-`lua.reputation.risk_score`. Every produced fact must exist with identical category, type, and bounds in every exact
+`lua.reputation.risk_score`. Configuration always references the provider by its authored key: domain-plan entries
+use `use: dkim2/risk` and effects use `provider: dkim2/risk`. The internal identity is not a reference form, and
+`use: dkim2/lua.reputation.risk` is rejected as not an exact qualified provider identity.
+Every produced fact must exist with identical category, type, and bounds in every exact
 target schema and must allow source `lua`. Explicit targets are used as written; when omitted, target-aware preparation
 derives them only from exact plan and effect bindings.
 

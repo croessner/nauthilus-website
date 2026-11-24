@@ -1,0 +1,210 @@
+---
+title: "Recipe: Learning IP reputation"
+description: The bundled reputation plugin learns from login results, a Lua environment source marks privileged accounts, and policy rules protect them from suspicious addresses; with operator overrides through the plugin's management API
+keywords: [Lua, Cookbook, Go plugin, Native plugin, Reputation, Learning, Override, Client credentials, Policy]
+sidebar_label: "Learning IP reputation"
+sidebar_position: 6.7
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import compose from '@site/static/cookbook/reputation/docker-compose.yml?raw';
+import setupSh from '@site/static/cookbook/reputation/setup.sh?raw';
+import config from '@site/static/cookbook/reputation/nauthilus/nauthilus.yml?raw';
+import privilegedLua from '@site/static/cookbook/reputation/nauthilus/lua/environment/privileged_account.lua?raw';
+import registryLua from '@site/static/cookbook/reputation/nauthilus/lua/policy/registry.lua?raw';
+import testSh from '@site/static/cookbook/reputation/test.sh?raw';
+
+# Recipe: Learning IP reputation
+
+Nauthilus can learn which client addresses behave well and which do not. This recipe uses the bundled **reputation
+plugin** to do that, and combines it with a small **Lua script**:
+
+- Every login teaches the plugin something. A wrong password adds risk to the client address, a successful login adds
+  trust.
+- Before the password is checked, the plugin reports the **band** of the client address: `unknown`, `positive`,
+  `trusted`, `suspicious`, or `blocked`.
+- A **Lua environment source** marks privileged accounts, such as administrators.
+- **Policy rules** protect privileged accounts from suspicious addresses, while ordinary users behind the same shared
+  network keep working. An administrator can override the learned band of an address or a network at any time.
+
+This is the most advanced recipe of the cookbook. Read [Country rules per account](geo-regions.mdx) first; it
+introduces native plugins with a much smaller configuration.
+
+**Shown:** native Go plugin (learning obligation, assessment provider, management API), Lua environment source, policy
+record predicates, built-in identity provider with the client credentials grant.<br />
+**Download:** [reputation.tar.gz](pathname:///cookbook/reputation.tar.gz)
+
+## What happens
+
+```mermaid
+sequenceDiagram
+    actor Client
+    participant Nauthilus
+    participant Rep as Reputation plugin (Go)
+    participant Lua as privileged_account.lua
+    participant Policy as Policy rules
+    participant Valkey
+    Client->>Nauthilus: login (alice, 198.51.100.7)
+    par pre_auth checkpoint
+        Nauthilus->>Rep: assess 198.51.100.7
+        Rep->>Valkey: read decayed risk and trust
+        Rep-->>Nauthilus: band = suspicious
+    and
+        Nauthilus->>Lua: nauthilus_call_environment
+        Lua-->>Nauthilus: privileged = true
+    end
+    Nauthilus->>Policy: evaluate pre_auth rules
+    Policy-->>Client: deny (password not checked)
+    Note over Nauthilus,Rep: For a login that reaches the password check, a rule at auth_decision<br/>hands the backend result to the plugin (learn_outcome); it learns in the background.
+```
+
+1. At `pre_auth` the plugin reads what it knows about the client address and reports its band. The Lua script
+   reports whether the account is privileged.
+2. A rule refuses privileged accounts from `suspicious` addresses and everybody from `blocked` ones.
+3. Otherwise the password is checked. A rule at `auth_decision` decides as usual and carries the obligation
+   `learn_outcome`: Nauthilus hands the backend result to the plugin, which updates the address in the background.
+   Learning never delays or changes the login.
+
+## Start and test
+
+`setup.sh` creates the key material once: two HMAC keys for the plugin and a signing key for the identity provider.
+
+```bash
+./setup.sh
+docker compose up -d --wait
+./test.sh
+```
+
+The test picks addresses without history for every run, because the plugin keeps its model in Valkey: do not empty
+Valkey with `FLUSHALL` while Nauthilus runs. To start over, use `docker compose down -v`.
+
+Try it by hand. Mark alice as privileged, then send four wrong passwords for bob from one address:
+
+```bash
+docker compose exec valkey valkey-cli SADD cookbook:privileged alice
+
+for i in 1 2 3 4; do
+  curl -s -o /dev/null -u mailserver:mailserver-backchannel-secret -H 'Content-Type: application/json' \
+    -d "{\"username\":\"bob\",\"password\":\"wrong-$i\",\"protocol\":\"imap\",\"client_ip\":\"198.51.100.7\"}" \
+    http://127.0.0.1:28088/api/v1/auth/json
+done
+
+curl -i -u mailserver:mailserver-backchannel-secret -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"alice-secret","protocol":"imap","client_ip":"198.51.100.7"}' \
+  http://127.0.0.1:28088/api/v1/auth/json
+```
+
+alice is refused with `Login from a suspicious address is not allowed for this account`; bob still logs in from the
+same address with his correct password.
+
+## The management API
+
+The plugin adds administrator endpoints below `/api/v1/custom/reputation/`. They accept only a Bearer token with the
+scope `nauthilus:admin`. The built-in identity provider issues it to the client `reputation-admin`:
+
+```bash
+TOKEN=$(curl -s -u reputation-admin:reputation-admin-secret \
+  -d grant_type=client_credentials -d scope=nauthilus:admin \
+  http://127.0.0.1:28088/oidc/token | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+
+# What does the plugin know about an address?
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"kind": "ip", "subject": "198.51.100.7"}' \
+  http://127.0.0.1:28088/api/v1/custom/reputation/lookup
+
+# Mark the address as trusted for one hour.
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"kind": "ip", "subject": "198.51.100.7", "band": "trusted", "ttl_seconds": 3600,
+       "reason": "known_office", "origin": "operator", "audit_id": "ticket-1", "previous_audit": ""}' \
+  http://127.0.0.1:28088/api/v1/custom/reputation/override
+
+# Block a whole network.
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"kind": "network", "subject": "203.0.113.0/24", "band": "blocked", "ttl_seconds": 3600,
+       "reason": "incident", "origin": "operator", "audit_id": "ticket-2", "previous_audit": ""}' \
+  http://127.0.0.1:28088/api/v1/custom/reputation/override
+
+# Remove the block; previous_audit must name the audit ID of the override you replace.
+curl -s -X DELETE -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"kind": "network", "subject": "203.0.113.0/24", "previous_audit": "ticket-2",
+       "audit_id": "ticket-3", "reason": "resolved", "origin": "operator"}' \
+  http://127.0.0.1:28088/api/v1/custom/reputation/override
+```
+
+- The lookup shows the band, the scores, and the evidence of all three profiles. It never shows the stored key or the
+  HMAC tag.
+- An override wins over learned evidence. Among overrides, an exact address wins over its network, so a trusted
+  office address stays usable while the rest of its network is blocked.
+- `previous_audit` protects against lost updates: replacing or deleting an override needs the audit ID of the current
+  one.
+- A network override applies to the addresses inside it only for networks listed in `ip_override_networks`.
+
+See [Operating the reputation subsystem](../guides/reputation-operations.md#management-api) for the complete API.
+
+## The stack
+
+<CodeBlock language="yaml" title="docker-compose.yml">{compose}</CodeBlock>
+
+<CodeBlock language="bash" title="setup.sh">{setupSh}</CodeBlock>
+
+The stack mounts `secrets/` as `/run/secrets`. The keys stay on your machine: the files are excluded from Git and
+from the download archive.
+
+## The configuration
+
+<CodeBlock language="yaml" title="nauthilus/nauthilus.yml">{config}</CodeBlock>
+
+### The plugin
+
+- **`plugins.opaque_identifier_tagger`** gives the host two HMAC keys. The plugin never stores an address, network, or
+  account in clear text, only its HMAC tag. Every Nauthilus instance that shares the Valkey data needs the same keys.
+- **The model block** (`model_id` to `bands`) defines how evidence is stored, how fast it fades, and how it turns into
+  bands. The values are chosen for a demo: three to four wrong passwords make an address `suspicious`, five successful
+  logins make it `trusted`. Production values are far more patient; see the calibration example in the
+  [plugin reference](../developer/go-plugins/reference-plugins/reputation.md). A change to the model needs a new
+  `model_id`.
+- **`learned_blocked: false`** means learned evidence never blocks an address by itself. Only an administrator does,
+  with an override.
+- **`auth_learning`, `sources`, and `signals`** define the learning from logins. A success adds trust to the address,
+  its `/24` network, and the account; a wrong password adds risk to the address and its network only, so an attacker
+  cannot damage the reputation of an account.
+- **`target_bindings`** registers the assessment provider `authn/plugin.reputation.authentication`. It reads the
+  client address from `nauthilus.request.client.ip` and publishes the record facts `plugin.reputation.auth_subjects`
+  (the profile named by `decision_profile`, here `fast`) and `..._fast`, `..._operational`, `..._baseline`.
+
+### The identity provider
+
+The management API needs a Bearer token, so the recipe turns on the built-in identity provider with one machine client.
+`auth.backchannel.oidc_bearer.enabled` lets Nauthilus accept the tokens it issued itself. The `frontend` and
+`mfa.webauthn` blocks are the minimum the provider needs to start; the recipe does not use a browser login. The
+frontend `encryption_secret` must be at least 32 bytes long.
+
+### The rules
+
+- **`blocked_by_operator`** uses a record predicate: `records` with `quantifier: any` matches when at least one record
+  of `plugin.reputation.auth_subjects` has `band: blocked`. Everybody is refused.
+- **`privileged_account_from_suspicious_address`** combines the Lua fact with the plugin's records.
+- **`learn_success` and `learn_failure`** decide at `auth_decision` like the built-in rules and attach the obligation
+  `authn/plugin.reputation.learn_outcome`. Never attach it to a rule that denies because of reputation: the plugin
+  would then learn from its own verdict.
+- The target binds the set at both checkpoints with `plans.pre_auth` and `plans.auth_decision`.
+
+## The Lua environment source
+
+<CodeBlock language="lua" title="nauthilus/lua/environment/privileged_account.lua">{privilegedLua}</CodeBlock>
+
+The script asks Valkey whether the username is a member of the set `cookbook:privileged` and always emits the
+attribute, `true` or `false`. It does not decide anything and it cannot see the reputation: the policy combines both.
+
+<CodeBlock language="lua" title="nauthilus/lua/policy/registry.lua">{registryLua}</CodeBlock>
+
+## What the test checks
+
+<CodeBlock language="bash" title="test.sh">{testSh}</CodeBlock>
+
+## Ideas for your own changes
+
+- Refuse every login from `suspicious` addresses with a `tempfail` instead of a `deny`, so mail clients retry later.
+- Learn from more sources, for example your mail filter, through the `reputation/observe` target of the Policy API.
+- Run several Nauthilus instances with the same keys and Valkey, so they share what they learned.
+- Look at the plugin's metrics: `curl -s http://127.0.0.1:28088/metrics | grep nauthilus_plugin_reputation`.

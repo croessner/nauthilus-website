@@ -134,8 +134,13 @@ function cookbookFilesPlugin() {
           continue;
         }
 
+        // setup.sh of a recipe creates local key material (tls/, secrets/); it must never be published.
+        for (const local of ['tls', 'secrets']) {
+          fs.rmSync(path.join(outDir, 'cookbook', entry.name, local), {recursive: true, force: true});
+        }
+
         execFileSync('tar', [
-          '--exclude', '.DS_Store', '--exclude', 'tls',
+          '--exclude', '.DS_Store', '--exclude', 'tls', '--exclude', 'secrets',
           '-czf', path.join(outDir, 'cookbook', `${entry.name}.tar.gz`),
           '-C', 'static', 'cookbook/lib', `cookbook/${entry.name}`, 'cookbook/run-all.sh',
         ], {env: {...process.env, COPYFILE_DISABLE: '1'}});

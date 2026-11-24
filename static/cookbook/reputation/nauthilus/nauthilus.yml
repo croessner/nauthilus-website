@@ -1,0 +1,361 @@
+# Nauthilus configuration of the "Learning IP reputation" Lua Cookbook recipe.
+# Shown: the bundled native reputation plugin (learning, assessment, management API) together with a Lua environment
+# source, combined by policy rules; the built-in identity provider issues the administrator's API token.
+
+runtime:
+  instance_name: "cookbook-reputation"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    positive_cache_ttl: "1h"
+    negative_cache_ttl: "5m"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce08"
+    encryption_secret: "cookbookEncryption08"
+
+# Native Go plugins. The Nauthilus image ships reputation.so below /usr/local/lib/nauthilus/plugins.
+plugins:
+  # The plugin stores IP addresses, networks, and accounts only as HMAC tags. The host computes them with these keys
+  # (32 random bytes each, created by setup.sh). Every Nauthilus instance that shares the Redis data needs the same keys.
+  opaque_identifier_tagger:
+    scopes:
+      - scope: reputation-subject
+        active: {version: current, secret_ref: {file: /run/secrets/reputation-subject.key}}
+      - scope: reputation-manifest
+        active: {version: allocation, secret_ref: {file: /run/secrets/reputation-manifest.key}}
+
+  # A checksum or signature is verified when one is configured. This recipe configures none, so it runs with every
+  # image; in production pin the artifact with checksum (sha256:...) or a minisign signature.
+  verification_policy: when_present
+  allowed_dirs:
+    - /usr/local/lib/nauthilus/plugins
+  modules:
+    - name: reputation
+      type: go
+      path: /usr/local/lib/nauthilus/plugins/reputation.so
+      optional: false
+      config:
+        # The model: how evidence is stored and how fast it fades. Changing these values needs a new model_id.
+        state_schema: reputation-state.v1
+        model_id: cookbook-v1
+        allocation_maintenance: false
+        allocation_drain_generation: 0
+        subject_scope: reputation-subject
+        manifest_scope: reputation-manifest
+        retention: 168h
+        event_manifest_ttl: 49h
+        subject_seen_ttl: 49h
+        maximum_retry_horizon: 24h
+        maximum_source_classes: 4
+        maximum_new_subjects_per_source_hour: 1000
+        maximum_event_manifests_per_source: 10000
+        maximum_seen_events_per_subject: 10000
+        # Evidence fades with these half-lives. "fast" reacts to the last hour, "operational" to the last days.
+        profiles:
+          fast: {half_life: 1h}
+          operational: {half_life: 24h}
+          baseline: {half_life: 168h}
+        # score = tanh(ln((risk + alpha) / (trust + alpha)) / temperature) * confidence,
+        # confidence = 1 - exp(-(risk + trust) / saturation). Small values react to few events, as a demo should.
+        score: {alpha: 1, saturation: 3, temperature: 1}
+        # Bands turn scores into words. With these demo thresholds three wrong passwords make an address
+        # "suspicious", and five successful logins make it "trusted". Learned evidence never blocks on its own.
+        bands:
+          learned_blocked: false
+          minimum_confidence: 0.2
+          minimum_samples: 1
+          diversity_mass_floor: 0.5
+          minimum_block_source_classes: 2
+          authoritative_risk_max_age: 24h
+          severe_risk_max_age: 24h
+          severe_risk_score: 0.65
+          trusted: {score: 0.65, confidence: 0.70, samples: 5}
+          positive: {score: 0.35, confidence: 0.35, samples: 2}
+          suspicious_fast: {score: 0.5, confidence: 0.5, samples: 3}
+          suspicious_operational: {score: 0.5, confidence: 0.5, samples: 3}
+          blocked: {score: 0.9, confidence: 0.9, samples: 50}
+        network_subjects: {ipv4_prefix: 24, ipv6_prefix: 64}
+        account_normalization: exact
+        services: []
+
+        # Learning from logins: the host hands every backend result to the plugin after the password check.
+        auth_learning_queue: {capacity: 1024, max_age: 30s, timeout: 5s}
+        auth_learning:
+          success_signal: auth.success
+          bad_credentials_signal: auth.bad_credentials
+        source_class_caps:
+          authentication: {risk: 20, trust: 20, samples: 100}
+        sources:
+          authentication:
+            source_policy_id: authentication-backend-v1
+            binding:
+              kind: host_execution
+              module: reputation
+              component: learn_outcome
+              extension_point: obligation
+              operation: execute
+              targets: [authn/authenticate]
+            source_class: authentication
+            allowed_signals: [auth.success, auth.bad_credentials]
+            allowed_subjects: {auth_client: [ip], auth_account: [account]}
+            derived_subjects: {auth_client: [network]}
+            maximum_subjects: 2
+            maximum_lateness: 10m
+            future_clock_skew: 0s
+            allow_magnitude: false
+            requests_per_second: 50
+            max_concurrency: 4
+        # A successful login adds trust to the client address, its network, and the account. A wrong password adds
+        # risk to the address and its network only, so an attacker cannot ruin an account's reputation.
+        signals:
+          auth.success:
+            direction: trust
+            weight: 1.0
+            magnitude: forbidden
+            subject_roles: {auth_client: {ip: 1.0, network: 0.25}, auth_account: {account: 1.0}}
+            source_classes: [authentication]
+            evidence_origin: host_backend_outcome
+            authoritative: false
+            max_event_age: 10m
+            profiles: [fast, operational, baseline]
+          auth.bad_credentials:
+            direction: risk
+            weight: 1.0
+            magnitude: forbidden
+            subject_roles: {auth_client: {ip: 1.0, network: 0.25}}
+            source_classes: [authentication]
+            evidence_origin: host_backend_outcome
+            authoritative: false
+            max_event_age: 10m
+            profiles: [fast, operational, baseline]
+
+        # Assessment: before the password check, the plugin reports the band of the client address.
+        target_bindings:
+          - target: authn/authenticate
+            component: authentication
+            output_fact: auth_subjects
+            decision_profile: fast
+            subjects:
+              - {attribute: nauthilus.request.client.ip, category: environment, role: auth_client, kind: ip}
+        # An operator override on one of these networks also applies to every address inside it.
+        ip_override_networks:
+          - 203.0.113.0/24
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # Scoped credentials: each caller holds only the scopes it needs. Demo passwords only.
+      users:
+        # The mail server (or curl in test.sh) checks logins.
+        - username: "mailserver"
+          password: "mailserver-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+    # The management API of the reputation plugin accepts only Bearer tokens. Nauthilus validates the tokens that
+    # its own identity provider issues.
+    oidc_bearer:
+      enabled: true
+
+  backends:
+    order:
+      - "cache"
+      - "lua"
+
+    lua:
+      backend:
+        default:
+          backend_script_path: "/etc/nauthilus/lua/backend.lua"
+          # require() finds the bundled helpers and files in /etc/nauthilus/lua.
+          package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
+          backend_number_of_workers: 2
+          environment_vm_pool_size: 2
+
+        search:
+          - protocol:
+              - "imap"
+              - "smtp"
+            cache_name: "demo"
+
+# The built-in identity provider. It only serves one machine client here: the administrator's tool, which gets a
+# token with the client credentials grant. The frontend and WebAuthn blocks are the minimum the provider needs to
+# start; this recipe uses no browser login.
+identity:
+  frontend:
+    enabled: true
+    # Demo value only; at least 32 bytes.
+    encryption_secret: "cookbook-frontend-secret-08-at-least-32-bytes"
+    assets:
+      html_static_content_path: "/usr/app/static/templates"
+      language_resources: "/usr/app/server/resources"
+    localization:
+      languages: [en]
+      default_language: "en"
+  mfa:
+    webauthn:
+      rp_display_name: "Nauthilus Cookbook"
+      rp_id: "localhost"
+      rp_origins:
+        - "http://localhost:28088"
+  oidc:
+    enabled: true
+    issuer: "http://localhost:28088"
+    access_token_type: "opaque"
+    token_endpoint_auth_methods_supported: [client_secret_basic]
+    signing_keys:
+      - id: "cookbook-rs256"
+        key_file: "/run/secrets/oidc-signing.key"
+        algorithm: "RS256"
+        active: true
+    clients:
+      - name: "Reputation administrator"
+        client_id: "reputation-admin"
+        # Demo value only.
+        client_secret: "reputation-admin-secret"
+        grant_types:
+          - client_credentials
+        token_endpoint_auth_method: "client_secret_basic"
+        access_token_lifetime: 5m
+        scopes:
+          - nauthilus:admin
+
+policy:
+  namespaces:
+    authn:
+      # The registry script declares the attribute that environment/privileged_account.lua emits.
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua/policy/registry.lua"
+
+      providers:
+        # The reputation plugin's assessment provider (component "authentication" of its target binding), so its
+        # identity is authn/plugin.reputation.authentication. It returns one record per subject with the band.
+        authentication:
+          kind: native
+          module: reputation
+          targets: [{action: authenticate}]
+          produced_facts:
+            - plugin.reputation.auth_subjects
+            - plugin.reputation.auth_subjects_fast
+            - plugin.reputation.auth_subjects_operational
+            - plugin.reputation.auth_subjects_baseline
+          failure: indeterminate
+          timeout: 500ms
+        # The Lua environment source.
+        lua_environment_privileged_account:
+          kind: lua_environment
+          script_path: "/etc/nauthilus/lua/environment/privileged_account.lua"
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+
+      domain_plans:
+        reputation:
+          checkpoints:
+            # Both providers run before the password is checked.
+            pre_auth:
+              providers:
+                - name: reputation
+                  use: authn/plugin.reputation.authentication
+                  actions: [authenticate]
+                - name: privileged_account
+                  use: authn/lua_environment_privileged_account
+                  actions: [authenticate]
+            auth_backend:
+              providers:
+                - name: backend_order
+                  use: authn/auth_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+
+      policy_sets:
+        reputation:
+          visibility: private
+          rules:
+            # An operator blocked the address or its network: nobody logs in from there.
+            - name: blocked_by_operator
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [reputation]
+              if:
+                records:
+                  attribute: plugin.reputation.auth_subjects
+                  quantifier: any
+                  where: {field: band, eq: blocked}
+              then:
+                decision: deny
+                reason: reputation_blocked
+                response_message:
+                  from: literal
+                  text: "Access from your network is blocked"
+            # A suspicious address may not log in to a privileged account. Other accounts may: a shared office or
+            # mobile network can look suspicious because of one user's typos.
+            - name: privileged_account_from_suspicious_address
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [reputation, privileged_account]
+              if:
+                all:
+                  - attribute: lua.plugin.cookbook.account.privileged
+                    is: true
+                  - records:
+                      attribute: plugin.reputation.auth_subjects
+                      quantifier: any
+                      where: {field: band, eq: suspicious}
+              then:
+                decision: deny
+                reason: reputation_suspicious
+                response_message:
+                  from: literal
+                  text: "Login from a suspicious address is not allowed for this account"
+
+            # Learning. The rules decide like the built-in rules and also hand the backend result to the plugin.
+            # Never attach learn_outcome to a rule that denies because of reputation: the plugin would learn from its
+            # own verdict.
+            - name: learn_success
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: backend.authenticated
+                is: true
+              then:
+                decision: permit
+                obligations:
+                  - id: authn/plugin.reputation.learn_outcome
+            - name: learn_failure
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: backend.authenticated
+                is: false
+              then:
+                decision: deny
+                obligations:
+                  - id: authn/plugin.reputation.learn_outcome
+
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/reputation
+      plans:
+        pre_auth:
+          policy_sets: [authn/reputation]
+        auth_decision:
+          policy_sets: [authn/reputation]

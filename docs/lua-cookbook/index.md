@@ -23,7 +23,7 @@ with the Lua JIT switched on and off. When a recipe page says "this works", a te
 
 - Docker with the Compose plugin (`docker compose version`)
 - `curl` and `bash` for the test scripts
-- `openssl` for the one recipe that uses TLS
+- `openssl` for the recipes that create key material
 
 Nothing is installed on your machine. Every stack listens only on `127.0.0.1`.
 
@@ -37,6 +37,7 @@ Nothing is installed on your machine. Every stack listens only on `127.0.0.1`.
 | [Account rules](account-rules.mdx) | Allow protocols per account, lock accounts during offboarding | subject sources, policy registry | 28084 |
 | [Login journal](login-journal.mdx) | Answer "when did this user last log in, and from where?" and mail the admin on brute-force blocks | POST-action, brute-force action | 28085 |
 | [Country rules per account](geo-regions.mdx) | Let some accounts log in only from the countries of their region | native Go plugin (GeoIP) together with a Lua environment source | 28087 |
+| [Learning IP reputation](reputation.mdx) | Learn which addresses misbehave, protect privileged accounts from them, and override per address or network | native Go plugin (reputation) together with a Lua environment source | 28088 |
 | [Policy API](policy-api.mdx) | Let a VPN gateway ask "may this user connect now?" | generic policy provider (`kind: lua`) | 28086 |
 
 Every recipe page has the same structure: what the recipe does, how to start and test it, the configuration, every
@@ -62,7 +63,8 @@ Nauthilus calls Lua at many points. Each point expects a script with a fixed ent
 | Generic policy provider | `_G["policy.facts.collect"]`, `_G["policy.effects.execute"]` | for the Policy decision API | Policy API |
 
 Native Go plugins are the other way to extend Nauthilus. They deliver facts and effects to the same policy as Lua
-scripts; [Country rules per account](geo-regions.mdx) combines the bundled GeoIP plugin with a Lua environment source.
+scripts; [Country rules per account](geo-regions.mdx) combines the bundled GeoIP plugin with a Lua environment source,
+and [Learning IP reputation](reputation.mdx) does the same with the bundled reputation plugin.
 
 The [Lua API reference](../lua-api/introduction.md) describes every module. [Lua runtimes and
 capabilities](../lua-api/runtimes.md) explains which modules each interface can use.

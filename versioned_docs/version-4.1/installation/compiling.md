@@ -41,7 +41,7 @@ you intend to deploy:
 
 ```bash
 git fetch --tags
-git checkout v4.1.2
+git checkout v4.1.3
 ```
 
 For another release, replace the tag with the exact published version you intend to build.

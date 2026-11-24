@@ -36,6 +36,7 @@ Nothing is installed on your machine. Every stack listens only on `127.0.0.1`.
 | [Admin toolkit](admin-toolkit.mdx) | Switch on a maintenance mode and block networks through a small HTTP API | custom hooks, environment sources, policy registry | 28083 |
 | [Account rules](account-rules.mdx) | Allow protocols per account, lock accounts during offboarding | subject sources, policy registry | 28084 |
 | [Login journal](login-journal.mdx) | Answer "when did this user last log in, and from where?" and mail the admin on brute-force blocks | POST-action, brute-force action | 28085 |
+| [Country rules per account](geo-regions.mdx) | Let some accounts log in only from the countries of their region | native Go plugin (GeoIP) together with a Lua environment source | 28087 |
 | [Policy API](policy-api.mdx) | Let a VPN gateway ask "may this user connect now?" | generic policy provider (`kind: lua`) | 28086 |
 
 Every recipe page has the same structure: what the recipe does, how to start and test it, the configuration, every
@@ -59,6 +60,9 @@ Nauthilus calls Lua at many points. Each point expects a script with a fixed ent
 | Custom hook | `nauthilus_run_hook(request)` | for `/api/v1/custom/<location>` | Admin toolkit |
 | Policy registry script | top-level `nauthilus_policy.register_attribute(...)` | when the policy snapshot is built | Admin toolkit, Account rules |
 | Generic policy provider | `_G["policy.facts.collect"]`, `_G["policy.effects.execute"]` | for the Policy decision API | Policy API |
+
+Native Go plugins are the other way to extend Nauthilus. They deliver facts and effects to the same policy as Lua
+scripts; [Country rules per account](geo-regions.mdx) combines the bundled GeoIP plugin with a Lua environment source.
 
 The [Lua API reference](../lua-api/introduction.md) describes every module. [Lua runtimes and
 capabilities](../lua-api/runtimes.md) explains which modules each interface can use.

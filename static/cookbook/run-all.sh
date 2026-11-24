@@ -12,7 +12,7 @@ cd "$(dirname "$0")" || exit 1
 RECIPES=("$@")
 
 if [ ${#RECIPES[@]} -eq 0 ]; then
-    RECIPES=(flatfile-users sql-users admin-toolkit account-rules login-journal policy-api)
+    RECIPES=(flatfile-users sql-users admin-toolkit account-rules login-journal geo-regions policy-api)
 fi
 
 failed=()

@@ -1,0 +1,33 @@
+# Lua Cookbook recipe "Country rules per account".
+# Start with: docker compose up -d --wait     Test with: ./test.sh     Stop with: docker compose down
+name: cookbook-geo-regions
+
+services:
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  nauthilus:
+    image: ${NAUTHILUS_IMAGE:-ghcr.io/croessner/nauthilus:v4.2.0}
+    depends_on:
+      valkey:
+        condition: service_healthy
+    environment:
+      # Optional switch for the Lua JIT (Nauthilus 4.2 and later; earlier releases ignore it).
+      NAUTHILUS_AUTH_BACKENDS_LUA_BACKEND_DEFAULT_JIT: ${NAUTHILUS_LUA_JIT:-true}
+    ports:
+      - "127.0.0.1:28087:8080"
+    volumes:
+      - ./nauthilus/nauthilus.yml:/etc/nauthilus/nauthilus.yml:ro
+      - ./nauthilus/lua:/etc/nauthilus/lua:ro
+      - ./nauthilus/geoip:/etc/nauthilus/geoip:ro
+    healthcheck:
+      test: ["CMD", "/usr/app/healthcheck", "--url", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

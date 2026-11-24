@@ -1,0 +1,223 @@
+# Nauthilus configuration of the "Country rules per account" Lua Cookbook recipe.
+# Shown: a bundled native Go plugin (GeoIP) and a Lua environment source, combined by policy rules.
+
+runtime:
+  instance_name: "cookbook-geo-regions"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    positive_cache_ttl: "1h"
+    negative_cache_ttl: "5m"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce07"
+    encryption_secret: "cookbookEncryption07"
+
+# Native Go plugins. The Nauthilus image ships geoip.so below /usr/local/lib/nauthilus/plugins.
+plugins:
+  # A checksum or signature is verified when one is configured. This recipe configures none, so it runs with every
+  # image; in production pin the artifact with checksum (sha256:...) or a minisign signature.
+  verification_policy: when_present
+  allowed_dirs:
+    - /usr/local/lib/nauthilus/plugins
+  modules:
+    - name: geoip
+      type: go
+      path: /usr/local/lib/nauthilus/plugins/geoip.so
+      optional: false
+      config:
+        # One fact provider: it looks up the client address of every authentication request.
+        decision_bindings:
+          - component: environment
+            targets: [authn/authenticate]
+            input: {fact: nauthilus.request.client.ip, category: environment}
+            output_schema: geoip.facts.v1
+        # The demo database is a small JSON file. Production uses a licensed MaxMind database (database_format: mmdb).
+        database_path: /etc/nauthilus/geoip/geoip.json
+        database_format: json
+        # A JSON database is as old as its file. Data older than max_stale_age (at most 365 days) is "unavailable";
+        # refresh the demo file with: touch nauthilus/geoip/geoip.json
+        freshness: {max_age: 8760h, max_stale_age: 8760h}
+        lookup_timeout: 50ms
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # Scoped credentials: each caller holds only the scopes it needs. Demo passwords only.
+      users:
+        # The mail server (or curl in test.sh) checks logins.
+        - username: "mailserver"
+          password: "mailserver-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+
+  backends:
+    order:
+      - "cache"
+      - "lua"
+
+    lua:
+      backend:
+        default:
+          backend_script_path: "/etc/nauthilus/lua/backend.lua"
+          # require() finds the bundled helpers and files in /etc/nauthilus/lua.
+          package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
+          backend_number_of_workers: 2
+          environment_vm_pool_size: 2
+
+        search:
+          - protocol:
+              - "imap"
+              - "smtp"
+            cache_name: "demo"
+
+policy:
+  namespaces:
+    authn:
+      # Country lists the rules use. Policy rules reference them as "@string.<name>".
+      condition_sets:
+        strings:
+          eu_countries: [AT, BE, DE, DK, ES, FI, FR, IE, IT, LU, NL, PL, PT, SE]
+          us_countries: [US]
+
+      # The registry script declares the attribute that environment/account_region.lua emits.
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua/policy/registry.lua"
+
+      providers:
+        # The GeoIP plugin's provider. The key "environment" matches the component of its decision binding, so the
+        # provider's identity is authn/plugin.geoip.environment. produced_facts must name every fact the plugin can
+        # return with this configuration; the host rejects an answer with an undeclared fact.
+        environment:
+          kind: native
+          module: geoip
+          targets: [{action: authenticate}]
+          produced_facts:
+            - plugin.geoip.lookup_state
+            - plugin.geoip.ip
+            - plugin.geoip.data_stale
+            - plugin.geoip.data_age_seconds
+            - plugin.geoip.network
+            - plugin.geoip.matched
+            - plugin.geoip.country_iso
+            - plugin.geoip.country_name
+            - plugin.geoip.city_name
+            - plugin.geoip.asn
+            - plugin.geoip.asn_org
+            - plugin.geoip.asn_prefix
+            - plugin.geoip.asn_registry
+            - plugin.geoip.asn_country_iso
+            - plugin.geoip.asn_allocated
+            - plugin.geoip.asn_status
+          failure: indeterminate
+          timeout: 50ms
+        # The Lua environment source.
+        lua_environment_account_region:
+          kind: lua_environment
+          script_path: "/etc/nauthilus/lua/environment/account_region.lua"
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+
+      # Both providers run at pre_auth, before the password is checked.
+      domain_plans:
+        geo_regions:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: geoip
+                  use: authn/plugin.geoip.environment
+                  actions: [authenticate]
+                - name: account_region
+                  use: authn/lua_environment_account_region
+                  actions: [authenticate]
+            auth_backend:
+              providers:
+                - name: backend_order
+                  use: authn/auth_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+
+      # Each rule combines the Lua fact (the account's region) with the plugin fact (the client's country).
+      policy_sets:
+        geo_regions:
+          visibility: private
+          rules:
+            - name: eu_account_outside_eu
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [geoip, account_region]
+              if:
+                all:
+                  - attribute: lua.plugin.cookbook.account.region
+                    eq: eu
+                  - attribute: plugin.geoip.country_iso
+                    not_in: "@string.eu_countries"
+              then:
+                decision: deny
+                reason: country_not_allowed
+                response_message:
+                  from: literal
+                  text: "Login from this country is not allowed for this account"
+            - name: us_account_outside_us
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [geoip, account_region]
+              if:
+                all:
+                  - attribute: lua.plugin.cookbook.account.region
+                    eq: us
+                  - attribute: plugin.geoip.country_iso
+                    not_in: "@string.us_countries"
+              then:
+                decision: deny
+                reason: country_not_allowed
+                response_message:
+                  from: literal
+                  text: "Login from this country is not allowed for this account"
+
+            # A rule with a missing fact does not match. Without this rule, an address the database does not know
+            # (no country) would let a restricted account through. lookup_state is always present: fresh, stale,
+            # not_found, or unavailable.
+            - name: restricted_account_unknown_location
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [geoip, account_region]
+              if:
+                all:
+                  - attribute: lua.plugin.cookbook.account.region
+                    in: [eu, us]
+                  - attribute: plugin.geoip.lookup_state
+                    not_in: [fresh, stale]
+              then:
+                decision: deny
+                reason: country_unknown
+                response_message:
+                  from: literal
+                  text: "Login location unknown, login not allowed for this account"
+
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/geo_regions
+      plans:
+        pre_auth:
+          policy_sets: [authn/geo_regions]

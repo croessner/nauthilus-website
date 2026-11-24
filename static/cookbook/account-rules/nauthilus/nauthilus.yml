@@ -1,0 +1,141 @@
+# Nauthilus configuration of the "Account rules" Lua Cookbook recipe.
+# Interfaces shown: subject sources and a policy registry script.
+
+runtime:
+  instance_name: "cookbook-account-rules"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    positive_cache_ttl: "1h"
+    negative_cache_ttl: "5m"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce04"
+    encryption_secret: "cookbookEncryption04"
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # Scoped credentials: each caller holds only the scopes it needs. Demo passwords only.
+      users:
+        # The mail server (or curl in test.sh) checks logins.
+        - username: "mailserver"
+          password: "mailserver-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+
+  backends:
+    order:
+      - "cache"
+      - "lua"
+
+    lua:
+      backend:
+        default:
+          backend_script_path: "/etc/nauthilus/lua/backend.lua"
+          # require() finds the bundled helpers and files in /etc/nauthilus/lua.
+          package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
+          backend_number_of_workers: 2
+          subject_vm_pool_size: 2
+
+        search:
+          - protocol:
+              - "imap"
+              - "smtp"
+              - "pop3"
+            cache_name: "demo"
+
+policy:
+  namespaces:
+    authn:
+      # The registry script declares the attributes that the subject sources emit.
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua/policy/registry.lua"
+
+      providers:
+        lua_subject_protocol_access:
+          kind: lua_subject
+          script_path: "/etc/nauthilus/lua/subject/protocol_access.lua"
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+        lua_subject_account_lock:
+          kind: lua_subject
+          script_path: "/etc/nauthilus/lua/subject/account_lock.lua"
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+
+      # Subject sources run at subject_analysis, after the backend checked the password.
+      domain_plans:
+        account_rules:
+          checkpoints:
+            auth_backend:
+              providers:
+                - name: backend_order
+                  use: authn/auth_backend
+                  actions: [authenticate]
+            subject_analysis:
+              providers:
+                - name: protocol_access
+                  use: authn/lua_subject_protocol_access
+                  actions: [authenticate]
+                - name: account_lock
+                  use: authn/lua_subject_account_lock
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+
+      # The rules run at auth_decision, the last checkpoint, where the attributes of all subject sources are known.
+      policy_sets:
+        account_rules:
+          visibility: private
+          rules:
+            - name: protocol_not_allowed
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: lua.plugin.cookbook.protocol.denied
+                is: true
+              then:
+                decision: deny
+                reason: protocol_not_allowed
+                response_message:
+                  from: literal
+                  text: "This account may not use this service"
+            - name: account_locked
+              checkpoint: auth_decision
+              actions: [authenticate]
+              if:
+                attribute: lua.plugin.cookbook.lock.active
+                is: true
+              then:
+                decision: deny
+                reason: account_locked
+                response_message:
+                  from: literal
+                  text: "This account is locked"
+
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/account_rules
+      plans:
+        auth_decision:
+          policy_sets: [authn/account_rules]

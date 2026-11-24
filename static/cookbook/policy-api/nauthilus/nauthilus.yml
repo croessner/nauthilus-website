@@ -1,0 +1,142 @@
+# Nauthilus configuration of the "Policy API" Lua Cookbook recipe.
+# Interface shown: a generic policy provider (kind: lua) behind the Policy HTTP API.
+
+runtime:
+  instance_name: "cookbook-policy-api"
+
+  servers:
+    http:
+      address: "0.0.0.0:8443"
+      # Policy Basic credentials are accepted only over TLS. setup.sh creates the self-signed demo certificate.
+      tls:
+        enabled: true
+        cert: "/etc/nauthilus/tls/server.crt"
+        key: "/etc/nauthilus/tls/server.key"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce06"
+    encryption_secret: "cookbookEncryption06"
+
+# Nauthilus always starts its backchannel HTTP API, which needs at least one credential. This recipe does not use it.
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      users:
+        - username: "unused"
+          password: "unused-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+
+policy:
+  # The Policy HTTP API: POST /api/v1/policy/decisions
+  api:
+    enabled: true
+    http:
+      enabled: true
+    grpc:
+      enabled: false
+    clients:
+      # One client profile per caller. It says which target the caller may ask about and which facts it may send.
+      - principal: vpn-gateway
+        authentication_kinds: [basic]
+        authentication:
+          basic:
+            username: vpn-gateway
+            # Demo value only.
+            password: "vpn-gateway-policy-secret"
+        targets:
+          - namespace: vpn
+            actions: [connect]
+        allowed_schemas: [vpn/connect/v1]
+        allowed_subject_attributes: [group]
+        allowed_resource_attributes: []
+        allowed_environment_attributes: [weekday, hour]
+        allowed_input_attributes: []
+
+  namespaces:
+    vpn:
+      # The schema lists every fact of a "vpn/connect" request: three from the caller, one from Lua.
+      schema_contributions:
+        static:
+          connect:
+            versions:
+              v1:
+                facts:
+                  - {attribute: subject.group, category: subject, type: string, allowed_sources: [caller]}
+                  - {attribute: environment.weekday, category: environment, type: string, allowed_sources: [caller]}
+                  - {attribute: environment.hour, category: environment, type: integer, allowed_sources: [caller]}
+                  - {attribute: lua.office_hours.allowed, category: environment, type: boolean, allowed_sources: [lua]}
+
+      providers:
+        office_hours:
+          kind: lua
+          module: office_hours
+          script_path: "/etc/nauthilus/lua/office_hours.lua"
+          targets: [{action: connect}]
+          produced_facts: [lua.office_hours.allowed]
+          executions: [host_sync]
+          # If the script fails, the decision is "indeterminate" instead of a guess.
+          failure: indeterminate
+          timeout: 100ms
+
+      effects:
+        audit-denial:
+          kind: obligation
+          provider: vpn/office_hours
+          targets: [{action: connect}]
+          execution: host_sync
+          parameters:
+            reason:
+              type: string
+              max_length: 64
+              non_empty: true
+              required: true
+
+      # The domain plan runs the Lua provider before the rules of final_decision are evaluated.
+      domain_plans:
+        connect:
+          checkpoints:
+            final_decision:
+              providers:
+                - name: office_hours
+                  use: vpn/office_hours
+                  actions: [connect]
+
+      policy_sets:
+        connect:
+          rules:
+            - name: permit_in_office_hours
+              checkpoint: final_decision
+              if: {attribute: lua.office_hours.allowed, is: true}
+              then: {decision: permit}
+            - name: deny_outside_office_hours
+              checkpoint: final_decision
+              if: {attribute: lua.office_hours.allowed, is: false}
+              then:
+                decision: deny
+                obligations:
+                  - id: vpn/audit-denial
+                    parameters: {reason: outside_office_hours}
+
+  targets:
+    - namespace: vpn
+      action: connect
+      schema: vpn/connect/v1
+      domain_plan: vpn/connect
+      default_policy: vpn/connect
+      no_match: deny
+      timeouts: {evaluation: 2s, provider_default: 500ms}
+      plans:
+        final_decision: {policy_sets: [vpn/connect]}

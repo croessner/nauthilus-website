@@ -1,0 +1,6 @@
+# Flat-file user list for the Nauthilus Lua Cookbook.
+# One account per line: username:password-hash:display name:mail:allowed protocols (comma separated)
+# Supported hash formats: bcrypt ($2y$/$2b$/$2a$), {SSHA256}/{SSHA512}, and crypt(3) such as $6$ (SHA512-crypt).
+alice:$2y$10$ngKMNlOnSLGDyr0hoKOr3.H2WNwc2hSU.ht8m2HB8TVPZZdxuTlYC:Alice Example:alice@example.test:imap,smtp
+bob:$6$labsalt01$jH38X/dRFOX8aJZ/gKGi/cEmT4MMm6LuMcRH3ybCBlVM0pHaZIfKmqjjs21HEZ4vndbB65rGYTE1Y1HBqUPjb1:Bob Example:bob@example.test:imap
+carol:$6$labsalt02$wszVxt5HFEIpXMd2m18dH8Kqict2XZEWMfj7KbI7MPlSFApH/GGfm7igt2ouEmXKElLY53ij2rSi8JxWm65gq/:Carol Example:carol@example.test:imap,smtp

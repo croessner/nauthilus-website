@@ -1,0 +1,213 @@
+---
+title: "Recipe: Flat-file users"
+description: Keep accounts in a text file and let a Lua backend check their passwords; with init script and cache-flush callback
+keywords: [Lua, Cookbook, Lua backend, Init script, Cache flush, nauthilus_cache]
+sidebar_label: "Flat-file users"
+sidebar_position: 2
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import compose from '@site/static/cookbook/flatfile-users/docker-compose.yml?raw';
+import config from '@site/static/cookbook/flatfile-users/nauthilus/nauthilus.yml?raw';
+import users from '@site/static/cookbook/flatfile-users/nauthilus/users.txt?raw';
+import moduleLua from '@site/static/cookbook/flatfile-users/nauthilus/lua/flatfile_users.lua?raw';
+import initLua from '@site/static/cookbook/flatfile-users/nauthilus/lua/init.lua?raw';
+import backendLua from '@site/static/cookbook/flatfile-users/nauthilus/lua/backend.lua?raw';
+import flushLua from '@site/static/cookbook/flatfile-users/nauthilus/lua/cache_flush.lua?raw';
+import testSh from '@site/static/cookbook/flatfile-users/test.sh?raw';
+
+# Recipe: Flat-file users
+
+A small office, a test environment, or an appliance often has a handful of mail accounts and no directory server.
+This recipe keeps the accounts in one text file, similar to `/etc/passwd`, and lets Nauthilus check passwords against
+it. Adding a user means adding a line.
+
+It is also the best first recipe: it shows how a Nauthilus stack is put together, and the other recipes build on it.
+
+**Interfaces:** init script, Lua backend (password check and account listing), cache-flush callback.<br />
+**Download:** [flatfile-users.tar.gz](pathname:///cookbook/flatfile-users.tar.gz)
+
+## What happens
+
+1. When Nauthilus starts, the **init script** reads `users.txt` and stores every account in `nauthilus_cache`, an
+   in-memory cache that all Lua scripts of the process share. It also creates a Prometheus counter.
+2. For every login that Nauthilus cannot answer from its Redis cache, the **Lua backend** looks the user up in the
+   in-memory cache and compares the password with the stored hash.
+3. The account listing API asks the same backend for all account names.
+4. When an administrator flushes the cache for a user, the **cache-flush callback** tells Nauthilus the account name and
+   one extra Redis key to delete.
+
+## Files
+
+```text
+flatfile-users/
+├── docker-compose.yml          Valkey and Nauthilus
+├── test.sh                     the checks shown below
+└── nauthilus/
+    ├── nauthilus.yml           Nauthilus configuration
+    ├── users.txt               the accounts
+    └── lua/
+        ├── flatfile_users.lua  shared module: parse the file, find users
+        ├── init.lua            init script
+        ├── backend.lua         Lua backend
+        └── cache_flush.lua     cache-flush callback
+```
+
+## Start and test
+
+```bash
+docker compose up -d --wait
+./test.sh
+```
+
+Check a login by hand. The backchannel credential `mailserver` stands for your mail server, which asks Nauthilus whether
+a login is valid:
+
+```bash
+curl -i -u mailserver:mailserver-backchannel-secret \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"alice-secret","protocol":"imap","client_ip":"192.0.2.10"}' \
+  http://127.0.0.1:28081/api/v1/auth/json
+```
+
+The answer has `Auth-Status: OK` and the attributes that the backend returned. A wrong password gives HTTP 403 and
+`Auth-Status: Invalid login or password`.
+
+## The stack
+
+<CodeBlock language="yaml" title="docker-compose.yml">{compose}</CodeBlock>
+
+- **valkey** is the Redis-compatible store. Nauthilus keeps its login cache, brute-force counters, and other state
+  there. Persistence is off, because a demo does not need it.
+- **nauthilus** mounts the configuration, the user file, and the Lua directory read-only. The health check asks
+  `/healthz`, so `docker compose up --wait` returns only when Nauthilus is ready.
+- `NAUTHILUS_IMAGE` and `NAUTHILUS_LUA_JIT` choose the image and the Lua JIT, see
+  [Choose the Nauthilus image](index.md#choose-the-nauthilus-image). Every setting of `nauthilus.yml` can be overridden
+  by an environment variable in the same way: `NAUTHILUS_` plus the upper-case key path with `_` between the parts.
+
+## The configuration
+
+<CodeBlock language="yaml" title="nauthilus/nauthilus.yml">{config}</CodeBlock>
+
+Block by block:
+
+- **`runtime`** names the instance and lets the HTTP server listen on port 8080 inside the container.
+- **`storage.redis`** points to Valkey. `positive_cache_ttl` and `negative_cache_ttl` say how long a successful or
+  failed login is remembered, so a mail client that logs in every minute does not reach the backend every time.
+  `password_nonce` and `encryption_secret` protect what Nauthilus stores in Redis; use long random values in a real
+  installation.
+- **`auth.backchannel.basic_auth`** defines who may call the HTTP API. Each `users` entry is a *scoped credential*:
+  `mailserver` may only check logins (`nauthilus:authenticate`); `admin` may also list accounts
+  (`nauthilus:list_accounts`) and flush caches (`nauthilus:security_write`).
+- **`auth.backends.order`** is the order in which Nauthilus asks its backends: first its own Redis cache, then Lua.
+- **`auth.backends.lua.backend.default`** wires the scripts in:
+  - `backend_script_path`: the Lua backend.
+  - `init_script_paths`: scripts that run once at startup.
+  - `cache_flush_script_path`: the cache-flush callback.
+  - `package_path`: where `require` finds modules. The first entry holds the helpers that ship with Nauthilus, such as
+    `nauthilus_util`; the second one is the recipe's own directory, so `require("flatfile_users")` loads
+    `flatfile_users.lua`.
+  - `backend_number_of_workers`: how many backend requests run in parallel.
+- **`search`** says which requests use this backend. `imap` and `smtp` are logins; `account-provider` is the protocol of
+  the account listing (`mode=list-accounts`). Without it the listing answers with an empty result. `cache_name` names
+  the cache namespace for these protocols.
+
+## The user file
+
+<CodeBlock language="text" title="nauthilus/users.txt">{users}</CodeBlock>
+
+One line per account: `username:password-hash:display name:mail:protocols`. The passwords are `alice-secret`,
+`bob-secret`, and `carol-secret`. Store hashes, never plain passwords. Create them with tools you already have:
+
+```bash
+htpasswd -nbB -C 10 alice 'alice-secret' | cut -d: -f2    # bcrypt
+openssl passwd -6 'bob-secret'                             # SHA512-crypt
+```
+
+`nauthilus_password.compare_passwords` recognises bcrypt, `{SSHA256}`/`{SSHA512}`, and the usual `crypt(3)` formats,
+so hashes from an existing system usually work unchanged.
+
+## The shared module
+
+<CodeBlock language="lua" title="nauthilus/lua/flatfile_users.lua">{moduleLua}</CodeBlock>
+
+Both the init script and the backend need the user data, so the logic lives once, in a module. A module is a Lua file
+that returns a table of functions; `require("flatfile_users")` returns that table.
+
+- `split` and `parse_line` turn one line into a record. Comments and broken lines are skipped.
+- `load` reads the file and stores **one cache entry per user** (`flatfile:user:<name>`) plus the list of names. One
+  entry per user keeps a lookup small: the backend copies only one record out of the cache, not the whole file. When a
+  user was removed from the file, `load` deletes the old entry.
+- `ensure_loaded` loads the file on first use if no init script did, so the backend also works on its own.
+- `nauthilus_cache` keeps values in the memory of the Nauthilus process. It survives requests but not a restart, which
+  is why the init script fills it at startup.
+
+## The init script
+
+<CodeBlock language="lua" title="nauthilus/lua/init.lua">{initLua}</CodeBlock>
+
+An init script defines `nauthilus_run_hook(request)`. Nauthilus calls it once when the process starts. A configuration
+reload (`SIGHUP`) does not run init scripts again, so after editing `users.txt` restart Nauthilus with
+`docker compose restart nauthilus`.
+
+- `create_counter_vec` registers the Prometheus counter that the backend increments. Metrics are created once, in an
+  init script; the backend only increments them.
+- `nauthilus_util.log_info` and `log_error` write structured log lines. Look for them with
+  `docker compose logs nauthilus | grep init.lua`.
+
+## The Lua backend
+
+<CodeBlock language="lua" title="nauthilus/lua/backend.lua">{backendLua}</CodeBlock>
+
+`nauthilus_backend_verify_password(request)` answers one login. `request` holds the username, the password, the
+protocol, the client address, and more (see [common request fields](../lua-api/introduction.md#common-request-fields-for-all-lua-scripts)).
+It returns a status and a `nauthilus_backend_result` object:
+
+- `user_found(false)` means "no such user"; `authenticated(...)` says whether the password matched. Nauthilus turns both
+  into the answer for the mail server, counts failed logins for brute-force protection, and caches the result.
+- `request.no_auth` is true for lookups without a password, for example a Dovecot userdb query. The backend then only
+  confirms that the user exists.
+- `account_field("account")` names the attribute that holds the canonical account name, here the username.
+  `display_name_field` does the same for the display name.
+- `attributes({...})` returns data to the caller. The JSON API puts it into the `attributes` object; header-based
+  endpoints send it as `X-Nauthilus-*` headers.
+- `nauthilus_util.if_error_raise(err)` stops the script with an error. Nauthilus then answers with a temporary failure,
+  which is the right reaction when the user file cannot be read: the mail client tries again later.
+
+`nauthilus_backend_list_accounts()` returns all account names. It is used by `mode=list-accounts`, for example by a
+Dovecot `doveadm` that iterates over all users.
+
+## The cache-flush callback
+
+<CodeBlock language="lua" title="nauthilus/lua/cache_flush.lua">{flushLua}</CodeBlock>
+
+`DELETE /api/v1/cache/flush` removes everything Nauthilus remembers about a user: cached logins, brute-force state, IdP
+sessions. The callback adds what only you know:
+
+- The first return value is a list of extra Redis keys to delete. Here it is a marker key that `test.sh` writes, to make
+  the effect visible; in a real setup it could be a per-user key that your own scripts create.
+- The second return value is the account name. Nauthilus uses it instead of looking the account up in the backends.
+
+Try it:
+
+```bash
+curl -X DELETE -u admin:admin-backchannel-secret -H 'Content-Type: application/json' \
+  -d '{"user":"alice"}' http://127.0.0.1:28081/api/v1/cache/flush
+```
+
+## What the test checks
+
+<CodeBlock language="bash" title="test.sh">{testSh}</CodeBlock>
+
+The test logs in with both hash types, with a wrong password, and as an unknown user; lists the accounts; flushes the
+cache and checks that the extra key is gone; and reads the Prometheus counter at `/metrics`. The helpers `auth`, `http`,
+`expect_*`, and `valkey` come from `cookbook/lib/cookbook.sh`.
+
+## Ideas for your own changes
+
+- Add a user to `users.txt`, restart Nauthilus with `docker compose restart nauthilus`, and log in as that user.
+- Reload the file without a restart: add a custom hook that calls `flatfile_users.load()`, as the
+  [Admin toolkit](admin-toolkit.mdx) shows for other hooks.
+- Return the `allowed_protocols` attribute to your mail server and let it refuse protocols, or move that check into
+  Nauthilus with the [Account rules](account-rules.mdx) recipe.
+- Replace the file with an HTTP call to an existing user service. The bundled `http` module is available in every Lua script.

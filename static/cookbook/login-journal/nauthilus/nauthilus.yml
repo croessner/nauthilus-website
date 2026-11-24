@@ -1,0 +1,145 @@
+# Nauthilus configuration of the "Login journal" Lua Cookbook recipe.
+# Interfaces shown: a POST-action and a synchronous brute-force action.
+
+runtime:
+  instance_name: "cookbook-login-journal"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    positive_cache_ttl: "1h"
+    negative_cache_ttl: "5m"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce05"
+    encryption_secret: "cookbookEncryption05"
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # Scoped credentials: each caller holds only the scopes it needs. Demo passwords only.
+      users:
+        # The mail server (or curl in test.sh) checks logins.
+        - username: "mailserver"
+          password: "mailserver-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+
+  backends:
+    order:
+      - "cache"
+      - "lua"
+
+    lua:
+      backend:
+        default:
+          backend_script_path: "/etc/nauthilus/lua/backend.lua"
+          # require() finds the bundled helpers and files in /etc/nauthilus/lua.
+          package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
+          backend_number_of_workers: 2
+          action_number_of_workers: 2
+
+        search:
+          - protocol:
+              - "imap"
+              - "smtp"
+            cache_name: "demo"
+
+  controls:
+    enabled:
+      - "brute_force"
+
+    # Block a /24 network for 10 minutes after 5 distinct wrong passwords within 5 minutes.
+    brute_force:
+      protocols:
+        - "imap"
+        - "smtp"
+      buckets:
+        - name: "cookbook_rule"
+          period: 5m
+          ban_time: 10m
+          cidr: 24
+          ipv4: true
+          ipv6: false
+          failed_requests: 5
+
+policy:
+  namespaces:
+    authn:
+      # Effects name the Lua actions. The policy decides when they run.
+      effects:
+        # Runs after the answer was sent; see terminal_post_actions below.
+        lua_action_last_login:
+          kind: lua_action
+          action_type: post
+          script_path: "/etc/nauthilus/lua/actions/last_login.lua"
+          targets: [{action: authenticate}]
+          execution: host_post_action
+        # Runs while the request waits, when the brute-force rule below selects it.
+        lua_action_brute_force_alert:
+          kind: lua_action
+          action_type: brute_force
+          script_path: "/etc/nauthilus/lua/actions/brute_force_alert.lua"
+          targets: [{action: authenticate}]
+          execution: host_sync
+
+      domain_plans:
+        journal:
+          checkpoints:
+            # The built-in brute-force check runs first and can stop a request before the password is checked.
+            pre_auth:
+              providers:
+                - name: brute_force
+                  use: authn/builtin/brute_force
+                  actions: [authenticate]
+            auth_backend:
+              providers:
+                - name: backend_order
+                  use: authn/auth_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+
+      policy_sets:
+        journal:
+          visibility: private
+          rules:
+            # A blocked client is denied, and the decision carries the alert action as an obligation.
+            - name: brute_force_alert
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [brute_force]
+              if:
+                attribute: nauthilus.auth.brute_force.triggered
+                is: true
+              then:
+                decision: deny
+                reason: brute_force
+                obligations:
+                  - id: authn/lua_action_brute_force_alert
+
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/journal
+      plans:
+        pre_auth:
+          policy_sets: [authn/journal]
+      # Run the journal once for every answered request, whichever rule answered it.
+      terminal_post_actions:
+        - id: authn/lua_action_last_login

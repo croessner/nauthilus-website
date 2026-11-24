@@ -111,6 +111,39 @@ function createOpenAPICategory(label, items) {
   };
 }
 
+// cookbookFilesPlugin lets documentation pages embed the Lua Cookbook files from static/cookbook with
+// `import text from '@site/static/cookbook/<recipe>/<file>?raw'`, so every file has one source, and packs one
+// download archive per recipe into build/cookbook/<recipe>.tar.gz.
+function cookbookFilesPlugin() {
+  return {
+    name: 'cookbook-files',
+    configureWebpack() {
+      return {
+        module: {
+          rules: [{resourceQuery: /raw/, type: 'asset/source'}],
+        },
+      };
+    },
+    async postBuild({outDir}) {
+      const {execFileSync} = await import('node:child_process');
+      const path = await import('node:path');
+      const cookbookDir = path.join('static', 'cookbook');
+
+      for (const entry of fs.readdirSync(cookbookDir, {withFileTypes: true})) {
+        if (!entry.isDirectory() || entry.name === 'lib') {
+          continue;
+        }
+
+        execFileSync('tar', [
+          '--exclude', '.DS_Store', '--exclude', 'tls',
+          '-czf', path.join(outDir, 'cookbook', `${entry.name}.tar.gz`),
+          '-C', 'static', 'cookbook/lib', `cookbook/${entry.name}`, 'cookbook/run-all.sh',
+        ], {env: {...process.env, COPYFILE_DISABLE: '1'}});
+      }
+    },
+  };
+}
+
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Nauthilus',
@@ -370,7 +403,7 @@ const config = {
       prism: {
         theme: prismThemes.vsLight,
         darkTheme: prismThemes.vsDark,
-        additionalLanguages: ['lua', 'yaml'],
+        additionalLanguages: ['lua', 'yaml', 'bash', 'sql'],
       },
     }),
 
@@ -381,6 +414,7 @@ const config = {
     },
   },
   plugins: [
+    cookbookFilesPlugin,
     [
       'docusaurus-plugin-openapi-docs',
       {

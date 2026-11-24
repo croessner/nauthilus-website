@@ -1,0 +1,44 @@
+# Lua Cookbook recipe "Login journal".
+# Start with: docker compose up -d --wait     Test with: ./test.sh     Stop with: docker compose down
+name: cookbook-login-journal
+
+services:
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Mailpit accepts every mail on port 1025 and shows it at http://127.0.0.1:28185.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:28185:8025"
+
+  nauthilus:
+    image: ${NAUTHILUS_IMAGE:-ghcr.io/croessner/nauthilus:v4.1.2}
+    depends_on:
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      # Optional switch for the Lua JIT of releases after 4.1.2; 4.1.2 and earlier ignore it.
+      NAUTHILUS_AUTH_BACKENDS_LUA_BACKEND_DEFAULT_JIT: ${NAUTHILUS_LUA_JIT:-true}
+      # Read by actions/brute_force_alert.lua.
+      COOKBOOK_ALERT_TO: "admin@example.test"
+      COOKBOOK_SMTP_SERVER: "mailpit"
+      COOKBOOK_SMTP_PORT: "1025"
+    ports:
+      - "127.0.0.1:28085:8080"
+    volumes:
+      - ./nauthilus/nauthilus.yml:/etc/nauthilus/nauthilus.yml:ro
+      - ./nauthilus/lua:/etc/nauthilus/lua:ro
+    healthcheck:
+      test: ["CMD", "/usr/app/healthcheck", "--url", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

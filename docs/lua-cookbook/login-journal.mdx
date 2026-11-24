@@ -1,0 +1,113 @@
+---
+title: "Recipe: Login journal"
+description: Record the last logins of every account with a POST-action and mail the administrator on brute-force blocks with a synchronous action
+keywords: [Lua, Cookbook, POST-action, Action, Brute force, Mail, Mailpit, terminal_post_actions]
+sidebar_label: "Login journal"
+sidebar_position: 6
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import compose from '@site/static/cookbook/login-journal/docker-compose.yml?raw';
+import config from '@site/static/cookbook/login-journal/nauthilus/nauthilus.yml?raw';
+import lastLoginLua from '@site/static/cookbook/login-journal/nauthilus/lua/actions/last_login.lua?raw';
+import alertLua from '@site/static/cookbook/login-journal/nauthilus/lua/actions/brute_force_alert.lua?raw';
+import testSh from '@site/static/cookbook/login-journal/test.sh?raw';
+
+# Recipe: Login journal
+
+Two questions that reach every helpdesk:
+
+- "When did this user last log in, and from where?" The journal answers it from Valkey in a second.
+- "Are we under attack?" Nauthilus mails the administrator when its brute-force protection blocks a network, once per
+  network and hour.
+
+**Interfaces:** POST-action, synchronous action (`action_type: brute_force`).<br />
+**Download:** [login-journal.tar.gz](pathname:///cookbook/login-journal.tar.gz)
+
+## What happens
+
+1. Every answered login request ends with the **POST-action** `last_login.lua`. It runs after the answer was sent, so
+   it never slows down or changes a login. For successful logins it writes the latest login and a short history.
+2. The built-in **brute-force check** counts wrong passwords per network. After 5 distinct wrong passwords within 5
+   minutes it blocks the `/24` network for 10 minutes.
+3. A policy rule denies blocked requests and carries the **brute-force action** `brute_force_alert.lua` as an
+   obligation. The action mails the administrator through Mailpit, at most once per network and hour.
+
+## Start and test
+
+```bash
+docker compose up -d --wait
+./test.sh
+```
+
+Open Mailpit at [http://127.0.0.1:28185](http://127.0.0.1:28185) to see the alert mail. Read the journal of an account:
+
+```bash
+docker compose exec valkey valkey-cli HGETALL cookbook:last_login:alice
+docker compose exec valkey valkey-cli LRANGE cookbook:logins:alice 0 -1
+```
+
+## The stack
+
+<CodeBlock language="yaml" title="docker-compose.yml">{compose}</CodeBlock>
+
+Mailpit is a mail catcher: it accepts every mail on port 1025 and shows it in a web interface. Replace it with your
+real mail relay through `COOKBOOK_SMTP_SERVER` and `COOKBOOK_SMTP_PORT`.
+
+## The configuration
+
+<CodeBlock language="yaml" title="nauthilus/nauthilus.yml">{config}</CodeBlock>
+
+- **`action_number_of_workers`** is the number of Lua action workers. Actions and POST-actions run on these workers,
+  not on the request's own goroutine.
+- **`auth.controls.brute_force`** switches on the built-in brute-force protection. The bucket `cookbook_rule` counts
+  failed logins per `/24` network over 5 minutes and blocks for 10 minutes after 5 failures. See
+  [Brute-force protection](../configuration/brute-force.md).
+- **`effects`** name the two Lua actions:
+  - `lua_action_last_login` with `action_type: post` and `execution: host_post_action` runs after the answer.
+  - `lua_action_brute_force_alert` with `action_type: brute_force` and `execution: host_sync` runs while the request
+    waits.
+- **`domain_plans.journal`** schedules the built-in brute-force provider at `pre_auth` and the backends at
+  `auth_backend`.
+- **The rule `brute_force_alert`** denies a request when `nauthilus.auth.brute_force.triggered` is true, and its
+  `obligations` select the alert action. An effect only runs when a selected rule asks for it.
+- **`terminal_post_actions`** runs the journal exactly once for every answered request, whichever rule answered it,
+  including the built-in rules. A POST-action listed only on one rule would miss every other answer.
+
+## The login journal (POST-action)
+
+<CodeBlock language="lua" title="nauthilus/lua/actions/last_login.lua">{lastLoginLua}</CodeBlock>
+
+An action defines `nauthilus_call_action(request)` and returns `ACTION_RESULT_OK` or `ACTION_RESULT_FAIL`.
+
+- A POST-action sees the final result: `request.authenticated` is true only for a successful login, and
+  `request.account` holds the canonical account name.
+- `os.date("!%Y-%m-%dT%H:%M:%SZ")` writes the time in UTC; the `!` selects UTC.
+- The history is a Valkey list. `redis_lpush` adds the newest entry in front and returns the new length; the loop
+  removes the oldest entries from the end until 10 remain.
+- Because it runs after the answer, the test waits a moment before it reads the journal.
+
+## The brute-force alert (synchronous action)
+
+<CodeBlock language="lua" title="nauthilus/lua/actions/brute_force_alert.lua">{alertLua}</CodeBlock>
+
+- In a brute-force action, `request.client_net` is the blocked network and `request.brute_force_bucket` the bucket that
+  triggered.
+- **One mail per network and hour.** `redis_set` with `nx = true` creates the key only if it does not exist yet, and
+  `ex` lets it expire after an hour. Only the request that created the key sends a mail; later ones only count. Without
+  this, an attack with thousands of attempts would send thousands of mails.
+- `nauthilus_mail.send_mail` speaks SMTP or LMTP, optionally with TLS or STARTTLS and authentication, see
+  [Mail](../lua-api/mail.md).
+- The action runs while the blocked request waits and occupies one action worker. Keep it short; the once-per-hour
+  key also keeps slow SMTP sessions rare.
+
+## What the test checks
+
+<CodeBlock language="bash" title="test.sh">{testSh}</CodeBlock>
+
+## Ideas for your own changes
+
+- Send the alert to a chat instead of mail with the bundled `http` module. The bundled `actions/telegram.lua` shows how.
+- Record failed logins in the journal as well, with a separate list per account.
+- Add a custom hook `GET /api/v1/custom/last-login` for the helpdesk, as the [Admin toolkit](admin-toolkit.mdx) shows
+  for other data.

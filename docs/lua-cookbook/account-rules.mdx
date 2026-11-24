@@ -1,0 +1,136 @@
+---
+title: "Recipe: Account rules"
+description: Allow protocols per account and lock accounts for a while, with subject sources that run after the password check
+keywords: [Lua, Cookbook, Subject source, Offboarding, Account lock, Protocol access, Policy registry]
+sidebar_label: "Account rules"
+sidebar_position: 5
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import compose from '@site/static/cookbook/account-rules/docker-compose.yml?raw';
+import config from '@site/static/cookbook/account-rules/nauthilus/nauthilus.yml?raw';
+import usersLua from '@site/static/cookbook/account-rules/nauthilus/lua/demo_users.lua?raw';
+import backendLua from '@site/static/cookbook/account-rules/nauthilus/lua/backend.lua?raw';
+import protocolLua from '@site/static/cookbook/account-rules/nauthilus/lua/subject/protocol_access.lua?raw';
+import lockLua from '@site/static/cookbook/account-rules/nauthilus/lua/subject/account_lock.lua?raw';
+import registryLua from '@site/static/cookbook/account-rules/nauthilus/lua/policy/registry.lua?raw';
+import testSh from '@site/static/cookbook/account-rules/test.sh?raw';
+
+# Recipe: Account rules
+
+A correct password is not always enough:
+
+- **Protocol access.** A shared mailbox may be read over IMAP but must not send mail over SMTP. A kiosk account may
+  only use webmail.
+- **Account lock.** When an employee leaves, or after a phishing incident, an account must be locked *now* and unlocked
+  automatically later, without touching the directory or resetting the password.
+
+Both rules apply after the password was checked, so they are subject sources.
+
+**Interfaces:** subject sources, policy registry script.<br />
+**Download:** [account-rules.tar.gz](pathname:///cookbook/account-rules.tar.gz)
+
+## What happens
+
+1. The backend checks the password, or Nauthilus answers from its login cache.
+2. `protocol_access.lua` looks up which protocols the account may use and refuses others.
+3. `account_lock.lua` reads a lock that an administrator stored in Valkey and refuses the account until the lock
+   expires.
+4. Both emit policy attributes; two rules in `nauthilus.yml` refuse the login with a clear message.
+
+Subject sources run for every login, also when the password check came from the cache. A lock therefore takes effect
+at once, without flushing anything.
+
+## Start and test
+
+```bash
+docker compose up -d --wait
+./test.sh
+```
+
+Lock an account until a point in time, in UTC:
+
+```bash
+docker compose exec valkey valkey-cli HSET cookbook:lock:alice until 2030-01-01T00:00:00Z reason offboarding
+```
+
+Remove the lock early with `docker compose exec valkey valkey-cli DEL cookbook:lock:alice`.
+
+## The stack
+
+<CodeBlock language="yaml" title="docker-compose.yml">{compose}</CodeBlock>
+
+## The configuration
+
+<CodeBlock language="yaml" title="nauthilus/nauthilus.yml">{config}</CodeBlock>
+
+- **`subject_vm_pool_size`** sizes the pool of prepared Lua VMs for subject sources.
+- **`providers`** define the two subject sources (`kind: lua_subject`).
+- **`domain_plans.account_rules`** runs them at the `subject_analysis` checkpoint, after `auth_backend`.
+- **The rules run at `auth_decision`**, the last checkpoint, where the attributes of every subject source are known.
+  Each rule answers with `deny` and its own `response_message`, so users and helpdesk see why a login failed.
+- The target binds the rules with `plans.auth_decision.policy_sets`.
+
+:::note Where subject rules belong
+In Nauthilus 4.1.2 a configured rule at the `subject_analysis` checkpoint does not see attributes that a subject
+source emitted there. Put such rules at `auth_decision`, as this recipe does. `require_providers` refers to providers of
+the rule's own checkpoint, so the rules here do without it.
+:::
+
+## The account data
+
+<CodeBlock language="lua" title="nauthilus/lua/demo_users.lua">{usersLua}</CodeBlock>
+
+<CodeBlock language="lua" title="nauthilus/lua/backend.lua">{backendLua}</CodeBlock>
+
+The demo accounts live in a module that the backend and `protocol_access.lua` share. In a real installation the
+subject source would ask your directory or database instead; the [SQL users](sql-users.mdx) recipe shows how.
+
+## Protocol access
+
+<CodeBlock language="lua" title="nauthilus/lua/subject/protocol_access.lua">{protocolLua}</CodeBlock>
+
+A subject source defines `nauthilus_call_subject(request)` and returns an action and a result code.
+
+- **Check `request.authenticated` first.** A wrong password is rejected anyway; the script must neither accept it nor
+  spend time on it. Forgetting this check is the classic mistake with subject sources.
+- `request.account` is the canonical account name that the backend returned; `request.username` is what the user
+  typed. Rules about an account should use the account.
+- `SUBJECT_REJECT` refuses the login on its own. The emitted attribute adds the rule with the clear message.
+
+:::warning Known issue in Nauthilus 4.1.2
+`nauthilus_backend.get_current_backend_result()` in a subject source does not contain the attributes that the
+password backend returned, so a subject source cannot read `allowed_protocols` from there. This recipe reads the
+account data from the shared module instead.
+:::
+
+## Account lock
+
+<CodeBlock language="lua" title="nauthilus/lua/subject/account_lock.lua">{lockLua}</CodeBlock>
+
+- The lock is a Valkey hash with `until` (UTC, RFC 3339) and an optional `reason`. Anything that can write to Valkey
+  can lock an account: a script of your HR process, a ticket system, or a custom hook like those of the
+  [Admin toolkit](admin-toolkit.mdx).
+- `parse_utc` converts the time into seconds since 1970 with integer arithmetic, so the result does not depend on the
+  time zone of the server.
+- An expired lock is deleted on the next login of the account.
+- The script emits two attributes: `lock.active` for the rule, and `lock.until`, which further rules or a policy report
+  can use to show when the lock ends.
+
+## The policy registry script
+
+<CodeBlock language="lua" title="nauthilus/lua/policy/registry.lua">{registryLua}</CodeBlock>
+
+The attributes are declared with `stage = "subject_analysis"`, the checkpoint where the subject sources emit them.
+
+## What the test checks
+
+<CodeBlock language="bash" title="test.sh">{testSh}</CodeBlock>
+
+## Ideas for your own changes
+
+- Lock all accounts of a domain: look up `cookbook:lock:@example.test` as well.
+- Allow a protocol only from the company network, using `request.client_ip` and the network matching of the
+  [Admin toolkit](admin-toolkit.mdx).
+- Select a mail store for the account with `nauthilus_backend.select_backend_server`, see
+  [Backend monitoring](../lua-api/backendmonitor.md).

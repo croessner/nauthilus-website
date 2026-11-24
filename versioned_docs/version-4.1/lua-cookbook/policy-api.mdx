@@ -1,0 +1,125 @@
+---
+title: "Recipe: Policy API"
+description: Let a VPN gateway ask Nauthilus whether a user may connect now, decided by a sandboxed generic Lua policy provider
+keywords: [Lua, Cookbook, Policy API, Generic policy provider, policy.facts.collect, Obligation]
+sidebar_label: "Policy API"
+sidebar_position: 7
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import compose from '@site/static/cookbook/policy-api/docker-compose.yml?raw';
+import setupSh from '@site/static/cookbook/policy-api/setup.sh?raw';
+import config from '@site/static/cookbook/policy-api/nauthilus/nauthilus.yml?raw';
+import officeLua from '@site/static/cookbook/policy-api/nauthilus/lua/office_hours.lua?raw';
+import testSh from '@site/static/cookbook/policy-api/test.sh?raw';
+
+# Recipe: Policy API
+
+Nauthilus is not only for logins. Its Policy API answers any yes-or-no question that you describe in the
+configuration. In this recipe a VPN gateway asks: *"May a member of this group connect now?"* Staff may connect on
+working days from 07:00 to 19:00, contractors for a shorter time, administrators always.
+
+**Interface:** generic policy provider (`kind: lua`) with `policy.facts.collect` and `policy.effects.execute`.<br />
+**Download:** [policy-api.tar.gz](pathname:///cookbook/policy-api.tar.gz)
+
+## What happens
+
+1. The VPN gateway sends `POST /api/v1/policy/decisions` with the user's group and its local weekday and hour.
+2. Nauthilus checks the gateway's credential and that it may ask this question with these facts.
+3. The Lua provider looks the group up in a schedule and returns the fact `lua.office_hours.allowed`.
+4. A rule permits or denies. A deny also runs the obligation `audit-denial`, which calls back into the same script.
+5. The gateway reads `effect` from the answer: `permit`, `deny`, or `indeterminate`.
+
+## Start and test
+
+The Policy API accepts Basic credentials only over TLS. `setup.sh` creates a self-signed certificate for
+`127.0.0.1` once:
+
+```bash
+./setup.sh
+docker compose up -d --wait
+./test.sh
+```
+
+Ask by hand:
+
+```bash
+curl --cacert tls/server.crt -u vpn-gateway:vpn-gateway-policy-secret \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "version": "1",
+        "target": {"namespace": "vpn", "action": "connect"},
+        "subject": {"type": "user", "id": "alice", "attributes": {"group": {"string": "staff"}}},
+        "environment": {"service": "vpn", "attributes": {"weekday": {"string": "mon"}, "hour": {"integer": "9"}}}
+      }' \
+  https://127.0.0.1:28086/api/v1/policy/decisions
+```
+
+```json
+{"decision_id":"decision-…","effect":"permit","request_id":"request-…",
+ "status":{"code":"permit","message":"The policy explicitly permitted the operation.","retryable":false}}
+```
+
+## The stack
+
+<CodeBlock language="yaml" title="docker-compose.yml">{compose}</CodeBlock>
+
+<CodeBlock language="bash" title="setup.sh">{setupSh}</CodeBlock>
+
+## The configuration
+
+<CodeBlock language="yaml" title="nauthilus/nauthilus.yml">{config}</CodeBlock>
+
+- **`runtime.servers.http.tls`** serves HTTPS with the certificate from `setup.sh`. Over plain HTTP the Policy API
+  refuses Basic credentials with `401 policy credentials rejected`.
+- **`auth.backchannel`** is not used by this recipe, but Nauthilus always starts its backchannel API and needs at least
+  one credential for it.
+- **`policy.api`** switches on the HTTP Policy API. Each entry of `clients` is one caller:
+  - `authentication` holds its Basic credential. Policy credentials are separate from backchannel credentials.
+  - `targets` and `allowed_schemas` limit the questions it may ask.
+  - `allowed_subject_attributes` and `allowed_environment_attributes` list the facts it may send. A request with any
+    other fact is refused with HTTP 403.
+- **`policy.namespaces.vpn`** describes the question:
+  - The **schema** `vpn/connect/v1` lists every fact with its type and its source: three from the caller
+    (`allowed_sources: [caller]`), one from Lua (`[lua]`). A fact from the wrong source is refused, so a caller cannot
+    send `lua.office_hours.allowed` itself.
+  - The **provider** `office_hours` names the script. `produced_facts` is the contract: the script may return only
+    these facts. `failure: indeterminate` makes a broken script answer `indeterminate`, never a guess.
+  - The **effect** `audit-denial` is an obligation with one typed parameter. Nauthilus checks the parameter before the
+    script sees it.
+  - The **domain plan** runs the provider at the `final_decision` checkpoint. `use` names the provider by its
+    configured key, `vpn/office_hours`.
+  - The **rules** permit when the fact is true and deny, with the obligation, when it is false.
+- **`policy.targets`** activates the question. `no_match: deny` denies whatever no rule decided.
+
+## The Lua provider
+
+<CodeBlock language="lua" title="nauthilus/lua/office_hours.lua">{officeLua}</CodeBlock>
+
+A generic provider is different from the authentication scripts of the other recipes:
+
+- It registers its callbacks as globals with the exact names `policy.facts.collect` and `policy.effects.execute`.
+- It runs in a **sandbox**: a fresh Lua state for every call, with only the base, `table`, `string`, and `math`
+  libraries. There is no `os`, `io`, `require`, Redis, or HTTP, and nothing survives from one request to the next.
+  Everything the script needs arrives in `request` or is written into the script, like `SCHEDULE`.
+- `request.facts` is a list of `{id, category, value = {kind, value}}`. Integers arrive as decimal strings, so
+  `fact_values` converts them with `tonumber`.
+- The result names a fact by its local name (`allowed`); Nauthilus adds the provider prefix and checks type and source
+  against the schema.
+- `policy.effects.execute` runs for a selected obligation. It returns `succeeded`, or `failed` with an `error_class`;
+  a failed effect turns the decision into `indeterminate`. Without I/O there is little a sandboxed effect can do, so
+  this one only reports success. Real side effects belong to native Go plugins or to the authentication actions of the
+  [Login journal](login-journal.mdx).
+
+## What the test checks
+
+<CodeBlock language="bash" title="test.sh">{testSh}</CodeBlock>
+
+The test asks for every hour of a Monday and a Saturday and compares each answer with the schedule. It also checks
+that a wrong password and a fact outside the client profile are refused.
+
+## Ideas for your own changes
+
+- Add a group `night-shift` that may connect from 18:00 to 06:00. Watch the wrap-around at midnight.
+- Let the gateway send `resource.attributes.network` and allow contractors only for one network.
+- Ask from a second caller with its own client profile and a smaller set of allowed facts.

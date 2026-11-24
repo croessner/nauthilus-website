@@ -1,0 +1,181 @@
+# Nauthilus configuration of the "Admin toolkit" Lua Cookbook recipe.
+# Interfaces shown: custom hooks and environment sources.
+
+runtime:
+  instance_name: "cookbook-admin-toolkit"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    positive_cache_ttl: "1h"
+    negative_cache_ttl: "5m"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce03"
+    encryption_secret: "cookbookEncryption03"
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # Scoped credentials: each caller holds only the scopes it needs. Demo passwords only.
+      users:
+        # The mail server (or curl in test.sh) checks logins.
+        - username: "mailserver"
+          password: "mailserver-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+        # The administrator calls the custom hooks.
+        - username: "admin"
+          password: "admin-backchannel-secret"
+          scopes:
+            - "cookbook:admin"
+
+  backends:
+    order:
+      - "cache"
+      - "lua"
+
+    lua:
+      backend:
+        default:
+          backend_script_path: "/etc/nauthilus/lua/backend.lua"
+          # require() finds the bundled helpers and the recipe's shared module admin_toolkit.lua.
+          package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
+          backend_number_of_workers: 2
+          environment_vm_pool_size: 2
+          hook_vm_pool_size: 2
+
+        search:
+          - protocol:
+              - "imap"
+              - "smtp"
+            cache_name: "demo"
+
+  controls:
+    enabled:
+      - "lua"
+
+    lua:
+      # One entry binds one HTTP method of /api/v1/custom/<http_location> to a script. Every hook requires a
+      # caller that holds the scope cookbook:admin.
+      hooks:
+        - http_location: "maintenance"
+          http_method: "GET"
+          script_path: "/etc/nauthilus/lua/hooks/maintenance.lua"
+          scopes: ["cookbook:admin"]
+        - http_location: "maintenance"
+          http_method: "POST"
+          script_path: "/etc/nauthilus/lua/hooks/maintenance.lua"
+          scopes: ["cookbook:admin"]
+        - http_location: "blocklist"
+          http_method: "GET"
+          script_path: "/etc/nauthilus/lua/hooks/blocklist.lua"
+          scopes: ["cookbook:admin"]
+        - http_location: "blocklist"
+          http_method: "POST"
+          script_path: "/etc/nauthilus/lua/hooks/blocklist.lua"
+          scopes: ["cookbook:admin"]
+
+policy:
+  namespaces:
+    authn:
+      # The registry script declares the attributes that the two environment sources emit.
+      schema_contributions:
+        lua:
+          registry_scripts:
+            - "/etc/nauthilus/lua/policy/registry.lua"
+
+      # A provider definition names a Lua script. It does not run until a domain plan schedules it.
+      providers:
+        lua_environment_maintenance:
+          kind: lua_environment
+          script_path: "/etc/nauthilus/lua/environment/maintenance.lua"
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+        lua_environment_ip_blocklist:
+          kind: lua_environment
+          script_path: "/etc/nauthilus/lua/environment/ip_blocklist.lua"
+          targets: [{action: authenticate}]
+          executions: [host_sync]
+
+      # The domain plan runs both environment sources at the pre_auth checkpoint, before the password is checked.
+      domain_plans:
+        toolkit:
+          checkpoints:
+            pre_auth:
+              providers:
+                - name: maintenance
+                  use: authn/lua_environment_maintenance
+                  actions: [authenticate]
+                - name: ip_blocklist
+                  use: authn/lua_environment_ip_blocklist
+                  actions: [authenticate]
+            # A domain plan lists every checkpoint it uses. auth_backend checks the password with the backends of
+            # auth.backends.order (here: cache, then backend.lua).
+            auth_backend:
+              providers:
+                - name: backend_order
+                  use: authn/auth_backend
+                  actions: [authenticate]
+            auth_decision:
+              providers: []
+
+      # Own rules. Everything not decided here falls through to the built-in rules of authn/standard_auth.
+      policy_sets:
+        toolkit:
+          visibility: private
+          rules:
+            # Maintenance answers with a temporary failure and a fixed text. Mail clients retry later and do not
+            # ask the user for a new password.
+            - name: maintenance_tempfail
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [maintenance]
+              if:
+                attribute: lua.plugin.cookbook.maintenance.active
+                is: true
+              then:
+                decision: tempfail
+                reason: maintenance
+                response_message:
+                  from: literal
+                  text: "Maintenance in progress, please try again later"
+
+            # Blocked addresses are rejected before the password is checked.
+            - name: blocklist_deny
+              checkpoint: pre_auth
+              actions: [authenticate]
+              require_providers: [ip_blocklist]
+              if:
+                attribute: lua.plugin.cookbook.blocklist.matched
+                is: true
+              then:
+                decision: deny
+                reason: blocklist
+                response_message:
+                  from: literal
+                  text: "Access from your network is blocked"
+
+  # The target activates the plan and the rules for every authentication request.
+  targets:
+    - namespace: authn
+      action: authenticate
+      schema: authn/authenticate/v1
+      mode: enforce
+      default_policy: authn/standard_auth
+      domain_plan: authn/toolkit
+      plans:
+        pre_auth:
+          policy_sets: [authn/toolkit]

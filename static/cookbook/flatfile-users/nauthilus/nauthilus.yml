@@ -1,0 +1,71 @@
+# Nauthilus configuration of the "Flat-file users" Lua Cookbook recipe.
+# Interfaces shown: init script, Lua backend, cache-flush callback.
+
+runtime:
+  instance_name: "cookbook-flatfile-users"
+
+  servers:
+    http:
+      address: "0.0.0.0:8080"
+
+observability:
+  log:
+    level: "info"
+    json: false
+
+storage:
+  redis:
+    primary:
+      address: "valkey:6379"
+    database_number: 0
+    prefix: "nt:"
+    positive_cache_ttl: "1h"
+    negative_cache_ttl: "5m"
+    # Demo values only. Generate your own random strings for a real installation.
+    password_nonce: "cookbookPasswordNonce01"
+    encryption_secret: "cookbookEncryption01"
+
+auth:
+  backchannel:
+    basic_auth:
+      enabled: true
+      # Scoped credentials: each caller holds only the scopes it needs. Demo passwords only.
+      users:
+        # The mail server (or curl in test.sh) checks logins.
+        - username: "mailserver"
+          password: "mailserver-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+        # The administrator lists accounts and flushes caches.
+        - username: "admin"
+          password: "admin-backchannel-secret"
+          scopes:
+            - "nauthilus:authenticate"
+            - "nauthilus:list_accounts"
+            - "nauthilus:security_write"
+
+  backends:
+    # "cache" answers repeated logins from Redis; "lua" asks backend.lua.
+    order:
+      - "cache"
+      - "lua"
+
+    lua:
+      backend:
+        default:
+          backend_script_path: "/etc/nauthilus/lua/backend.lua"
+          init_script_paths:
+            - "/etc/nauthilus/lua/init.lua"
+          cache_flush_script_path: "/etc/nauthilus/lua/cache_flush.lua"
+          # require() finds the bundled helpers and the recipe's own module flatfile_users.lua.
+          package_path: "/usr/app/lua-plugins.d/share/?.lua;/etc/nauthilus/lua/?.lua"
+          backend_number_of_workers: 2
+
+        # Which requests use this Lua backend. "account-provider" is the protocol of the account listing
+        # (mode=list-accounts); without it the listing stays empty.
+        search:
+          - protocol:
+              - "imap"
+              - "smtp"
+              - "account-provider"
+            cache_name: "flatfile"

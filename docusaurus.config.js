@@ -22,7 +22,7 @@ const latestProductVersion =
       return undefined;
     }
   })() ||
-  '4.2.0';
+  '4.2.1';
 
 // The docs dropdown should display major.minor only.
 const latestDocsVersionLabel = latestProductVersion.split('.').slice(0, 2).join('.');

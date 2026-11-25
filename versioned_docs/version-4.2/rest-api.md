@@ -248,8 +248,9 @@ The current route scopes are:
 | Add/delete TOTP or recovery-code state (`/api/v1/mfa-backchannel/*`) | `nauthilus:mfa_write` or `nauthilus:admin`. |
 | Read WebAuthn credential descriptors (`/api/v1/mfa-backchannel/*`) | `nauthilus:webauthn_read` or `nauthilus:admin`. |
 | Save/update/delete WebAuthn credentials (`/api/v1/mfa-backchannel/*`) | `nauthilus:webauthn_write` or `nauthilus:admin`. |
-| Support history (`/api/v1/support/authentication-attempts/search`, `.../detail`, `/api/v1/support/bruteforce-bans/search`) | `nauthilus:history_read` or `nauthilus:history_detail` only; see [Support Authentication History](guides/support-authentication-history.md). |
-| Operational diagnostics (`POST /api/v1/support/operations/diagnostics`) | `nauthilus:operations_read` only; see [Read-only Support Access over MCP](guides/support-mcp-access.md#operational-diagnostics). |
+| Support history (`/api/v1/support/authentication-attempts/search`, `.../detail`, `/api/v1/support/bruteforce-bans/search`) | `nauthilus:history_read` or `nauthilus:history_detail` only; both release the same complete data since 4.2.1; see [Support Authentication History](guides/support-authentication-history.md). |
+| Operational diagnostics, log overview, and log events (`POST /api/v1/support/operations/diagnostics`, `.../log-overview`, `.../log-events`) | `nauthilus:operations_read` only; see [Read-only Support Access over MCP](guides/support-mcp-access.md). |
+| Next segment of a large support answer (`POST /api/v1/support/responses/segment`, since 4.2.1) | The scope of the operation that produced the answer; see [Read-only Support Access over MCP](guides/support-mcp-access.md). |
 
 No route asks for a scope of another family. Since 4.1.0 `nauthilus:authenticate` is no longer a base scope of every
 `/api/v1` route, and `nauthilus:security_read` and `nauthilus:security_write` exist: a client that only lists brute-force entries needs `nauthilus:security_read` and nothing else, and a

@@ -83,6 +83,13 @@ OIDC clients and SAML service providers support these related fields:
 
 See [MFA Assurance Policy](mfa-assurance.md) for evaluation order, validation, and examples.
 
+## Frontend Encryption Secret
+
+`identity.frontend.encryption_secret` authenticates and encrypts the browser session cookie. It is required when the
+frontend is enabled and must be at least 32 bytes long; multibyte characters count with their encoded length.
+Configuration validation and `--config-check` reject a shorter value, and since 4.2.1 a server whose enabled frontend
+and IdP cannot be built does not start. Changing the value invalidates existing browser session cookies.
+
 ## Frontend Assets
 
 Use `identity.frontend.assets` for template and language-resource paths.

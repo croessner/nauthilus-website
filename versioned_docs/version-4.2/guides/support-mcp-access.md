@@ -1,20 +1,22 @@
 ---
 title: Read-only Support Access over MCP
-description: Expose the read-only support operations to Codex and Claude Code through an authenticated MCP endpoint, and use operational diagnostics over MCP or the management API
-keywords: [MCP, Support, Diagnostics, Loki, OAuth 2.1, Hosted Resources, Codex, Claude Code, RFC 9728, RFC 8414]
+description: Expose the read-only support operations to Codex and Claude Code through an authenticated MCP endpoint, and use operational diagnostics, the log overview, and stored log events over MCP or the management API
+keywords: [MCP, Support, Diagnostics, Loki, Log Events, Segments, OAuth 2.1, Hosted Resources, Codex, Claude Code, RFC 9728, RFC 8414]
 sidebar_position: 32
 ---
 
 # Read-only Support Access over MCP
 
 Nauthilus can expose its read-only support operations to Model Context Protocol (MCP) clients such as Codex and Claude
-Code. Support staff then ask their coding assistant why a login failed, why an address was banned, or whether LDAP or
-Redis looked unhealthy, and the assistant answers from the same evidence the management API returns.
+Code. Support staff then ask their coding assistant why a login failed, why an address was banned, whether LDAP or
+Redis looked unhealthy, or which warnings and errors the instances logged, and the assistant answers from the same
+evidence the management API returns.
 
 The MCP endpoint is optional and disabled by default. It runs on its own listener behind a TLS-terminating reverse proxy,
 and it accepts only OAuth 2.1 user access tokens that Nauthilus issued itself for this endpoint. The endpoint reuses the
 historical authentication diagnosis described in [Support Authentication History](./support-authentication-history.md)
-and adds operational diagnostics, which the management HTTP API offers as well.
+and adds operational diagnostics, a log overview, and the stored log events, which the management HTTP API offers as
+well.
 
 :::warning Read-only by design
 
@@ -27,12 +29,12 @@ change, and no free query of any kind: no shell, SQL, Redis, LogQL, or PromQL. E
 
 | It is | It is not |
 | --- | --- |
-| An authenticated, read-only MCP server with four fixed tools | A general administration interface or a query console |
+| An authenticated, read-only MCP server with seven fixed tools | A general administration interface or a query console |
 | Protected by Nauthilus as authorization server and resource server | Usable with an external authorization server |
 | Open only to pre-registered static OIDC clients | Open to dynamically registered clients |
 | Open only to users in a configured directory group, with MFA | Open to every user who can log in |
 | The same JSON answers as the management HTTP API | A second implementation with its own interpretation |
-| An instance-local runtime view plus optional Loki log and Prometheus metric evidence | A monitoring or alerting system |
+| An instance-local runtime view plus optional Loki log, stored log line, and Prometheus metric evidence | A monitoring or alerting system |
 
 Browser clients are not supported: the endpoint sends no CORS headers and refuses foreign `Origin` headers.
 
@@ -44,20 +46,29 @@ Browser clients are not supported: the endpoint sends no CORS headers and refuse
 | `authentication_attempt_detail` | `POST /api/v1/support/authentication-attempts/detail` | `nauthilus:history_read`, `nauthilus:history_detail` | Every recorded event of one attempt |
 | `bruteforce_history` | `POST /api/v1/support/bruteforce-bans/search` | `nauthilus:history_read`, `nauthilus:history_detail` | Recorded brute-force bans of one IP address or network |
 | `operational_diagnostics` | `POST /api/v1/support/operations/diagnostics` | `nauthilus:operations_read` | Findings and hypotheses for LDAP, backends, Redis, the ClickHouse export, event delivery, and policy checks |
+| `operational_log_overview` | `POST /api/v1/support/operations/log-overview` | `nauthilus:operations_read` | Counts of every message logged at the requested levels (WARN and ERROR by default) per level, exact message, instance, and time bucket |
+| `operational_log_events` | `POST /api/v1/support/operations/log-events` | `nauthilus:operations_read` | The stored Loki lines of a window with every field, newest first and paged |
+| `support_response_segment` | `POST /api/v1/support/responses/segment` | The scope of the operation that produced the answer | The next segment of an answer above `limits.max_response_bytes`; see [Large Answers](#large-answers) |
+
+Both history scopes release the complete recorded data. `nauthilus:history_detail` grants nothing beyond
+`nauthilus:history_read`; it is kept so that existing grants keep working.
 
 `authentication_attempts_search` takes the same optional `response_mode` (`detailed` or `compact`) and
 `include_ban_context` arguments as the HTTP route. The tool input schema is generated from the same OpenAPI component,
-and the answers are byte-identical. The mode only selects the presentation and never widens the projection; see
+and the answers are byte-identical. The mode only selects the presentation; see
 [Ban context and compact answers](./support-authentication-history.md#ban-context-and-compact-answers).
 
 Both transports share one operation table, one argument decoder, and one renderer, so an MCP tool result carries exactly
 the JSON that the HTTP route returns for the same request. The three history tools need a configured support history;
-without it they answer `HISTORY_NOT_CONFIGURED`. The diagnostics tool needs `observability.diagnostics.operations`;
-without it it answers `OPERATIONS_NOT_CONFIGURED`.
+without it they answer `HISTORY_NOT_CONFIGURED`. The diagnostics tool and the two log tools need
+`observability.diagnostics.operations`; without it they answer `OPERATIONS_NOT_CONFIGURED`. The log tools read only the
+Loki source of that section.
 
 Every tool is listed to every authenticated caller. Each call is authorized from the verified token scopes: a tool call
 whose scope the token lacks is answered with HTTP `403` and an `insufficient_scope` challenge that names the scopes of
-that tool, before the call reaches the MCP server. The service checks the scope again.
+that tool, before the call reaches the MCP server. The service checks the scope again. `support_response_segment`
+passes the transport check with any support scope; the segment store then requires the principal that received the
+answer and a scope of the operation that produced it.
 
 The endpoint negotiates the MCP protocol versions `2026-07-28` (stateless), `2025-11-25`, and `2025-06-18`. Older
 versions are refused. It runs in stateless Streamable HTTP mode with JSON responses: there are no JSON-RPC batches, no
@@ -87,8 +98,9 @@ flowchart LR
   the bearer token against the issuer in-process, applies limits, and writes the transport audit.
 - **Issuer.** The built-in OIDC provider issues tokens for the endpoint. The endpoint is configured as a *hosted
   resource* in `identity.oidc.hosted_resources`; see [Hosted Resources](../configuration/idp/oidc.md#hosted-resources).
-- **Services.** One process-owned history service and one diagnostics service answer HTTP and MCP alike, with the same
-  authorization, limits, concurrency gates, and audit.
+- **Services.** One process-owned history service and one operations service (diagnostics, log overview, log events)
+  answer HTTP and MCP alike, with the same authorization, limits, concurrency gates, and audit. One process-owned
+  segment store keeps answers that exceeded the MCP response bound; see [Large Answers](#large-answers).
 
 The client discovers everything from the first refused request:
 
@@ -140,9 +152,11 @@ RFC 8707 resource indicator and the token audience.
   minutes), whatever the client's own `access_token_lifetime` says.
 
 There is no per-user scope selection: every user admitted by `user_right` gets the scopes that the client requested and
-that both the client and the hosted resource list. Leave `nauthilus:history_detail` out of the hosted resource and the
-client when support staff should only receive the support projection of the history; see
-[Support Authentication History](./support-authentication-history.md).
+that both the client and the hosted resource list. There is no reduced support projection of the history: either
+history scope releases the complete recorded data, including the identities behind shared addresses, so leaving
+`nauthilus:history_detail` out restricts nothing. Admit only staff entitled to that data, and list only
+`nauthilus:operations_read` on a resource whose users should see operations but no history; see
+[What Leaves the Host](#what-leaves-the-host) and [Support Authentication History](./support-authentication-history.md).
 
 ### Token Acceptance
 
@@ -189,7 +203,10 @@ and is not counted as a failed attempt.
 - A reverse proxy terminates TLS for the resource URL on a host name that the MCP clients can reach.
 - For the three history tools: a configured support history, see
   [Support Authentication History](./support-authentication-history.md).
-- For the diagnostics tool: `observability.diagnostics.operations`, described below.
+- For the diagnostics tool: `observability.diagnostics.operations`, described below. The log overview and the log
+  events also need its `loki` source, on Loki 2.9 or newer.
+- Behind a load balancer with several instances: sticky routing for the MCP endpoint, because the segments of a large
+  answer live in the instance that produced it.
 
 ## Configuration
 
@@ -252,7 +269,7 @@ identity:
 | --- | --- | --- |
 | `name` | required | 1 to 63 lower-case letters, digits, or dashes, starting with a letter or digit; unique. Referenced by `runtime.servers.mcp.hosted_resource`. |
 | `resource` | required | Absolute HTTPS URL with a host and without query, user info, fragment, or whitespace; plain HTTP only for loopback hosts. Unique, not equal to a `client_id` or a resource owned by a `token_introspection` block, and not a reserved `nauthilus:` audience. |
-| `scopes` | required | Non-empty, duplicate-free subset of `nauthilus:history_read`, `nauthilus:history_detail`, and `nauthilus:operations_read`. |
+| `scopes` | required | Non-empty, duplicate-free subset of `nauthilus:history_read`, `nauthilus:history_detail`, and `nauthilus:operations_read`. Both history scopes grant the same complete history data. |
 | `user_right.from` | required | `groups` (group names) or `group_dns` (group distinguished names). |
 | `user_right.any_of` | required | At least one group; no duplicates, no empty or padded values. |
 | `max_authentication_age` | `12h` | `5m` to `720h`. |
@@ -296,7 +313,7 @@ runtime:
 | `limits.max_concurrent` | `8` | In-flight requests of the endpoint; at most `64`. |
 | `limits.max_concurrent_per_principal` | `2` | In-flight requests of one user through one client; at most `max_concurrent`. |
 | `limits.max_request_bytes` | `65536` | Request body bound; at most `1048576`. |
-| `limits.max_response_bytes` | `1048576` | Bound of one tool result, counting the structured content and its text copy together; at most `16777216`. |
+| `limits.max_response_bytes` | `1048576` | Bound of one serialized MCP response: the JSON-RPC envelope with the request ID, the text copy, the structured copy, and the error flag. A larger answer arrives in segments (see [Large Answers](#large-answers)); at most `16777216`. |
 | `limits.failed_auth_per_minute` | `30` | Failed bearer attempts per client (IPv4 address or IPv6 `/64`) per minute; must not be negative. |
 | `audit.enabled` | `true` | Writes the transport audit records described below. |
 
@@ -344,11 +361,11 @@ observability:
 | --- | --- | --- |
 | `enabled` | `false` | Enables the diagnostics service for MCP and the management API. |
 | `sources.nauthilus_runtime.enabled` | `true` | Instance-local runtime source. At least one source must be enabled. |
-| `sources.loki.enabled` | `false` | Optional historical log source. Requires `enabled: true` on the section. |
-| `sources.loki.url` | required | HTTP or HTTPS base URL without query, fragment, or user info. `/loki/api/v1/query` is appended to its path. |
+| `sources.loki.enabled` | `false` | Optional historical log source; the log overview and the log events read only this source. Requires `enabled: true` on the section. |
+| `sources.loki.url` | required | HTTP or HTTPS base URL without query, fragment, or user info. `/loki/api/v1/query` is appended to its path; the log overview and the log events also use `/loki/api/v1/query_range` and `/loki/api/v1/series`. |
 | `sources.loki.tenant` | `""` | Sent as `X-Scope-OrgID`; 1 to 64 letters, digits, dots, dashes, or underscores. |
 | `sources.loki.selector` | required | Fixed stream selector with at least one label. Names use Prometheus label syntax; values are 1 to 128 characters of letters, digits, and `._:/@-`. |
-| `sources.loki.instance_label` | required | Label that names the Nauthilus instance of a stream, for example `pod`. Counts are grouped by it. |
+| `sources.loki.instance_label` | required | Label that names the Nauthilus instance of a stream, for example `pod`. Counts are grouped by it, and the `instance` filter of the log events matches it. |
 | `sources.loki.query_profile` | `nauthilus_diagnostics` | The only compiled query profile. |
 | `sources.loki.timeout` | `3s` | Per Loki request; at most `30s`. |
 | `sources.loki.max_time_window` | `1h` | Longest window one query covers; at most `24h`. Longer windows are clipped to their newest part. |
@@ -366,7 +383,10 @@ The tenant is sent as `X-Scope-OrgID`, which Mimir and Cortex read. The `instanc
 an instance: `instance` is the scrape address, and a relabeled `pod` label reads better.
 
 The Loki and Prometheus clients ignore proxy environment variables and never follow redirects. Selector, tenant,
-credentials, and endpoint come only from the configuration; no caller value reaches a query.
+credentials, and endpoint come only from the configuration. No caller value reaches a diagnostics, overview, or
+Prometheus query; only the log events take an instance and a message, both rendered as quoted LogQL strings (see
+[Log Events](#log-events)). The log overview and the log events need no further configuration: they use the selector,
+tenant, credentials, `timeout`, `max_time_window`, `max_series`, and `max_response_bytes` of the `loki` source.
 
 ### Complete Example
 
@@ -622,6 +642,8 @@ claude mcp add --transport http nauthilus https://login.example.com/mcp --client
 Both clients discover the issuer through the protected resource metadata and RFC 8414, use PKCE `S256` and the
 `resource` parameter, and verify the `iss` parameter of the callback.
 
+MCP clients list the tools when they connect. After an upgrade that adds tools, reconnect existing clients to see them.
+
 ## Requests and Responses
 
 An MCP tool call, protocol version `2025-06-18`:
@@ -650,7 +672,50 @@ with `isError: true` and the same envelope the HTTP route returns:
 The body inspection refuses, before the MCP server sees the request: bodies above `max_request_bytes`, duplicate JSON
 member names, case variants of the JSON-RPC member names, JSON-RPC batches, and `Mcp-Method` or `Mcp-Name` headers that
 disagree with the body. Operation arguments are decoded with the same strict rules on HTTP and MCP: unknown fields and
-duplicate names are `INVALID_REQUEST`. A result above `max_response_bytes` becomes `RESPONSE_TOO_LARGE`.
+duplicate names are `INVALID_REQUEST`. A result above `max_response_bytes` arrives in segments, as described below. A
+panic inside any support operation answers `INTERNAL_ERROR` on both transports and never ends the process.
+
+### Large Answers
+
+An answer above the transport bound is never discarded. Over MCP the bound is the serialized HTTP response itself:
+the JSON-RPC envelope with the request's own ID, the text copy (the answer escaped once more as a JSON string), the
+structured copy, and the error flag. An answer whose serialized response exceeds `limits.max_response_bytes` is
+stored, and the tool result carries its first segment instead:
+
+```json
+{"schema_version":"1",
+ "segment":{"operation":"operational_log_events","offset":0,"total_bytes":2483112,"next_cursor":"..."},
+ "data":"{\"schema_version\":\"1\",\"scope\":..."}
+```
+
+Call `support_response_segment` with `segment.next_cursor` as `cursor` until `next_cursor` is `null`:
+
+```json
+{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"support_response_segment",
+ "arguments":{"schema_version":"1","cursor":"..."}}}
+```
+
+Concatenating `data` of every segment in order yields the complete JSON answer byte for byte, so one large log event or
+a large attempt detail arrives complete. `offset` is the byte position of `data` in the complete answer, and
+`total_bytes` its length.
+
+- **Lifetime and size.** Segments are kept for ten minutes, in a store of 64 MiB in total; when it is full, the oldest
+  answers go first. One answer can be at most 16 MiB; a larger answer is `RESPONSE_TOO_LARGE`, so narrow the request.
+  Each principal holds at most 16 MiB; its own oldest answers go first, never another principal's.
+- **Binding.** Segments are bound to the principal that received the answer (credential method and identity) and to
+  the scopes of its operation. Another caller, or a token without one of those scopes, receives `FORBIDDEN`.
+- **Fit.** Every segment is rendered to the bound of the call that fetches it, measured the same way, as the longest part
+  of the answer that fits without splitting a UTF-8 character. Every raw MCP response therefore stays within
+  `limits.max_response_bytes`, also for a long request ID or an answer dense in quotes and backslashes. A bound too small
+  for one character of a segment is `RESPONSE_TOO_LARGE`.
+- **One instance.** The store lives in the instance that produced the answer. Behind a load balancer, segment fetches
+  must reach the same instance (sticky routing); otherwise they answer `SEGMENT_UNKNOWN`, as does a segment that
+  expired or was evicted. Repeat the original call then.
+- **HTTP.** The management API offers the same operation as `POST /api/v1/support/responses/segment` with the same
+  body. HTTP answers themselves have no size bound and are never segmented; today only the MCP response bound produces
+  segments. See [readSupportResponseSegment](../api-reference/management/read-support-response-segment.api.mdx).
+- **Audit.** A segment fetch is a transport call that the `support_mcp` record covers; the answer was audited by its
+  service when it was produced.
 
 ## Operational Diagnostics
 
@@ -782,8 +847,10 @@ pipeline, check one known message with a manual LogQL query.
 
 :::
 
-No log line leaves Loki: answers contain counts per instance label. Instance label values outside a plain name pattern
-are replaced by a `sha256:` digest. Loki evidence carries no first-seen or last-seen times and depends on Loki retention.
+The diagnostics answer contains counts per instance label, with the instance values complete. The diagnostics profile
+counts only the eight messages above; the [Log Overview](#log-overview) counts every message, and the
+[Log Events](#log-events) return the stored lines. Loki diagnostics evidence carries no first-seen or last-seen times
+and depends on Loki retention.
 
 ### Prometheus Source
 
@@ -843,13 +910,15 @@ metric_relabel_configs:
 A labeled counter family appears in Prometheus only after its first increment. A family without series therefore usually
 means that nothing was counted since the process started, and `not_observed` is the answer for a covered instance.
 
-Values outside a plain pattern, such as an instance label, are replaced by a digest. Counts are rounded: `increase()`
+Instance values are returned complete. Counts are rounded: `increase()`
 extrapolates, and a series that first appears inside the window counts only from its second sample, so a restart of the
 only instance can hide the first increments. Prometheus evidence carries no first-seen or last-seen times either.
 
 ### Diagnostics over the Management API
 
-`POST /api/v1/support/operations/diagnostics` answers the same request with the same JSON. It requires a backchannel
+`POST /api/v1/support/operations/diagnostics` answers the same request with the same JSON. The
+[Log Overview](#log-overview) and the [Log Events](#log-events) are `POST /api/v1/support/operations/log-overview` and
+`POST /api/v1/support/operations/log-events` under the same rules. They require a backchannel
 caller holding `nauthilus:operations_read`: a bearer service token (`client_credentials`) or a scoped Basic credential
 (`auth.backchannel.basic_auth.users`). No other scope is needed, in particular not `nauthilus:authenticate`; see
 [OIDC Bearer Access for /api/v1](../rest-api.md#oidc-bearer-access-for-apiv1). The unrestricted Basic credential and
@@ -899,17 +968,236 @@ Content-Type: application/json
 {"schema_version":"1","window":{"from":"2026-11-18T06:00:00Z","until":"2026-11-18T07:00:00Z"},"components":["ldap"]}
 ```
 
+The error codes of the operations routes and the segment operation:
+
 | Code | HTTP status | Meaning |
 | --- | --- | --- |
-| `INVALID_REQUEST` | `400` | Malformed body, unknown component or source, invalid window or audit reference, query parameters |
+| `INVALID_REQUEST` | `400` | Malformed body, unknown component, source, or level, invalid window, page limit, or audit reference, query parameters |
 | `WINDOW_TOO_LARGE` | `400` | Window above 24 hours |
-| `FORBIDDEN` | `403` | The verified caller lacks `nauthilus:operations_read` |
-| `OPERATIONS_BUSY` | `429` | The diagnostics concurrency gate is full; retry later |
-| `INTERNAL_ERROR` | `500` | Unexpected service failure; the cause is logged on the host |
+| `INVALID_CURSOR` | `400` | Log overview or log events: a cursor of another query, window, or level set |
+| `FORBIDDEN` | `403` | The verified caller lacks `nauthilus:operations_read`; for a segment, the caller is not the principal that received the answer or lacks a scope of its operation |
+| `SEGMENT_UNKNOWN` | `404` | The segment expired, was evicted, or lives in another instance; repeat the original call |
+| `OPERATIONS_BUSY` | `429` | The operations concurrency gate is full; retry later |
+| `INTERNAL_ERROR` | `500` | Unexpected service failure, also a panic inside an operation; the cause is logged on the host |
 | `OPERATIONS_NOT_CONFIGURED` | `503` | Diagnostics are not enabled on this instance |
-| `RESPONSE_TOO_LARGE` | tool result | MCP only: the result exceeds `runtime.servers.mcp.limits.max_response_bytes` |
+| `RESPONSE_TOO_LARGE` | tool result | MCP only, and no longer for normal large answers: the answer is larger than 16 MiB, or `runtime.servers.mcp.limits.max_response_bytes` is too small for one character of a segment |
 
-The generated reference is [diagnoseOperations](../api-reference/management/diagnose-operations.api.mdx).
+The generated references are [diagnoseOperations](../api-reference/management/diagnose-operations.api.mdx),
+[overviewOperationsLogs](../api-reference/management/overview-operations-logs.api.mdx),
+[readOperationsLogEvents](../api-reference/management/read-operations-log-events.api.mdx), and
+[readSupportResponseSegment](../api-reference/management/read-support-response-segment.api.mdx).
+
+## Log Overview
+
+The diagnostics profile counts eight fixed messages; anything else, such as RBL resolver timeouts or WebAuthn warnings,
+stays invisible there. `operational_log_overview` counts every line of the Loki source at the requested levels in a
+window, one group per level and exact message text, so messages nobody profiled become visible as well. It needs no
+configuration beyond the `loki` source.
+
+### Overview Request
+
+| Field | Default | Rules |
+| --- | --- | --- |
+| `schema_version` | required | `"1"` |
+| `window` | last 15 minutes | As for the diagnostics; at most 24 hours (`WINDOW_TOO_LARGE`). Loki clips it to `max_time_window`. |
+| `levels` | `error`, `warn` | Any of `error`, `warn`, `notice`, `info`, `debug`, without repeats. |
+| `page.limit` | `50` | At most `200` message groups per page. |
+| `page.cursor` | none | `page.next_cursor` of the previous answer of the same query. |
+| `audit_reference` | none | Optional ticket reference for the audit record. |
+
+```json
+{"schema_version":"1","window":{"from":"2026-11-18T06:00:00Z","until":"2026-11-18T07:00:00Z"},
+ "levels":["error","warn"],"page":{"limit":50},"audit_reference":"INC-4711"}
+```
+
+Loki receives one coverage query and one range query per slog encoder, so the overview needs no knowledge of the log
+format. The JSON query has this shape:
+
+```text
+sum by (<instance_label>, nauthilus_level, nauthilus_msg) (count_over_time(<selector>
+  |~ "\"level\":\"(ERROR|WARN)\"" | json nauthilus_level="level", nauthilus_msg="msg"
+  | __error__="" | nauthilus_level=~"ERROR|WARN" [<bucket>s]))
+```
+
+The text query is the same with the filters `!~ "^\s*\{" |~ "(^|\s)level=(ERROR|WARN)(\s|$)"` and `| logfmt`. A text line
+fails the JSON parser and is dropped by `__error__=""`; the text query excludes JSON lines first, so a `level=ERROR`
+typed into a JSON value never counts. Only level names of the fixed vocabulary reach the query. The label extraction
+parameters of `json` and `logfmt` need Loki 2.9 or newer; an older Loki rejects both queries, and the source reads
+`unavailable`.
+
+### Reading the Overview
+
+- **`source`** is the Loki report with status, code, truncation, and coverage: the instances that logged any line in
+  the window and the covered time span. An instance in the coverage without a message group logged nothing at these
+  levels.
+- **`buckets` and `bucket_seconds`** are up to 12 equal buckets that end at the window end. Their width is a whole
+  number of seconds, so the first bucket can start up to 11 seconds before the window (`LOG_BUCKETS_EXCEED_WINDOW`).
+- **`messages`** is one page of groups, most frequent first (more severe levels first at equal counts). Each group has
+  `id` (its position in the whole answer), `level`, the complete `message`, the total `count`, one count per bucket in
+  `counts`, `first_bucket_from` and `last_bucket_until` of the buckets with a count, and the counts per `instances`.
+  Identical messages of several instances share a group; different messages never do. A message of the diagnostics
+  profile also carries its `component` and `symptom`.
+- **`message_exact`** is `true` when `message` is the stored text unchanged. Only then does it work as the `message`
+  filter of the log events; when a secret was replaced or a format character made visible, filter the events by
+  instance and the group's buckets instead.
+- **`page`** has `limit`, `offset`, `total` (every group of the answer), and `next_cursor` (`null` on the last page).
+- **`notes`** always hold `VALUES_ARE_UNTRUSTED_DATA` and `LOG_MESSAGES_ARE_NOT_INCIDENTS`, and when they apply
+  `LOG_SECRETS_REDACTED`, `LOG_MORE_PAGES`, `LOG_PAGES_REQUERY_THE_SOURCE`, `LOG_BUCKETS_EXCEED_WINDOW`,
+  `HISTORICAL_SOURCE_INCOMPLETE` (partial, clipped, truncated, misaligned, or timed out), `NO_HISTORICAL_SOURCE`, and
+  `LOG_NO_COVERAGE` (no instance logged any line in the window: check the selector and the retention).
+
+Every group has the status `observed`. A counted warning is evidence that a code path logged, not an outage: retries,
+fallbacks, and client errors log warnings during normal operation. The overview derives no hypotheses and never
+reports `failing` or `degraded`. Use `operational_diagnostics` and the runtime source for component state, and the log
+events with a group's `message` and an instance to read its stored lines.
+
+```json
+{
+  "schema_version": "1",
+  "scope": {"window": {"from": "2026-11-18T06:00:00Z", "until": "2026-11-18T07:00:00Z"},
+            "queried_at": "2026-11-18T07:00:03Z", "deployment": "prod", "instance": "mx-1"},
+  "source": {"name": "loki", "kind": "historical", "status": "ok", "truncated": false,
+             "coverage": {"from": "2026-11-18T06:00:00Z", "until": "2026-11-18T07:00:00Z", "instances": ["mx-1", "mx-2"], "view": "log_labels"}},
+  "buckets": [
+    {"from": "2026-11-18T06:00:00Z", "until": "2026-11-18T06:05:00Z"},
+    {"from": "2026-11-18T06:05:00Z", "until": "2026-11-18T06:10:00Z"},
+    {"from": "2026-11-18T06:10:00Z", "until": "2026-11-18T06:15:00Z"},
+    {"from": "2026-11-18T06:15:00Z", "until": "2026-11-18T06:20:00Z"},
+    {"from": "2026-11-18T06:20:00Z", "until": "2026-11-18T06:25:00Z"},
+    {"from": "2026-11-18T06:25:00Z", "until": "2026-11-18T06:30:00Z"},
+    {"from": "2026-11-18T06:30:00Z", "until": "2026-11-18T06:35:00Z"},
+    {"from": "2026-11-18T06:35:00Z", "until": "2026-11-18T06:40:00Z"},
+    {"from": "2026-11-18T06:40:00Z", "until": "2026-11-18T06:45:00Z"},
+    {"from": "2026-11-18T06:45:00Z", "until": "2026-11-18T06:50:00Z"},
+    {"from": "2026-11-18T06:50:00Z", "until": "2026-11-18T06:55:00Z"},
+    {"from": "2026-11-18T06:55:00Z", "until": "2026-11-18T07:00:00Z"}
+  ],
+  "bucket_seconds": 300,
+  "messages": [
+    {"id": "L1", "level": "error", "message": "LDAP connection error", "message_exact": true, "status": "observed",
+     "component": "ldap", "symptom": "LDAP_CONNECTION_ERROR", "count": 37, "counts": [0, 0, 0, 0, 0, 0, 0, 0, 12, 25, 0, 0],
+     "first_bucket_from": "2026-11-18T06:40:00Z", "last_bucket_until": "2026-11-18T06:50:00Z",
+     "instances": [{"instance": "mx-1", "count": 37}]}
+  ],
+  "page": {"limit": 50, "offset": 0, "total": 1, "next_cursor": null},
+  "notes": ["VALUES_ARE_UNTRUSTED_DATA", "LOG_MESSAGES_ARE_NOT_INCIDENTS"]
+}
+```
+
+### Overview Pages and Bounds
+
+Every page runs the Loki queries again for the same window and returns the groups from the cursor offset. A cursor
+carries the window of the first page, so a follow-up may repeat the request without `window`; an explicit window must
+be the same. A cursor of another window or level set is `INVALID_CURSOR`. A window in the past is stable; a window that
+still receives lines can shift between pages (`LOG_PAGES_REQUERY_THE_SOURCE`).
+
+- `max_series` bounds the series per range query (instance, level, and message). A truncated answer keeps the series
+  with the largest counts and marks the source `partial` with `truncated: true`.
+- A Loki response above `max_response_bytes` is dropped as a whole for that encoder (`LOKI_RESULT_TRUNCATED`). When
+  both range queries fail, the source is `unavailable`, never an empty `ok`.
+- Windows above `max_time_window` are clipped to their newest part (`LOKI_WINDOW_CLIPPED`).
+- Messages with variable content, such as counters or addresses, are separate groups and raise the series count. A
+  Loki `max_query_series` limit below the series count rejects the query.
+- A point that is not within one second of a bucket end, for example behind a query frontend with
+  `align_queries_with_step`, is dropped, and the source reads `partial` with `LOKI_BUCKETS_MISALIGNED`.
+
+## Log Events
+
+`operational_log_events` returns the stored lines themselves, newest first: everything a group of the overview counted,
+with its timestamp in nanoseconds, its instance, its stream labels, and every field of the line.
+
+### Events Request
+
+| Field | Default | Rules |
+| --- | --- | --- |
+| `schema_version` | required | `"1"` |
+| `window` | last 15 minutes | As for the overview. |
+| `levels` | `error`, `warn` | As for the overview. |
+| `instance` | all instances | Exact value of the instance label, at most 256 characters. |
+| `message` | all messages | Exact message, at most 4096 characters, for example the `message` of an overview group with `message_exact: true`. |
+| `page.limit` | `100` | At most `500` events per page. |
+| `page.cursor` | none | `page.next_cursor` of the previous answer of the same query. |
+| `audit_reference` | none | Optional ticket reference for the audit record. |
+
+```json
+{"schema_version":"1","window":{"from":"2026-11-18T06:00:00Z","until":"2026-11-18T07:00:00Z"},
+ "instance":"mx-1","message":"LDAP connection error","page":{"limit":100}}
+```
+
+Loki receives one log query per slog encoder with `direction=backward` and `limit`. The JSON query has this shape:
+
+```text
+{<selector>} | <instance_label>="<instance>" |~ "\"level\":\"(ERROR|WARN)\""
+  | json nauthilus_level="level", nauthilus_msg="msg" | __error__="" | nauthilus_level=~"ERROR|WARN"
+  | nauthilus_msg="<message>"
+```
+
+The instance and the message are the only caller values that reach a query. Both are rendered as quoted LogQL strings,
+so they can neither close the selector nor add a pipeline stage, and the instance is a label filter after the fixed
+selector, so it can only narrow it. The lines of both encoder queries merge in one unique order: newest first, then by
+the complete stream label set, then by line. Pages are therefore stable even when two streams hold the same line at the
+same time.
+
+### Reading the Events
+
+Every event holds:
+
+| Field | Meaning |
+| --- | --- |
+| `at` | Timestamp of the stored line with nanosecond precision |
+| `instance`, `level`, `message` | Instance label value, level, and message of the line |
+| `format` | `json`, `logfmt`, or `raw` for a line that is neither |
+| `line` | The complete stored line |
+| `labels` | Stream labels, without the parser labels |
+| `fields` | Every field of the line, nested objects included and numbers as written; a raw line has no fields |
+| `repeated_fields` | Names the line repeats; such a field holds the list of all its values in line order |
+| `redacted_fields`, `secrets_redacted` | Replaced authentication secrets, see [What Leaves the Host](#what-leaves-the-host) |
+
+The answer also carries `source`, `filter` (the applied levels, instance, and message), `gaps`, `page` (`limit`,
+`limit_applied`, `next_cursor`), and `notes`. A shortened event:
+
+```json
+{"at": "2026-11-18T06:41:07.123456789Z", "instance": "mx-1", "level": "error", "message": "LDAP connection error",
+ "format": "json", "labels": {"app": "nauthilus", "namespace": "mail", "pod": "mx-1"},
+ "line": "{\"time\":\"2026-11-18T06:41:07.123456789Z\",\"level\":\"ERROR\",\"msg\":\"LDAP connection error\",\"pool\":\"auth\",\"ldap_bind_password\":\"<redacted>\"}",
+ "fields": {"time": "2026-11-18T06:41:07.123456789Z", "level": "ERROR", "msg": "LDAP connection error", "pool": "auth",
+            "ldap_bind_password": "<redacted>"},
+ "redacted_fields": ["ldap_bind_password"], "secrets_redacted": true}
+```
+
+### Event Pages
+
+`next_cursor` continues before the time of the last returned line and skips the lines already returned at exactly that
+time, so no line is repeated or skipped. A page can hold fewer lines than `limit` and still carry `next_cursor`. A
+cursor carries the window and is bound to the levels, the instance, and the message; a follow-up may omit `window`.
+Cursors are not signed, so they work on every instance of a deployment; every field is validated and bounded, and an
+edited cursor can only move its own pages.
+
+Loki cuts a run of lines with one timestamp in its own order. The source therefore pages such runs stream by stream:
+
+- A page only uses lines newer than the oldest line of a full read, so every run inside it is complete and sorted the
+  same way on every page.
+- A run larger than one read (the read grows up to 5000 lines, the usual Loki entry limit) is paged stream by stream,
+  with the streams taken from the Loki series listing in label-set order. A page of a run reads at most 16 streams.
+- The stream listing holds up to 5000 streams; it does not use `max_series`. Streams beyond it are one gap
+  `STREAMS_EXCEED_LISTING_BOUND` at that time, and a failed listing is one gap `STREAMS_UNLISTED`
+  (`LOKI_STREAMS_UNLISTED`). Paging continues before that time in both cases.
+- A single stream with more lines at one timestamp than one read returns is listed in `gaps` with its time, labels, and
+  `STREAM_RUN_EXCEEDS_READ`, and paging continues with the next stream and the older lines. The lines of that run are
+  not returned: a log query offers no position inside such a run, and identical lines cannot be told apart. Raising
+  Loki's `max_entries_limit_per_query` does not help on its own, because the read size of this source is fixed at 5000
+  lines.
+- When the streams of a run change between pages, in a window that still receives lines, the source reads `partial`
+  with `LOKI_STREAMS_CHANGED`. When done lines meet a gap stream, they are dropped (`LOKI_RUN_POSITION_RESET`), so lines
+  may repeat but never vanish.
+
+When a Loki answer exceeds `max_response_bytes`, the read halves down to one line: `page.limit_applied` is then below
+`page.limit` (`LOG_PAGE_REDUCED_BY_SOURCE_LIMIT`), and the cursor continues without a gap. A line larger than the bound
+itself is read with its stream at its time; when that read still exceeds the bound, the stream's lines at that time are
+listed in `gaps` with `LINES_EXCEED_SOURCE_BYTE_BOUND`. Raise the source's `max_response_bytes` to read them. Every page
+with a gap reads `partial` with `LOKI_GAPS`; nothing is skipped without a gap entry. `max_time_window` clips the window
+as for the overview; one failed encoder query makes the source `partial`, both make it `unavailable`. An answer above the
+MCP bound arrives in segments ([Large Answers](#large-answers)).
 
 ## Limits
 
@@ -919,10 +1207,14 @@ The generated reference is [diagnoseOperations](../api-reference/management/diag
 | In-flight requests | `limits.max_concurrent`, `limits.max_concurrent_per_principal` | `429` with `Retry-After: 1` |
 | Failed bearer attempts | `limits.failed_auth_per_minute` per IPv4 address or IPv6 `/64` | `429` with `Retry-After: 60` |
 | Request body | `limits.max_request_bytes` | `413` |
-| Tool result | `limits.max_response_bytes` | `RESPONSE_TOO_LARGE` |
-| Diagnostics service | 4 calls in flight, 2 per caller, 10-second budget | `OPERATIONS_BUSY` |
-| Diagnostics window | 24 hours; Loki and Prometheus queries at most `max_time_window` | `WINDOW_TOO_LARGE`; `LOKI_WINDOW_CLIPPED`, `PROMETHEUS_WINDOW_CLIPPED` |
+| Serialized MCP response | `limits.max_response_bytes` | The answer arrives in segments; see [Large Answers](#large-answers) |
+| Segment store | 10 minutes; 64 MiB in total; 16 MiB per answer and per principal | `SEGMENT_UNKNOWN` after expiry or eviction; `RESPONSE_TOO_LARGE` for an answer above 16 MiB |
+| Operations service (diagnostics, log overview, log events) | 4 calls in flight, 2 per caller, 10-second budget | `OPERATIONS_BUSY` |
+| Operations window | 24 hours; Loki and Prometheus queries at most `max_time_window` | `WINDOW_TOO_LARGE`; `LOKI_WINDOW_CLIPPED`, `PROMETHEUS_WINDOW_CLIPPED` |
+| Log pages | Overview 50 groups by default, at most 200; events 100 by default, at most 500 | `INVALID_REQUEST` above the maximum |
+| Log event reads | 5000 lines per read, 5000 listed streams, 16 streams per page of a run | Gaps `STREAM_RUN_EXCEEDS_READ`, `STREAMS_EXCEED_LISTING_BOUND` |
 | History window | 31 days | See [Support Authentication History](./support-authentication-history.md) |
+| History inner lists | 200 events of an attempt, 500 contributions and 50 claimants of a ban per page | Continue with the cursor; see [Inner lists](./support-authentication-history.md#inner-lists) |
 
 A missing token is a discovery probe and is not counted as a failed attempt. The failure table tracks at most 10,000
 clients per minute; when it is full, new clients are not tracked rather than refused, so a flood of rotating addresses
@@ -934,15 +1226,16 @@ Each service writes its own audit record, at `info` level, for every call over H
 
 | Record | Message | Fields |
 | --- | --- | --- |
-| `audit=support_operations` | `support operations access` | `operation`, `caller`, `caller_method`, `allowed`, `result_code`, `results`, `audit_reference`, `duration` |
+| `audit=support_operations` | `support operations access` | `operation` (`operations_diagnose`, `operations_log_overview`, or `operations_log_events`), `caller`, `caller_method`, `allowed`, `result_code`, `results`, `audit_reference`, `duration` |
 | `audit=support_history` | `support history access` | See [Support Authentication History](./support-authentication-history.md) |
 | `audit=support_mcp` | `support mcp access` | `result`, `status`, `client_ip`, and when known `reason`, `tool`, `principal`, `code` |
 
 The caller of a user token is `<client>#<subject>`, for example `support-cli#<sub claim>`, and `caller_method` is
 `oauth_user`; a service token is identified by its client ID with `caller_method` `oidc_bearer`, and a scoped Basic
 credential by its username with `caller_method` `basic_auth`. The endpoint writes
-`support_mcp` records for every refused request and every tool call; set `runtime.servers.mcp.audit.enabled: false` to
-turn them off. Tokens, arguments, results, and secrets are never logged.
+`support_mcp` records for every refused request and every tool call, including `support_response_segment`; set
+`runtime.servers.mcp.audit.enabled: false` to turn them off. A segment fetch writes no service record, because the
+answer was audited when it was produced. Tokens, arguments, results, and secrets are never logged.
 
 `mcp_requests_total{result}` counts refused requests and tool calls with these results:
 
@@ -959,13 +1252,95 @@ turn them off. Tokens, arguments, results, and secrets are never logged.
 
 Alert on a sustained rise of `unauthorized`, `rate_limited`, or `error`.
 
-### What Leaves the Host
+## What Leaves the Host
 
-Answers contain recorded or observed data: logins and accounts of the named subject, client IPs, protocols, client IDs,
-internal instance names, LDAP pool and target names, Redis pool names, and Loki and Prometheus instance labels. Recorded free text is
-cleaned (control, format, and bidirectional characters replaced) and bounded. The tool descriptions and the server
-instructions tell the model to treat every string as untrusted data. That does not make natural-language content
-harmless, so do not expose the endpoint to clients or users you do not trust.
+Answers carry the complete recorded and observed diagnostic data: logins and accounts of every identity in an attempt
+or ban (also those behind a shared address), client IPs, protocols, client IDs, status texts, factor evidence, error
+codes and texts, internal instance and host names, LDAP pool and target names, Redis pool names, Loki and Prometheus
+labels, log messages, and every field of a stored log line. Nothing is cut, merged, or masked heuristically. Two
+transformations remain: authentication secrets in log data are replaced by `<redacted>`, and invisible format
+characters are made visible. The history never reads password hashes, OTPs, recovery codes, tokens, or WebAuthn
+payloads in the first place; see [Support Authentication History](./support-authentication-history.md#privacy-and-audit).
+
+:::warning Personal data
+
+The answers are personal data. Grant the support scopes only to staff entitled to it, and point a model client at the
+endpoint only if the operator of that model may process the data. A local model keeps the data on premises.
+
+:::
+
+### Secret Names
+
+A name is a secret name when its last word is `password`, `passwd`, `passphrase`, `pwd`, `pass`, `pw`, `bindpw`,
+`passcode`, `passwort`, `kennwort`, `secret`, `token`, `authorization`, `cookie`, `assertion`, `jwt`, `otp`, `totp`,
+`apikey`, or `credential`, or when its last two words are `api key`, `private key`, `secret key`, `signing key`,
+`access key`, `client key`, `recovery code`, `totp code`, `otp code`, `password hash`, or `code verifier`. Words are
+split at `_`, `-`, `.`, space, `/`, `:`, brackets, and case changes; digits around a word and a plural `s` are ignored.
+
+| Secret, replaced | Not a secret, complete |
+| --- | --- |
+| `ldap_bind_password`, `userPassword`, `session_tokens`, `password2`, `db:password`, `X-API-Key` | `current_password_retries`, `total_passwords_seen`, `tokens_issued`, `credential_id`, `session`, `session_id` |
+
+`session` and `session_id` are request IDs in Nauthilus logs and stay. Log fields with a secret name are replaced and
+named in `redacted_fields` as dotted paths; in an array, the item after a secret-named flag item
+(`["--password","..."]`) is replaced as well. A stream label with a secret name is replaced and named as
+`labels.<name>`; other label values pass the free-text rules below.
+
+### Stored Lines and Embedded JSON
+
+The stored `line` of an event gets the same replacements as its fields. A JSON or slog text line is read token by token,
+and names and values are decoded, so `"pass\u0077ord"` or an escaped value cannot hide a secret. A secret-named value
+becomes `"<redacted>"`; every other string value passes the free-text rules and is encoded again only when they changed
+it. Everything else stays byte for byte, repeated names and their order included, so `line` decodes to exactly the
+redacted `fields`. JSON objects and arrays embedded in a text value, such as a dumped request body, are rewritten the
+same way in fields, lines, and overview messages. An embedded JSON value that is the value of a secret-named assignment
+(`password=[123456]`, `client_secret: {...}`, `--password ["..."]`) is replaced as a whole.
+
+### Free Text
+
+Inside free text (messages, error texts, raw lines), only unambiguous secret syntax is replaced:
+
+- signed JWTs, URL passwords, and `code`, token, and secret query parameters in URLs;
+- the credential of an `Authorization: <scheme> ...` header, with the scheme staying visible, and a
+  `Bearer`, `Basic`, `Negotiate`, or `Digest` word that looks like a credential (digits, base64 symbols, inner capitals,
+  or 32 characters);
+- the value of a secret-named command-line flag (`--password value`), also quoted (`--password 'a b'`);
+- the values of secret-named assignments in the forms `name=value`, `"name": value` (JSON with any key, also escaped
+  inside a string; an object or array value as a whole), `Name:value` without a space (struct dumps), LDIF
+  `name:: value`, identifiers written `userPassword: value` or `bind_password: value`, and HTTP headers written
+  `X-API-Key: value` or `Authorization: value`;
+- a `Cookie:` or `Set-Cookie:` header, to the line end, when its value starts with a `name=value` pair or is a bracketed
+  header dump such as `map[Cookie:[a=b; c=d]]`.
+
+Any other `name: reason` with a space is how Go wraps errors, so `token: redis: connection pool timeout`,
+`parse token: illegal base64 data`, `cookie: invalid or tampered cookie`, `Set-Cookie: header too large`, and
+`Authorization: header missing` stay complete. A quoted value ends at its quote, an unquoted value at whitespace or
+`,`, `;`, or `&` (struct dumps also at a closing bracket, headers at the line end). Values after an escaped newline or
+quote inside a stored JSON line, doubly escaped JSON, quoted values after `name: `, and keys with an annotation in
+parentheses are covered. An event or overview group with a replacement inside a text carries `secrets_redacted`, and
+the answer carries the note `LOG_SECRETS_REDACTED`.
+
+Not recognized:
+
+- a password with spaces or those separators in an unquoted value; only its first part is replaced, and after
+  `userPassword: ` an unquoted value of several words stays, so `userPassword: attribute missing` stays readable;
+- prose with a space before the colon, such as `config password: value`;
+- a value glued to a short flag (`-pvalue`) and a short lower-case word after `Bearer` in prose;
+- names outside the vocabulary, for example `signature`;
+- OAuth codes in a `code=` assignment outside a URL, because `code` also names error codes.
+
+A rare `token:reason` without a space, or a placeholder in a usage text (`--password PROMPT`), is replaced although it
+is no secret.
+
+### Format Characters and Untrusted Data
+
+Invisible format characters (Unicode category Cf, for example bidirectional overrides) are shown as `<U+XXXX>`, and
+invalid UTF-8 bytes become U+FFFD, which JSON cannot carry otherwise. Newlines and tabs stay. This applies to every
+answer, history and operations alike.
+
+The tool descriptions and the server instructions tell the model to treat every string as untrusted data. That does not
+make natural-language content harmless, so do not expose the endpoint to clients or users you do not trust. Answers are
+audited per call with the principal, the operation, and the result count.
 
 ## Verification
 
@@ -991,8 +1366,10 @@ harmless, so do not expose the endpoint to clients or users you do not trust.
 
 5. **Client.** Add the server in Codex or Claude Code with the static client ID, log in with a member of the support
    group, and run `operational_diagnostics`. The log shows a `support_operations` record with
-   `caller_method=oauth_user` and a `support_mcp` record with `result=ok`.
-6. **Refusals.** A user outside the support group receives `access_denied` after login, and a client configured without
+   `caller_method=oauth_user` and a `support_mcp` record with `result=ok`. The client lists seven tools.
+6. **Log source.** Run `operational_log_overview`. The `source` lists the instances in its coverage;
+   `LOG_NO_COVERAGE` or `unavailable` points to the selector, the retention, or a Loki older than 2.9.
+7. **Refusals.** A user outside the support group receives `access_denied` after login, and a client configured without
    the static client ID is refused.
 
 ## Troubleshooting
@@ -1017,12 +1394,21 @@ Transport refusals are answered with a small JSON body such as `{"error":"untrus
 | `access_denied` after login | The user holds no group of `user_right.any_of`, or the backend resolves no groups for the `oidc` protocol, or `from` does not match the group values (`groups` versus `group_dns`). | Fix the membership or the backend group lookup. |
 | `login_required` or `invalid_grant` on refresh | The login is older than `max_authentication_age`. | Log in again. |
 | History tools answer `HISTORY_NOT_CONFIGURED` | No support history is configured. | See [Support Authentication History](./support-authentication-history.md). |
-| Diagnostics answer `OPERATIONS_NOT_CONFIGURED` | `observability.diagnostics.operations.enabled` is `false`, or the service could not be built. | Enable it and restart; check the log for `Operations diagnostics disabled`. |
+| Diagnostics or log tools answer `OPERATIONS_NOT_CONFIGURED` | `observability.diagnostics.operations.enabled` is `false`, or the service could not be built. | Enable it and restart; check the log for `Operations diagnostics disabled`. |
 | Loki reports `not_configured` although configured | The Loki source could not be built at startup. | Check the log for `Loki diagnostics source disabled`. |
 | Prometheus reports `not_configured` although configured | The Prometheus source could not be built at startup. | Check the log for `Prometheus diagnostics source disabled`. |
 | Loki components read `not_observed` although errors were logged | The pipeline wraps or colours log lines. | Store the raw slog JSON or text line; verify with a manual LogQL query. |
 | Prometheus is `ok` but every component reads `unknown` | The scrape drops core metrics, so no instance has two `nauthilus_version_info` samples in the window. | Extend the `metric_relabel_configs` keep rule as shown under [Prometheus Source](#prometheus-source) and check that the source report lists the instances. |
-| `RESPONSE_TOO_LARGE` | The result exceeds `max_response_bytes`. | Narrow the window, components, filters, or page size, or raise the limit. |
+| `RESPONSE_TOO_LARGE` | The answer exceeds 16 MiB, one principal's share of the segment store, or `max_response_bytes` is too small for one character of a segment. Normal large answers arrive in segments. | Narrow the window, filters, or page size. |
+| Answer carries `segment` and `data` instead of the result | The answer exceeded `max_response_bytes`. | Follow `segment.next_cursor` with `support_response_segment` and concatenate `data`; see [Large Answers](#large-answers). |
+| `SEGMENT_UNKNOWN` | The segment expired after ten minutes, was evicted, or the fetch reached another instance. | Repeat the original call; behind a load balancer, route the endpoint to one instance per client (sticky routing). |
+| `FORBIDDEN` on a segment | Another principal, or a token without a scope of the original operation, fetched the segment. | Fetch segments with the token that received the answer. |
+| Log overview or log events read `unavailable` | Both encoder queries failed, for example on a Loki older than 2.9, which rejects the label extraction parameters. | Upgrade Loki; check the source `code`. |
+| Log overview notes `LOG_NO_COVERAGE` | No instance logged any line in the window. | Check the `selector` and the Loki retention. |
+| Log overview source `partial` with `LOKI_BUCKETS_MISALIGNED` | A query frontend with `align_queries_with_step` shifts the points. In 4.2.1 a window whose limits are not whole multiples of the bucket width can also end this way, with an empty message list, while the log events of the same window are complete. | Let the overview queries reach Loki without step alignment. In 4.2.1, start and end the window on multiples of the bucket width, for example on full five minutes for a one-hour window. |
+| Log events list gaps `STREAM_RUN_EXCEEDS_READ` | One stream holds more lines at one timestamp than one read of 5000 lines returns. | The source cannot return that run; the gap states its time and stream labels, and paging continues. |
+| Log events list gaps `LINES_EXCEED_SOURCE_BYTE_BOUND` | A line is larger than the source's `max_response_bytes`. | Raise `sources.loki.max_response_bytes`. |
+| `INVALID_CURSOR` on a log page | The cursor belongs to another window, level set, instance, or message. | Repeat the follow-up with the same filters, or omit `window`. |
 
 ## Known Limits
 
@@ -1032,7 +1418,17 @@ Transport refusals are answered with a small JSON body such as `{"error":"untrus
 - One MCP listener serves one hosted resource.
 - A removed group membership takes effect at the next authorization, at the latest after `max_authentication_age`.
 - No JSON-RPC batches, no server-to-client requests, no SSE streams, no browser clients.
-- Loki evidence counts messages; it carries no first-seen or last-seen times and depends on Loki retention.
+- Loki diagnostics evidence counts messages; it carries no first-seen or last-seen times and depends on Loki retention.
+  The log overview resolves time only to its buckets; the log events carry the exact time of every line.
+- The log events cannot return a run of one stream with more lines at one timestamp than one read of 5000 lines
+  (`STREAM_RUN_EXCEEDS_READ`); the gap is stated.
+- Segments live in the instance that produced the answer; behind a load balancer, segment fetches need sticky routing.
+- In 4.2.1 the log overview can read `partial` with `LOKI_BUCKETS_MISALIGNED` and no messages for a window whose limits
+  are not whole multiples of the bucket width (for a one-hour window, five minutes); the log events of the same window
+  are not affected. Start and end the window on such boundaries until a later release removes this limit.
+- History pages hold at most 200 events of an attempt, 500 contributions, and 50 claimants of a ban; each list
+  continues with its cursor (see [Inner lists](./support-authentication-history.md#inner-lists)). The lifecycle rows of
+  one network are bounded (`LIFECYCLE_ROWS_TRUNCATED`, newest kept) without a continuation.
 - Prometheus evidence is only as complete as the scrape: sampling gaps, a relabeling that drops core metrics (reported
   as `unknown`), and counter resets inside the window limit it. It carries no first-seen or last-seen times either.
 - History stays bound to its own contract (ClickHouse only, 31-day window).

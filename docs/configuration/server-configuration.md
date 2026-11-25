@@ -422,6 +422,11 @@ definitive answer wins, and "name does not exist" counts as an answer. With `tim
 queries leave at 0 ms, 100 ms, and 200 ms, and a lookup fails only when all three stay unanswered until 300 ms. In the
 normal case exactly one query is sent; a slow or lossy resolver can receive up to `attempts` queries per lookup.
 
+Since 4.2.1 a lookup whose budget or caller context ends before any attempt answers fails with
+`lookup <name>: DNS lookup context ended: context deadline exceeded` (or `context canceled`), followed by
+`; cause: <cause>` when the context carries a custom cause. Only an expired deadline counts as a timeout. A resolver
+error returned by an attempt keeps its own text, such as `i/o timeout`.
+
 Without a pool every query opens its own UDP socket. Behind NAT or connection tracking each socket creates a state
 entry that outlives the query, which adds up at high request rates. With `pool_size` greater than zero the client
 keeps that many idle sockets per resolver and reuses them:

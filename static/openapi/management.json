@@ -71,7 +71,7 @@
     {
       "name": "SupportHistory",
       "x-displayName": "/api/v1/support",
-      "description": "Read-only historical authentication diagnosis from recorded ClickHouse evidence. Requires a backchannel caller (bearer token or scoped Basic credential) holding nauthilus:history_read; nauthilus:history_detail widens the projection. The unrestricted Basic credential and nauthilus:admin alone grant no access."
+      "description": "Read-only historical authentication diagnosis from recorded ClickHouse evidence. Requires a backchannel caller (bearer token or scoped Basic credential) holding nauthilus:history_read or nauthilus:history_detail; both release the complete recorded data (identities, addresses, factor evidence, status texts). Recorded values are never cut; invisible format characters are shown as <U+XXXX>. The unrestricted Basic credential and nauthilus:admin alone grant no access."
     },
     {
       "name": "SupportOperations",
@@ -2072,7 +2072,7 @@
         ],
         "operationId": "getAuthenticationAttempt",
         "summary": "Return every recorded event of one diagnostic attempt id.",
-        "description": "Requires nauthilus:history_read and a subject; with nauthilus:history_detail the subject is optional. The attempt is returned only when one of its rows belongs to the subject; a guessed or foreign id yields the same `attempt: null` as an unknown one. `around` is any instant of the attempt, for example its started_at.",
+        "description": "Requires nauthilus:history_read or nauthilus:history_detail; the subject is optional. With a subject, the attempt is returned only when one of its rows belongs to it; a foreign id yields the same `attempt: null` as an unknown one. `around` is any instant of the attempt, for example its started_at.",
         "security": [
           {
             "backchannelBearer": []
@@ -2138,7 +2138,7 @@
         ],
         "operationId": "searchBruteForceBans",
         "summary": "Explain the recorded brute-force bans of one IP or network in a window of at most 31 days.",
-        "description": "Requires nauthilus:history_read; a subject is accepted only with nauthilus:history_detail. Candidate networks are computed from rule prefixes, never scanned; the latest activation before the window start is included. The activating request is never a culprit and `crossed` is a heuristic.",
+        "description": "Requires nauthilus:history_read or nauthilus:history_detail; a subject is optional. Candidate networks are computed from rule prefixes, never scanned; the latest activation before the window start is included. The activating request is never a culprit and `crossed` is a heuristic.",
         "security": [
           {
             "backchannelBearer": []
@@ -2256,6 +2256,196 @@
           },
           "503": {
             "$ref": "#/components/responses/SupportOperationsUnavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/operations/log-overview": {
+      "post": {
+        "tags": [
+          "SupportOperations"
+        ],
+        "operationId": "overviewOperationsLogs",
+        "summary": "Count the messages the deployment logged in a window, one group per level and exact message.",
+        "description": "Requires nauthilus:operations_read. Filters are accepted only in the JSON body; query parameters are refused. HTTP 200 means the call was processed; `source` states the completeness of the log source. Every message group is an observation counted in the log window, not an incident; use the diagnostics operation for component state. Messages are complete; different messages are never merged, and only authentication secrets are replaced by `<redacted>`. Groups are paginated with `page.next_cursor`. Nothing is changed.",
+        "security": [
+          {
+            "backchannelBearer": []
+          },
+          {
+            "backchannelBasic": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportOperationsLogOverviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Processed overview; the source may be partial, unavailable, or not configured.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/SupportHistoryNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportOperationsLogOverviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SupportOperationsBadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SupportOperationsForbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/SupportOperationsBusy"
+          },
+          "500": {
+            "$ref": "#/components/responses/SupportOperationsInternal"
+          },
+          "503": {
+            "$ref": "#/components/responses/SupportOperationsUnavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/operations/log-events": {
+      "post": {
+        "tags": [
+          "SupportOperations"
+        ],
+        "operationId": "readOperationsLogEvents",
+        "summary": "Read the stored log lines of the deployment in a window, newest first and paginated.",
+        "description": "Requires nauthilus:operations_read. Filters are accepted only in the JSON body; query parameters are refused. HTTP 200 means the call was processed; `source` states the completeness of the log source and `page` the page size the source allowed. Every event carries its timestamp, instance, stream labels, and every field of the log line complete; only authentication secrets (passwords, tokens, keys, cookies, authorization values) are replaced by `<redacted>` and named in `redacted_fields`. Nothing is changed.",
+        "security": [
+          {
+            "backchannelBearer": []
+          },
+          {
+            "backchannelBasic": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportOperationsLogEventsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Processed page; the source may be partial, unavailable, or not configured.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/SupportHistoryNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportOperationsLogEventsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SupportOperationsBadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SupportOperationsForbidden"
+          },
+          "429": {
+            "$ref": "#/components/responses/SupportOperationsBusy"
+          },
+          "500": {
+            "$ref": "#/components/responses/SupportOperationsInternal"
+          },
+          "503": {
+            "$ref": "#/components/responses/SupportOperationsUnavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/support/responses/segment": {
+      "post": {
+        "tags": [
+          "SupportOperations"
+        ],
+        "operationId": "readSupportResponseSegment",
+        "summary": "Return the next segment of a support answer that exceeded the transport size bound.",
+        "description": "Requires a support scope of the operation that produced the answer, and the same principal. An answer above a transport bound (today the MCP limits.max_response_bytes) is returned as a segment instead of being discarded: concatenating `data` of every segment in order, following `segment.next_cursor` until it is null, yields the complete JSON answer byte for byte. Segments expire after ten minutes (`SEGMENT_UNKNOWN`; repeat the original call). Nothing is changed.",
+        "security": [
+          {
+            "backchannelBearer": []
+          },
+          {
+            "backchannelBasic": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupportResponseSegmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One segment.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/SupportHistoryNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportResponseSegmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/SupportOperationsBadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/SupportOperationsForbidden"
+          },
+          "404": {
+            "description": "The segment is unknown or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupportOperationsError"
+                }
+              }
+            }
           }
         }
       }
@@ -3306,6 +3496,22 @@
           "subject": {
             "$ref": "#/components/schemas/SupportHistorySubject"
           },
+          "events_page": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "One page of the attempt's events, default and at most 200. cursor is events_page.next_cursor of an earlier answer for the same attempt_id and around (also from a search answer).",
+            "properties": {
+              "cursor": {
+                "type": "string",
+                "maxLength": 512
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 200
+              }
+            }
+          },
           "audit_reference": {
             "$ref": "#/components/schemas/SupportHistoryAuditReference"
           }
@@ -3364,6 +3570,37 @@
           "subject": {
             "$ref": "#/components/schemas/SupportHistorySubject"
           },
+          "inner_page": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "list"
+            ],
+            "description": "One page of an inner list instead of the ban page. contributions and claimants need the ban_ref of one ban, and the answer lists only that ban; orphan_claimants names no ban. cursor is contributions.next_cursor, hits.claimants_next_cursor, or orphan_hits.claimants_next_cursor of an earlier answer to the same target and window. Default and maximum limit: 500 contributions, 50 claimants. Never combined with page.cursor.",
+            "properties": {
+              "ban_ref": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "list": {
+                "type": "string",
+                "enum": [
+                  "contributions",
+                  "claimants",
+                  "orphan_claimants"
+                ]
+              },
+              "cursor": {
+                "type": "string",
+                "maxLength": 512
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 500
+              }
+            }
+          },
           "page": {
             "type": "object",
             "additionalProperties": false,
@@ -3401,6 +3638,30 @@
             "type": "string",
             "format": "date-time",
             "description": "Exclusive upper bound; not in the future."
+          }
+        }
+      },
+      "SupportOperationsScope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "window",
+          "queried_at",
+          "instance"
+        ],
+        "properties": {
+          "window": {
+            "$ref": "#/components/schemas/SupportOperationsWindow"
+          },
+          "queried_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deployment": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
           }
         }
       },
@@ -3734,28 +3995,7 @@
             "pattern": "^1$"
           },
           "scope": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "window",
-              "queried_at",
-              "instance"
-            ],
-            "properties": {
-              "window": {
-                "$ref": "#/components/schemas/SupportOperationsWindow"
-              },
-              "queried_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "deployment": {
-                "type": "string"
-              },
-              "instance": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/components/schemas/SupportOperationsScope"
           },
           "sources": {
             "type": "array",
@@ -3779,6 +4019,565 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "SupportOperationsLogLevels": {
+        "type": "array",
+        "maxItems": 5,
+        "uniqueItems": true,
+        "description": "Log levels to read; error and warn when absent.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warn",
+            "notice",
+            "info",
+            "debug"
+          ]
+        }
+      },
+      "SupportOperationsLogGroupPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Message groups per page, default 50, at most 200. A cursor carries the window of the first page; a follow-up request may omit window or must repeat it.",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "next_cursor of the previous answer of the same query."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 200
+          }
+        }
+      },
+      "SupportOperationsLogEventPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Events per page, default 100, at most 500. A cursor carries the window of the first page; a follow-up request may omit window or must repeat it.",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "next_cursor of the previous answer of the same query."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500
+          }
+        }
+      },
+      "SupportOperationsLogOverviewRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^1$"
+          },
+          "window": {
+            "$ref": "#/components/schemas/SupportOperationsWindow",
+            "description": "Defaults to the last 15 minutes; at most 24 hours. The log source may clip it to its configured maximum."
+          },
+          "levels": {
+            "$ref": "#/components/schemas/SupportOperationsLogLevels"
+          },
+          "page": {
+            "$ref": "#/components/schemas/SupportOperationsLogGroupPage"
+          },
+          "audit_reference": {
+            "$ref": "#/components/schemas/SupportHistoryAuditReference"
+          }
+        }
+      },
+      "SupportOperationsLogMessageGroup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "level",
+          "message",
+          "message_exact",
+          "status",
+          "count",
+          "counts",
+          "instances"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Position in the whole answer (L1 is the most frequent group)."
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warn",
+              "notice",
+              "info",
+              "debug"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "The exact logged message; untrusted data."
+          },
+          "secrets_redacted": {
+            "type": "boolean",
+            "description": "Authentication secrets inside the message were replaced."
+          },
+          "message_exact": {
+            "type": "boolean",
+            "description": "message is the stored text unchanged and works as the message filter of operational_log_events; false when a secret was replaced or a format character made visible. Then filter the events by instance and the group's buckets instead."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "observed"
+            ],
+            "description": "A counted message is an observation, never an incident."
+          },
+          "component": {
+            "type": "string",
+            "enum": [
+              "ldap",
+              "auth_backend",
+              "backend_monitoring",
+              "redis",
+              "clickhouse_export",
+              "auth_event_delivery",
+              "policy"
+            ]
+          },
+          "symptom": {
+            "type": "string",
+            "description": "Diagnostics symptom code of a profiled message."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "description": "One count per entry of buckets."
+          },
+          "first_bucket_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_bucket_until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "instances": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "instance",
+                "count"
+              ],
+              "properties": {
+                "instance": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "SupportOperationsLogOverviewResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "scope",
+          "source",
+          "buckets",
+          "bucket_seconds",
+          "messages",
+          "page",
+          "notes"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^1$"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SupportOperationsScope"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SupportOperationsSourceReport"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportOperationsWindow"
+            }
+          },
+          "bucket_seconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportOperationsLogMessageGroup"
+            }
+          },
+          "page": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "limit",
+              "offset",
+              "total",
+              "next_cursor"
+            ],
+            "description": "The page of the message groups; total counts every group of the answer.",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "next_cursor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SupportOperationsLogEventsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^1$"
+          },
+          "window": {
+            "$ref": "#/components/schemas/SupportOperationsWindow",
+            "description": "Defaults to the last 15 minutes; at most 24 hours. The log source may clip it to its configured maximum."
+          },
+          "levels": {
+            "$ref": "#/components/schemas/SupportOperationsLogLevels"
+          },
+          "instance": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "Only lines of this instance label value."
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "description": "Only lines with exactly this message, as an overview group names it."
+          },
+          "page": {
+            "$ref": "#/components/schemas/SupportOperationsLogEventPage"
+          },
+          "audit_reference": {
+            "$ref": "#/components/schemas/SupportHistoryAuditReference"
+          }
+        }
+      },
+      "SupportOperationsLogEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "at",
+          "instance",
+          "level",
+          "message",
+          "format",
+          "labels",
+          "fields",
+          "line"
+        ],
+        "properties": {
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the stored line with nanosecond precision."
+          },
+          "instance": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "json",
+              "logfmt",
+              "raw"
+            ]
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Stream labels of the line; untrusted data."
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Every field of the log line complete; a name the line repeats holds the list of all its values in line order (named in repeated_fields). A raw line has no fields. Untrusted data."
+          },
+          "line": {
+            "type": "string",
+            "description": "The complete stored line with authentication secrets replaced."
+          },
+          "repeated_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Fields whose name the line repeated, as dotted paths."
+          },
+          "redacted_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Secret fields replaced by <redacted>, as dotted paths."
+          },
+          "secrets_redacted": {
+            "type": "boolean",
+            "description": "Authentication secrets inside a text value were replaced."
+          }
+        }
+      },
+      "SupportOperationsLogEventsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "scope",
+          "source",
+          "filter",
+          "events",
+          "gaps",
+          "page",
+          "notes"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^1$"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/SupportOperationsScope"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SupportOperationsSourceReport"
+          },
+          "filter": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "levels"
+            ],
+            "properties": {
+              "levels": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "instance": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SupportOperationsLogEvent"
+            }
+          },
+          "gaps": {
+            "type": "array",
+            "description": "Stored lines the source bounds could not return inside this page's span, with their time, stream labels, and reason (STREAM_RUN_EXCEEDS_READ, LINES_EXCEED_SOURCE_BYTE_BOUND, STREAMS_EXCEED_LISTING_BOUND, STREAMS_UNLISTED); paging continues after them.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "at",
+                "labels",
+                "reason"
+              ],
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "labels": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "STREAM_RUN_EXCEEDS_READ",
+                    "LINES_EXCEED_SOURCE_BYTE_BOUND",
+                    "STREAMS_EXCEED_LISTING_BOUND",
+                    "STREAMS_UNLISTED"
+                  ]
+                }
+              }
+            }
+          },
+          "page": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "limit",
+              "limit_applied",
+              "next_cursor"
+            ],
+            "description": "limit_applied is below limit when the source byte bound forced a smaller page; no line is lost.",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "limit_applied": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "next_cursor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SupportResponseSegmentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "cursor"
+        ],
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^1$"
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "segment.next_cursor of the previous segment."
+          }
+        }
+      },
+      "SupportResponseSegmentResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "segment",
+          "data"
+        ],
+        "description": "One part of a complete answer that exceeded the transport bound.",
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "pattern": "^1$"
+          },
+          "data": {
+            "type": "string",
+            "description": "The next part of the JSON text of the complete answer."
+          },
+          "segment": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "operation",
+              "offset",
+              "total_bytes",
+              "next_cursor"
+            ],
+            "properties": {
+              "operation": {
+                "type": "string",
+                "description": "The operation that produced the answer."
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Byte offset of data in the complete answer."
+              },
+              "total_bytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "next_cursor": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Cursor of the next segment; null on the last one."
+              }
             }
           }
         }
@@ -3807,11 +4606,14 @@
                 "type": "string",
                 "enum": [
                   "INVALID_REQUEST",
+                  "INVALID_CURSOR",
                   "WINDOW_TOO_LARGE",
                   "FORBIDDEN",
                   "OPERATIONS_BUSY",
                   "OPERATIONS_NOT_CONFIGURED",
-                  "INTERNAL_ERROR"
+                  "INTERNAL_ERROR",
+                  "SEGMENT_UNKNOWN",
+                  "RESPONSE_TOO_LARGE"
                 ]
               },
               "message": {
@@ -4080,7 +4882,7 @@
               "string",
               "null"
             ],
-            "description": "Stored status text the host answered the authentication caller with (logins.status_msg). IdP browser pages render their own localized text, so this is not necessarily what a user saw. Null when no terminal decision was sealed, and in the support projection on events whose identity is redacted."
+            "description": "Stored status text the host answered the authentication caller with (logins.status_msg). IdP browser pages render their own localized text, so this is not necessarily what a user saw. Null when no terminal decision was sealed."
           },
           "decision_sources": {
             "type": "array",
@@ -4258,8 +5060,7 @@
           "canonical_account",
           "account_found_at_capture",
           "matched_by",
-          "subject_match",
-          "redacted"
+          "subject_match"
         ],
         "properties": {
           "supplied_login": {
@@ -4287,9 +5088,6 @@
             ]
           },
           "subject_match": {
-            "type": "boolean"
-          },
-          "redacted": {
             "type": "boolean"
           }
         }
@@ -4502,6 +5300,45 @@
           "final_outcome_observed"
         ],
         "properties": {
+          "events_page": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "next_cursor",
+              "detail",
+              "limit"
+            ],
+            "description": "Present when more recorded events follow or the detail request selected an events page. Pass detail and next_cursor to authentication_attempt_detail (events_page.cursor) for the next events; recording.events_truncated is true exactly when next_cursor is set.",
+            "properties": {
+              "next_cursor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "detail": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "attempt_id",
+                  "around"
+                ],
+                "properties": {
+                  "attempt_id": {
+                    "type": "string"
+                  },
+                  "around": {
+                    "type": "string",
+                    "format": "date-time"
+                  }
+                }
+              }
+            }
+          },
           "started_at": {
             "type": "string",
             "format": "date-time"
@@ -4539,8 +5376,7 @@
               "known_gaps",
               "replayed_rows_merged",
               "legacy_rows",
-              "events_truncated",
-              "events_withheld"
+              "events_truncated"
             ],
             "properties": {
               "known_gaps": {
@@ -4556,10 +5392,8 @@
                 "type": "integer"
               },
               "events_truncated": {
-                "type": "boolean"
-              },
-              "events_withheld": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "The attempt hit the per-attempt event limit of the store read."
               }
             }
           },
@@ -4587,13 +5421,11 @@
                 "enum": [
                   "recorded",
                   "not_recorded",
-                  "withheld",
                   "not_applicable"
                 ],
                 "x-enum-varnames": [
                   "SupportHistorySecondFactorStepRecorded",
                   "SupportHistorySecondFactorStepNotRecorded",
-                  "SupportHistorySecondFactorStepWithheld",
                   "SupportHistorySecondFactorStepNotApplicable"
                 ]
               },
@@ -4638,9 +5470,9 @@
           "projection": {
             "type": "string",
             "enum": [
-              "support",
               "detail"
-            ]
+            ],
+            "description": "Always detail; every reader receives the complete data."
           },
           "outcome": {
             "type": "string",
@@ -5073,8 +5905,7 @@
           "event_id",
           "request_id",
           "count_source",
-          "protocol",
-          "redacted"
+          "protocol"
         ],
         "properties": {
           "at": {
@@ -5140,9 +5971,6 @@
           },
           "protocol": {
             "type": "string"
-          },
-          "redacted": {
-            "type": "boolean"
           }
         }
       },
@@ -5237,7 +6065,12 @@
             ]
           },
           "truncated": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "True exactly when next_cursor continues the items."
+          },
+          "next_cursor": {
+            "type": "string",
+            "description": "Continues items through inner_page {ban_ref, list: contributions, cursor}."
           }
         }
       },
@@ -5252,7 +6085,8 @@
           "evidence",
           "count",
           "count_is_upper_bound",
-          "interval_approximate"
+          "interval_approximate",
+          "claimants_truncated"
         ],
         "properties": {
           "by_source": {
@@ -5275,6 +6109,8 @@
           },
           "claimants": {
             "type": "array",
+            "maxItems": 50,
+            "description": "Claimed names and accounts of the hits, most hits first, one page.",
             "items": {
               "type": "object",
               "additionalProperties": false,
@@ -5319,6 +6155,14 @@
           },
           "interval_approximate": {
             "type": "boolean"
+          },
+          "claimants_truncated": {
+            "type": "boolean",
+            "description": "True exactly when claimants_next_cursor continues the claimants."
+          },
+          "claimants_next_cursor": {
+            "type": "string",
+            "description": "Continues claimants through inner_page {ban_ref, list: claimants, cursor} (orphan_claimants for orphan_hits)."
           }
         }
       },
@@ -5439,7 +6283,7 @@
               "string",
               "null"
             ],
-            "description": "Released to the detail projection only."
+            "description": "Operator client that released the ban or reset the counters."
           },
           "keys_removed": {
             "type": [
@@ -5589,9 +6433,9 @@
           "projection": {
             "type": "string",
             "enum": [
-              "support",
               "detail"
-            ]
+            ],
+            "description": "Always detail; every reader receives the complete data."
           },
           "schema_version": {
             "type": "string",
@@ -5616,7 +6460,7 @@
       "SupportHistoryAttemptSummary": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Compact form of one attempt, built from the same projection as the detailed attempt.",
+        "description": "Compact form of one attempt, built from the same data as the detailed attempt.",
         "required": [
           "started_at",
           "last_observed_at",
@@ -5633,8 +6477,7 @@
           "outcome_basis",
           "progress",
           "final_outcome_observed",
-          "events_truncated",
-          "events_withheld"
+          "events_truncated"
         ],
         "properties": {
           "started_at": {
@@ -5730,9 +6573,6 @@
           },
           "events_truncated": {
             "type": "boolean"
-          },
-          "events_withheld": {
-            "type": "boolean"
           }
         }
       },
@@ -5812,7 +6652,7 @@
       "SupportHistoryBanAttribution": {
         "type": "object",
         "additionalProperties": false,
-        "description": "Under which accounts the listed contributions of one ban were recorded; never who caused the ban. Codes are computed on unredacted rows, so hidden identities never make an answer look exclusive.",
+        "description": "Under which accounts the listed contributions of one ban were recorded; never who caused the ban. Codes are computed on every listed row.",
         "required": [
           "contributing_accounts",
           "subject_contributions",
@@ -5820,7 +6660,6 @@
           "code",
           "other_contributors",
           "person_attribution",
-          "identities_redacted",
           "subject_contributions_truncated"
         ],
         "properties": {
@@ -5832,7 +6671,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Distinct recorded accounts of the listed contributions; null unless the caller has history_detail."
+            "description": "Distinct recorded accounts of the listed contributions."
           },
           "subject_contributions": {
             "type": "array",
@@ -5915,9 +6754,6 @@
           "person_attribution": {
             "type": "string",
             "const": "NOT_ESTABLISHED"
-          },
-          "identities_redacted": {
-            "type": "boolean"
           },
           "subject_contributions_truncated": {
             "type": "boolean"

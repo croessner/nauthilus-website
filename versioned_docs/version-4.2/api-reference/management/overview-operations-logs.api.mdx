@@ -1,0 +1,64 @@
+---
+id: overview-operations-logs
+title: "Count the messages the deployment logged in a window, one group per level and exact message."
+description: "Requires nauthilus:operations_read. Filters are accepted only in the JSON body; query parameters are refused. HTTP 200 means the call was processed; `source` states the completeness of the log source. Every message group is an observation counted in the log window, not an incident; use the diagnostics operation for component state. Messages are complete; different messages are never merged, and only authentication secrets are replaced by `<redacted>`. Groups are paginated with `page.next_cursor`. Nothing is changed."
+sidebar_label: "Count the messages the deployment logged in a window, one group per level and exact message."
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "post api-method"
+info_path: docs/api-reference/management/nauthilus-management-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Count the messages the deployment logged in a window, one group per level and exact message."}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/api/v1/support/operations/log-overview"}
+  context={"endpoint"}
+>
+
+</MethodEndpoint>
+
+
+
+Requires nauthilus:operations_read. Filters are accepted only in the JSON body; query parameters are refused. HTTP 200 means the call was processed; `source` states the completeness of the log source. Every message group is an observation counted in the log window, not an incident; use the diagnostics operation for component state. Messages are complete; different messages are never merged, and only authentication secrets are replaced by `<redacted>`. Groups are paginated with `page.next_cursor`. Nothing is changed.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails>
+
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./overview-operations-logs.RequestSchema.json")}
+>
+
+</RequestSchema>
+
+<StatusCodes
+  {...require("./overview-operations-logs.StatusCodes.json")}
+>
+
+</StatusCodes>

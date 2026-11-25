@@ -1,0 +1,1 @@
+{"schema":{"type":"array","maxItems":5,"uniqueItems":true,"description":"Log levels to read; error and warn when absent.","items":{"type":"string","enum":["error","warn","notice","info","debug"]},"title":"SupportOperationsLogLevels"},"schemaType":"response"}

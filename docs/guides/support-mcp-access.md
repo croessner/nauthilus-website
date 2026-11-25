@@ -25,6 +25,23 @@ change, and no free query of any kind: no shell, SQL, Redis, LogQL, or PromQL. E
 
 :::
 
+:::warning Prompt injection
+
+Answers carry values that other people control: user names typed at a login prompt, client identifiers, host names,
+and log messages. Such a value can contain text written as instructions to a language model, for example a user name
+that asks the assistant to ignore its previous instructions. Nauthilus returns every string as data, and the tool
+descriptions tell the model to treat it as untrusted, but no server can guarantee that a model never follows text it
+reads. The endpoint stays read-only, so injected text cannot change Nauthilus through it. The risk lies in the MCP
+client and in what its other tools can do, so use the interface with care:
+
+- Keep the approval prompts of the client on, and do not let it run commands, write files, send messages, or open
+  links on its own while support answers are in its context. A session without other powerful tools is safer.
+- Read the conclusions of the assistant as hypotheses and check them against the answer data before you act. Be
+  suspicious of a suggestion that only makes sense if text inside a value were an instruction.
+- Grant the support scopes only to staff who know these risks.
+
+:::
+
 ## What It Is and What It Is Not
 
 | It is | It is not |

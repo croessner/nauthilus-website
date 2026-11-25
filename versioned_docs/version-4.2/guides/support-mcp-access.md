@@ -368,7 +368,7 @@ observability:
 | `sources.loki.instance_label` | required | Label that names the Nauthilus instance of a stream, for example `pod`. Counts are grouped by it, and the `instance` filter of the log events matches it. |
 | `sources.loki.query_profile` | `nauthilus_diagnostics` | The only compiled query profile. |
 | `sources.loki.timeout` | `3s` | Per Loki request; at most `30s`. |
-| `sources.loki.max_time_window` | `1h` | Longest window one query covers; at most `24h`. Longer windows are clipped to their newest part. |
+| `sources.loki.max_time_window` | `1h` | Longest span one query covers; at most `24h`. A longer window is answered in up to 24 parts; see [Windows and Parts](#windows-and-parts). |
 | `sources.loki.max_series` | `200` | Series bound of one result; at most `1000`. |
 | `sources.loki.max_response_bytes` | `1048576` | Byte bound of one Loki response; at most `8388608`. |
 | `sources.loki.bearer_token` | `""` | Bearer credential. Mutually exclusive with `basic_auth`. |
@@ -786,6 +786,30 @@ A shortened answer:
 
 `scope.instance` is `runtime.instance_name`; `scope.deployment` is `storage.history.clickhouse.deployment` when set.
 
+### Windows and Parts
+
+Every window of the operations requests (diagnostics, log overview, and log events) is half open, `[from, until)`, and
+kept in whole milliseconds, the precision of a range selector. Finer digits are dropped, and the answer states the
+window it used. A historical count covers exactly that window: it is an instant query with the window length in
+milliseconds as its range, evaluated at the window end. Loki counts a range as `(t-range, t]`, so a Loki count runs one
+nanosecond before the end: a line on the window start counts, a line on the window end does not. No count uses a range
+query, so how a query frontend aligns range evaluations (`align_queries_with_step`) never matters, and any valid window
+works without rounding.
+
+A window longer than the `max_time_window` of a source (the longest span one query covers, default `1h`) is split into
+consecutive parts of at most `max_time_window` that end at the window end; only the oldest part may be shorter. The
+counts of the parts are added, and the log events read the window part by part. One window takes at most 24 parts, so
+with `max_time_window: 1h` every window up to the 24-hour maximum is answered completely. A window that needs more
+parts, which happens only with a `max_time_window` below one hour, keeps its newest 24 parts and is stated as clipped
+(`LOKI_WINDOW_CLIPPED` or `PROMETHEUS_WINDOW_CLIPPED`, source `partial`).
+
+- The source `timeout` applies per part, within the 10-second budget of the call. A source that runs out of time reports
+  `timeout`.
+- A source answers one call with at most four queries at a time. A twelve-hour diagnostics call with the eight profile
+  queries and the coverage query sends 12 × 9 Loki queries.
+- Prometheus estimates the increase of each part with `increase()`, so the sum of the parts can differ by a fraction
+  from one long increase.
+
 ### Runtime Source
 
 `nauthilus_runtime` reads the in-process Prometheus registry. It never dials a backend and does not use `/healthz`.
@@ -820,12 +844,14 @@ fault inside a successful result, are not visible here.
 ### Loki Source
 
 Only the compiled `nauthilus_diagnostics` profile runs: one instant metric query per symptom,
-`sum by (<instance_label>) (count_over_time(<selector> |~ "<msg pattern>" [<window>s]))`, plus one coverage query
-without a line filter that counts all lines per instance.
+`sum by (<instance_label>) (count_over_time(<selector> |= "<literal>" |~ "<msg pattern>" [<window>ms]))`, plus one
+coverage query without a line filter that counts all lines per instance. A window above `max_time_window` sends these
+queries once per part ([Windows and Parts](#windows-and-parts)).
 
-The pattern matches a literal only as the complete `msg` field of a slog JSON line (`"msg":"<literal>"`) or text line
-(`msg="<literal>"`). Both log encoders escape quotes inside values, so text that a client typed, for example a username,
-can never be counted as a symptom.
+The substring stage drops every line without the literal before the pattern runs, so a query stays cheap on windows with
+many lines, for example after a restart with debug logging. The pattern matches a literal only as the complete `msg`
+field of a slog JSON line (`"msg":"<literal>"`) or text line (`msg="<literal>"`). Both log encoders escape quotes inside
+values, so text that a client typed, for example a username, can never be counted as a symptom.
 
 | Component | Symptom | Log message |
 | --- | --- | --- |
@@ -856,7 +882,7 @@ and depends on Loki retention.
 
 `prometheus` complements the instance-local runtime view: it asks one Prometheus for every scraped instance and ties
 the counts to the requested window. Only the compiled `nauthilus_diagnostics` profile runs: instant queries of the form
-`sum by (<instance_label>) (increase(<series>{<selector>}[<window>s]))`, evaluated at the end of the window, over the
+`sum by (<instance_label>) (increase(<series>{<selector>}[<window>ms]))`, evaluated at the end of the window, over the
 same counter families and with the same classification as the runtime source.
 
 | Component | Symptom | Series |
@@ -878,9 +904,9 @@ collide.
 
 The selector, tenant, credentials, and endpoint are fixed in the configuration. No caller value reaches a query, no
 series leaves Prometheus, redirects are never followed, and answers are bounded by `max_response_bytes` and
-`max_series`; a truncated answer marks the source `partial`. Windows above `max_time_window` are clipped to their newest
-part (`PROMETHEUS_WINDOW_CLIPPED`). The failure codes are `PROMETHEUS_UNREACHABLE`, `PROMETHEUS_QUERY_REJECTED`,
-`PROMETHEUS_RESULT_TRUNCATED`, and `PROMETHEUS_TIMEOUT`.
+`max_series`; a truncated answer marks the source `partial`. Windows above `max_time_window` are counted in parts, and
+the `increase()` estimates of the parts are added ([Windows and Parts](#windows-and-parts)). The failure codes are
+`PROMETHEUS_UNREACHABLE`, `PROMETHEUS_QUERY_REJECTED`, `PROMETHEUS_RESULT_TRUNCATED`, and `PROMETHEUS_TIMEOUT`.
 
 #### Coverage
 
@@ -999,7 +1025,7 @@ configuration beyond the `loki` source.
 | Field | Default | Rules |
 | --- | --- | --- |
 | `schema_version` | required | `"1"` |
-| `window` | last 15 minutes | As for the diagnostics; at most 24 hours (`WINDOW_TOO_LARGE`). Loki clips it to `max_time_window`. |
+| `window` | last 15 minutes | As for the diagnostics; at most 24 hours (`WINDOW_TOO_LARGE`). Windows above `max_time_window` are counted in parts. |
 | `levels` | `error`, `warn` | Any of `error`, `warn`, `notice`, `info`, `debug`, without repeats. |
 | `page.limit` | `50` | At most `200` message groups per page. |
 | `page.cursor` | none | `page.next_cursor` of the previous answer of the same query. |
@@ -1010,13 +1036,15 @@ configuration beyond the `loki` source.
  "levels":["error","warn"],"page":{"limit":50},"audit_reference":"INC-4711"}
 ```
 
-Loki receives one coverage query and one range query per slog encoder, so the overview needs no knowledge of the log
-format. The JSON query has this shape:
+Loki receives one coverage query per window part and, for every bucket (and every part of a bucket longer than
+`max_time_window`), one instant count per slog encoder, evaluated one nanosecond before the bucket end. The overview
+therefore needs no knowledge of the log format, and each count covers exactly its bucket. The JSON query has this
+shape:
 
 ```text
 sum by (<instance_label>, nauthilus_level, nauthilus_msg) (count_over_time(<selector>
   |~ "\"level\":\"(ERROR|WARN)\"" | json nauthilus_level="level", nauthilus_msg="msg"
-  | __error__="" | nauthilus_level=~"ERROR|WARN" [<bucket>s]))
+  | __error__="" | nauthilus_level=~"ERROR|WARN" [<bucket>ms]))
 ```
 
 The text query is the same with the filters `!~ "^\s*\{" |~ "(^|\s)level=(ERROR|WARN)(\s|$)"` and `| logfmt`. A text line
@@ -1030,8 +1058,10 @@ parameters of `json` and `logfmt` need Loki 2.9 or newer; an older Loki rejects 
 - **`source`** is the Loki report with status, code, truncation, and coverage: the instances that logged any line in
   the window and the covered time span. An instance in the coverage without a message group logged nothing at these
   levels.
-- **`buckets` and `bucket_seconds`** are up to 12 equal buckets that end at the window end. Their width is a whole
-  number of seconds, so the first bucket can start up to 11 seconds before the window (`LOG_BUCKETS_EXCEED_WINDOW`).
+- **`buckets` and `bucket_seconds`** are up to 12 buckets that tile the window exactly and end at its end. Every bucket
+  spans `bucket_seconds`, a whole number of seconds, except the first, which starts at the window start and may be
+  shorter. A line counts in the bucket whose `[from, until)` holds its time, so the bucket counts add up to exactly the
+  lines that `operational_log_events` returns for the same window and filters.
 - **`messages`** is one page of groups, most frequent first (more severe levels first at equal counts). Each group has
   `id` (its position in the whole answer), `level`, the complete `message`, the total `count`, one count per bucket in
   `counts`, `first_bucket_from` and `last_bucket_until` of the buckets with a count, and the counts per `instances`.
@@ -1042,9 +1072,9 @@ parameters of `json` and `logfmt` need Loki 2.9 or newer; an older Loki rejects 
   instance and the group's buckets instead.
 - **`page`** has `limit`, `offset`, `total` (every group of the answer), and `next_cursor` (`null` on the last page).
 - **`notes`** always hold `VALUES_ARE_UNTRUSTED_DATA` and `LOG_MESSAGES_ARE_NOT_INCIDENTS`, and when they apply
-  `LOG_SECRETS_REDACTED`, `LOG_MORE_PAGES`, `LOG_PAGES_REQUERY_THE_SOURCE`, `LOG_BUCKETS_EXCEED_WINDOW`,
-  `HISTORICAL_SOURCE_INCOMPLETE` (partial, clipped, truncated, misaligned, or timed out), `NO_HISTORICAL_SOURCE`, and
-  `LOG_NO_COVERAGE` (no instance logged any line in the window: check the selector and the retention).
+  `LOG_SECRETS_REDACTED`, `LOG_MORE_PAGES`, `LOG_PAGES_REQUERY_THE_SOURCE`, `HISTORICAL_SOURCE_INCOMPLETE` (partial,
+  clipped, truncated, or timed out), `NO_HISTORICAL_SOURCE`, and `LOG_NO_COVERAGE` (no instance logged any line in the
+  window: check the selector and the retention).
 
 Every group has the status `observed`. A counted warning is evidence that a code path logged, not an outage: retries,
 fallbacks, and client errors log warnings during normal operation. The overview derives no hypotheses and never
@@ -1091,15 +1121,15 @@ carries the window of the first page, so a follow-up may repeat the request with
 be the same. A cursor of another window or level set is `INVALID_CURSOR`. A window in the past is stable; a window that
 still receives lines can shift between pages (`LOG_PAGES_REQUERY_THE_SOURCE`).
 
-- `max_series` bounds the series per range query (instance, level, and message). A truncated answer keeps the series
-  with the largest counts and marks the source `partial` with `truncated: true`.
-- A Loki response above `max_response_bytes` is dropped as a whole for that encoder (`LOKI_RESULT_TRUNCATED`). When
-  both range queries fail, the source is `unavailable`, never an empty `ok`.
-- Windows above `max_time_window` are clipped to their newest part (`LOKI_WINDOW_CLIPPED`).
+- `max_series` bounds the series per count query (instance, level, and message). A truncated answer keeps the first
+  series in label order and marks the source `partial` with `truncated: true`.
+- A Loki response above `max_response_bytes` drops that count (`LOKI_RESULT_TRUNCATED`). A failed count makes the
+  source `partial`; when every count fails, the source is `unavailable`, never an empty `ok`.
+- Windows above `max_time_window` are counted in parts ([Windows and Parts](#windows-and-parts)).
 - Messages with variable content, such as counters or addresses, are separate groups and raise the series count. A
   Loki `max_query_series` limit below the series count rejects the query.
-- A point that is not within one second of a bucket end, for example behind a query frontend with
-  `align_queries_with_step`, is dropped, and the source reads `partial` with `LOKI_BUCKETS_MISALIGNED`.
+- A one-hour window sends 25 instant queries (one coverage query, 12 buckets × 2 encoders). A 24-hour window with
+  `max_time_window: 1h` sends 72 (24 coverage parts, 12 buckets of two parts × 2 encoders), at most four at a time.
 
 ## Log Events
 
@@ -1195,9 +1225,14 @@ When a Loki answer exceeds `max_response_bytes`, the read halves down to one lin
 `page.limit` (`LOG_PAGE_REDUCED_BY_SOURCE_LIMIT`), and the cursor continues without a gap. A line larger than the bound
 itself is read with its stream at its time; when that read still exceeds the bound, the stream's lines at that time are
 listed in `gaps` with `LINES_EXCEED_SOURCE_BYTE_BOUND`. Raise the source's `max_response_bytes` to read them. Every page
-with a gap reads `partial` with `LOKI_GAPS`; nothing is skipped without a gap entry. `max_time_window` clips the window
-as for the overview; one failed encoder query makes the source `partial`, both make it `unavailable`. An answer above the
-MCP bound arrives in segments ([Large Answers](#large-answers)).
+with a gap reads `partial` with `LOKI_GAPS`; nothing is skipped without a gap entry.
+
+One read spans at most `max_time_window` before its end ([Windows and Parts](#windows-and-parts)). When a part returns
+no line, the next older part is read in the same call. When a part ends the read before the window start, the page
+carries `next_cursor` at the part start, so a page can hold fewer lines than `limit` while older parts remain. A part of
+which nothing could be read (`unavailable`, `timeout`) is never passed over: the page ends without a cursor, and the
+request can be repeated. One failed encoder query makes the source `partial`, both make it `unavailable`. An answer
+above the MCP bound arrives in segments ([Large Answers](#large-answers)).
 
 ## Limits
 
@@ -1210,7 +1245,8 @@ MCP bound arrives in segments ([Large Answers](#large-answers)).
 | Serialized MCP response | `limits.max_response_bytes` | The answer arrives in segments; see [Large Answers](#large-answers) |
 | Segment store | 10 minutes; 64 MiB in total; 16 MiB per answer and per principal | `SEGMENT_UNKNOWN` after expiry or eviction; `RESPONSE_TOO_LARGE` for an answer above 16 MiB |
 | Operations service (diagnostics, log overview, log events) | 4 calls in flight, 2 per caller, 10-second budget | `OPERATIONS_BUSY` |
-| Operations window | 24 hours; Loki and Prometheus queries at most `max_time_window` | `WINDOW_TOO_LARGE`; `LOKI_WINDOW_CLIPPED`, `PROMETHEUS_WINDOW_CLIPPED` |
+| Operations window | 24 hours; one Loki or Prometheus query spans at most `max_time_window`, one window at most 24 parts | `WINDOW_TOO_LARGE`; beyond 24 parts `LOKI_WINDOW_CLIPPED`, `PROMETHEUS_WINDOW_CLIPPED` |
+| Source queries | 4 at a time per call and source; the source `timeout` per part | The source reports `timeout` |
 | Log pages | Overview 50 groups by default, at most 200; events 100 by default, at most 500 | `INVALID_REQUEST` above the maximum |
 | Log event reads | 5000 lines per read, 5000 listed streams, 16 streams per page of a run | Gaps `STREAM_RUN_EXCEEDS_READ`, `STREAMS_EXCEED_LISTING_BOUND` |
 | History window | 31 days | See [Support Authentication History](./support-authentication-history.md) |
@@ -1405,7 +1441,8 @@ Transport refusals are answered with a small JSON body such as `{"error":"untrus
 | `FORBIDDEN` on a segment | Another principal, or a token without a scope of the original operation, fetched the segment. | Fetch segments with the token that received the answer. |
 | Log overview or log events read `unavailable` | Both encoder queries failed, for example on a Loki older than 2.9, which rejects the label extraction parameters. | Upgrade Loki; check the source `code`. |
 | Log overview notes `LOG_NO_COVERAGE` | No instance logged any line in the window. | Check the `selector` and the Loki retention. |
-| Log overview source `partial` with `LOKI_BUCKETS_MISALIGNED` | A query frontend with `align_queries_with_step` shifts the points. In 4.2.1 a window whose limits are not whole multiples of the bucket width can also end this way, with an empty message list, while the log events of the same window are complete. | Let the overview queries reach Loki without step alignment. In 4.2.1, start and end the window on multiples of the bucket width, for example on full five minutes for a one-hour window. |
+| Log overview, log events, or a long diagnostics call reports `timeout` | A long window sends one query per part and bucket, at most four at a time, within the fixed 10-second budget of the operations service. | Narrow the window or split it into several calls; raise the source `timeout` only when single queries are slow. |
+| Source `partial` with `LOKI_WINDOW_CLIPPED` or `PROMETHEUS_WINDOW_CLIPPED` | The window needs more than 24 parts, because `max_time_window` is below one hour. | Raise the source's `max_time_window` to at least the window divided by 24, or narrow the window. |
 | Log events list gaps `STREAM_RUN_EXCEEDS_READ` | One stream holds more lines at one timestamp than one read of 5000 lines returns. | The source cannot return that run; the gap states its time and stream labels, and paging continues. |
 | Log events list gaps `LINES_EXCEED_SOURCE_BYTE_BOUND` | A line is larger than the source's `max_response_bytes`. | Raise `sources.loki.max_response_bytes`. |
 | `INVALID_CURSOR` on a log page | The cursor belongs to another window, level set, instance, or message. | Repeat the follow-up with the same filters, or omit `window`. |
@@ -1423,9 +1460,7 @@ Transport refusals are answered with a small JSON body such as `{"error":"untrus
 - The log events cannot return a run of one stream with more lines at one timestamp than one read of 5000 lines
   (`STREAM_RUN_EXCEEDS_READ`); the gap is stated.
 - Segments live in the instance that produced the answer; behind a load balancer, segment fetches need sticky routing.
-- In 4.2.1 the log overview can read `partial` with `LOKI_BUCKETS_MISALIGNED` and no messages for a window whose limits
-  are not whole multiples of the bucket width (for a one-hour window, five minutes); the log events of the same window
-  are not affected. Start and end the window on such boundaries until a later release removes this limit.
+- Window bounds are kept in whole milliseconds; finer digits of a request are dropped.
 - History pages hold at most 200 events of an attempt, 500 contributions, and 50 claimants of a ban; each list
   continues with its cursor (see [Inner lists](./support-authentication-history.md#inner-lists)). The lifecycle rows of
   one network are bounded (`LIFECYCLE_ROWS_TRUNCATED`, newest kept) without a continuation.
